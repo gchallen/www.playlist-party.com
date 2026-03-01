@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e815e793-1f5f-4577-86f0-ad93c76d5e88",
+  "id": "56f25c6c-6a61-42e9-a4fb-7542e75dbe73",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "attendees": {
@@ -25,7 +25,14 @@
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         },
         "invited_by": {
@@ -77,6 +84,14 @@
           "name": "attendees_invite_token_idx",
           "columns": [
             "invite_token"
+          ],
+          "isUnique": true
+        },
+        "attendees_party_email_idx": {
+          "name": "attendees_party_email_idx",
+          "columns": [
+            "party_id",
+            "email"
           ],
           "isUnique": true
         }
@@ -138,6 +153,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "end_time": {
+          "name": "end_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "location": {
           "name": "location",
           "type": "text",
@@ -152,22 +174,15 @@
           "notNull": true,
           "autoincrement": false
         },
-        "party_code": {
-          "name": "party_code",
-          "type": "text(6)",
+        "creator_email": {
+          "name": "creator_email",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "max_depth": {
           "name": "max_depth",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "max_invites_per_person": {
-          "name": "max_invites_per_person",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
@@ -180,19 +195,20 @@
           "notNull": true,
           "autoincrement": false
         },
-        "admin_token": {
-          "name": "admin_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "revealed_at": {
-          "name": "revealed_at",
-          "type": "text",
+        "max_invites_per_guest": {
+          "name": "max_invites_per_guest",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "song_attribution": {
+          "name": "song_attribution",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'hidden'"
         },
         "created_at": {
           "name": "created_at",
@@ -202,22 +218,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "parties_party_code_unique": {
-          "name": "parties_party_code_unique",
-          "columns": [
-            "party_code"
-          ],
-          "isUnique": true
-        },
-        "parties_admin_token_unique": {
-          "name": "parties_admin_token_unique",
-          "columns": [
-            "admin_token"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -279,7 +280,7 @@
           "name": "duration_seconds",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "position": {

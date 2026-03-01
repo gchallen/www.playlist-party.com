@@ -10,13 +10,10 @@ export const parties = sqliteTable('parties', {
 	location: text('location'),
 	createdBy: text('created_by').notNull(),
 	creatorEmail: text('creator_email').notNull(),
-	partyCode: text('party_code', { length: 6 }).notNull().unique(),
 	maxDepth: integer('max_depth'),
 	maxAttendees: integer('max_attendees').notNull(),
-	estimatedGuests: integer('estimated_guests'),
-	avgSongDurationSeconds: integer('avg_song_duration_seconds'),
-	adminToken: text('admin_token').notNull().unique(),
-	revealedAt: text('revealed_at'),
+	maxInvitesPerGuest: integer('max_invites_per_guest'),
+	songAttribution: text('song_attribution').notNull().default('hidden'),
 	createdAt: text('created_at')
 		.notNull()
 		.$defaultFn(() => new Date().toISOString())
@@ -39,7 +36,10 @@ export const attendees = sqliteTable(
 			.notNull()
 			.$defaultFn(() => new Date().toISOString())
 	},
-	(table) => [uniqueIndex('attendees_invite_token_idx').on(table.inviteToken)]
+	(table) => [
+		uniqueIndex('attendees_invite_token_idx').on(table.inviteToken),
+		uniqueIndex('attendees_party_email_idx').on(table.partyId, table.email)
+	]
 );
 
 export const songs = sqliteTable(
@@ -56,8 +56,7 @@ export const songs = sqliteTable(
 		youtubeTitle: text('youtube_title').notNull(),
 		youtubeThumbnail: text('youtube_thumbnail').notNull(),
 		youtubeChannelName: text('youtube_channel_name'),
-		durationSeconds: integer('duration_seconds'),
-		songType: text('song_type').notNull().default('entry'),
+		durationSeconds: integer('duration_seconds').notNull(),
 		position: integer('position').notNull(),
 		addedAt: text('added_at')
 			.notNull()
