@@ -1,31 +1,44 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+
 	let {
 		youtubeId,
 		title,
 		channelName,
 		addedBy,
 		revealed = false,
+		isMine = false,
 		isPlaying = false,
 		position,
+		showControls = false,
+		songId,
+		canMoveUp = false,
+		canMoveDown = false,
+		token,
 		onclick
 	}: {
 		youtubeId: string;
 		title: string;
 		channelName: string;
-		addedBy?: string;
+		addedBy?: string | null;
 		revealed?: boolean;
+		isMine?: boolean;
 		isPlaying?: boolean;
 		position: number;
+		showControls?: boolean;
+		songId?: number;
+		canMoveUp?: boolean;
+		canMoveDown?: boolean;
+		token?: string;
 		onclick?: () => void;
 	} = $props();
 
 	const thumbnailUrl = $derived(`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`);
 </script>
 
-<button
+<div
 	class="song-card w-full flex items-center gap-3 p-2 rounded-xl transition-all duration-200 text-left group"
 	class:is-playing={isPlaying}
-	{onclick}
 >
 	<span
 		class="w-8 text-center font-heading font-bold text-sm flex-shrink-0"
@@ -35,7 +48,7 @@
 		{position}
 	</span>
 
-	<div class="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden flex-shrink-0">
+	<button class="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden flex-shrink-0" {onclick}>
 		<img src={thumbnailUrl} alt="" class="w-full h-full object-cover" loading="lazy" />
 		{#if !isPlaying}
 			<div
@@ -46,7 +59,7 @@
 				</svg>
 			</div>
 		{/if}
-	</div>
+	</button>
 
 	<div class="flex-1 min-w-0">
 		<p
@@ -59,8 +72,8 @@
 		<p class="text-text-muted text-xs truncate">{channelName}</p>
 		{#if revealed && addedBy}
 			<p class="text-neon-mint text-xs mt-0.5">Added by {addedBy}</p>
-		{:else if addedBy}
-			<p class="text-text-muted/50 text-xs mt-0.5 italic">???</p>
+		{:else if isMine}
+			<p class="text-neon-cyan/60 text-xs mt-0.5">Your song</p>
 		{/if}
 	</div>
 
@@ -73,13 +86,38 @@
 			<span class="eq-bar w-[3px] rounded-sm bg-neon-pink origin-bottom h-full animate-eq-5"></span>
 		</div>
 	{/if}
-</button>
+
+	{#if showControls && songId !== undefined && token}
+		<div class="flex items-center gap-1 flex-shrink-0">
+			{#if canMoveUp}
+				<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
+					<input type="hidden" name="songId" value={songId} />
+					<input type="hidden" name="direction" value="up" />
+					<button type="submit" data-testid="move-up-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move up">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+					</button>
+				</form>
+			{/if}
+			{#if canMoveDown}
+				<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
+					<input type="hidden" name="songId" value={songId} />
+					<input type="hidden" name="direction" value="down" />
+					<button type="submit" data-testid="move-down-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move down">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+					</button>
+				</form>
+			{/if}
+			<form method="POST" action="/party/{token}?/removeSong" use:enhance>
+				<input type="hidden" name="songId" value={songId} />
+				<button type="submit" data-testid="remove-song-btn" class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors" title="Remove song">
+					<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+				</button>
+			</form>
+		</div>
+	{/if}
+</div>
 
 <style>
-	.song-card {
-		cursor: pointer;
-	}
-
 	.song-card:hover:not(.is-playing) {
 		background: rgba(42, 26, 78, 0.5);
 	}

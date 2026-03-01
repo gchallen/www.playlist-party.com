@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { parties, attendees } from '$lib/server/db/schema';
-import { generatePartyCode, generateAdminToken, generateInviteToken } from '$lib/server/tokens';
+import { generateInviteToken } from '$lib/server/tokens';
 import { sendCreatorWelcomeEmail } from '$lib/server/email';
 import type { Actions } from './$types';
 
@@ -21,10 +21,8 @@ export const actions = {
 		const maxAttendees = parseInt(data.get('maxAttendees')?.toString() || '50', 10);
 		const maxDepthRaw = data.get('maxDepth')?.toString()?.trim();
 		const maxDepth = maxDepthRaw ? parseInt(maxDepthRaw, 10) : null;
-		const estimatedGuestsRaw = data.get('estimatedGuests')?.toString()?.trim();
-		const estimatedGuests = estimatedGuestsRaw ? parseInt(estimatedGuestsRaw, 10) : null;
-		const avgSongDurationRaw = data.get('avgSongDurationSeconds')?.toString()?.trim();
-		const avgSongDurationSeconds = avgSongDurationRaw ? parseInt(avgSongDurationRaw, 10) : null;
+		const maxInvitesRaw = data.get('maxInvitesPerGuest')?.toString()?.trim();
+		const maxInvitesPerGuest = maxInvitesRaw ? parseInt(maxInvitesRaw, 10) : null;
 
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
@@ -33,8 +31,6 @@ export const actions = {
 		if (isNaN(maxAttendees) || maxAttendees < 2)
 			return fail(400, { error: 'Max attendees must be at least 2' });
 
-		const partyCode = generatePartyCode();
-		const adminToken = generateAdminToken();
 		const inviteToken = generateInviteToken();
 
 		const [party] = await db
@@ -48,12 +44,9 @@ export const actions = {
 				location,
 				createdBy,
 				creatorEmail,
-				partyCode,
 				maxDepth,
 				maxAttendees,
-				estimatedGuests,
-				avgSongDurationSeconds,
-				adminToken
+				maxInvitesPerGuest
 			})
 			.returning();
 
@@ -66,12 +59,9 @@ export const actions = {
 			acceptedAt: new Date().toISOString()
 		});
 
-		const origin = url.origin;
-		const magicUrl = `${origin}/attendee/${inviteToken}`;
-		const adminUrl = `${origin}/party/${partyCode}/admin/${adminToken}`;
+		const magicUrl = `${url.origin}/party/${inviteToken}`;
+		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, platform);
 
-		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, adminUrl, platform);
-
-		redirect(303, `/attendee/${inviteToken}`);
+		redirect(303, `/party/${inviteToken}`);
 	}
 } satisfies Actions;
