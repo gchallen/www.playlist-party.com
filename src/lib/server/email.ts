@@ -4,7 +4,7 @@ export interface EmailMessage {
 	subject: string;
 	html: string;
 	sentAt: string;
-	type: 'invite' | 'bonus_earned' | 'bonus_bumped' | 'creator_welcome';
+	type: 'invite' | 'creator_welcome';
 	metadata: Record<string, string>;
 }
 
@@ -109,54 +109,13 @@ export async function sendCreatorWelcomeEmail(
 	creatorName: string,
 	partyName: string,
 	magicUrl: string,
-	adminUrl: string,
 	platform?: App.Platform
 ): Promise<void> {
 	const { renderCreatorWelcomeEmail } = await import('./email-templates');
-	const html = renderCreatorWelcomeEmail({ creatorName, partyName, magicUrl, adminUrl });
+	const html = renderCreatorWelcomeEmail({ creatorName, partyName, magicUrl });
 	await sendEmail(to, `Your party "${partyName}" is ready!`, html, 'creator_welcome', {
 		creatorName,
 		partyName,
-		magicUrl,
-		adminUrl
+		magicUrl
 	}, platform);
-}
-
-export async function sendBonusEarnedEmail(
-	to: string,
-	recipientName: string,
-	acceptedName: string,
-	partyName: string,
-	dashboardUrl: string,
-	platform?: App.Platform
-): Promise<void> {
-	const { renderBonusEarnedEmail } = await import('./email-templates');
-	const html = renderBonusEarnedEmail({ recipientName, acceptedName, partyName, dashboardUrl });
-	await sendEmail(
-		to,
-		`${acceptedName} accepted your invite to ${partyName}!`,
-		html,
-		'bonus_earned',
-		{ recipientName, acceptedName, partyName, dashboardUrl },
-		platform
-	);
-}
-
-export async function sendBonusBumpedEmail(
-	to: string,
-	recipientName: string,
-	partyName: string,
-	bumpedSongTitle: string,
-	platform?: App.Platform
-): Promise<void> {
-	const { renderBonusBumpedEmail } = await import('./email-templates');
-	const html = renderBonusBumpedEmail({ recipientName, partyName, bumpedSongTitle });
-	await sendEmail(
-		to,
-		`${partyName} is filling up — your bonus song was bumped`,
-		html,
-		'bonus_bumped',
-		{ recipientName, partyName, bumpedSongTitle },
-		platform
-	);
 }

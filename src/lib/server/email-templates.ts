@@ -51,6 +51,9 @@ export function renderInviteEmail(data: {
 <p style="font-size:14px;color:#c4b5e0;">
 Pick a song to RSVP — your track is your entrance ticket.
 </p>
+<p style="font-size:13px;color:#7a6a9d;margin-top:12px;">
+Don't bring a guest — invite them so they can contribute to the playlist!
+</p>
 ${partyDetails(data.partyDate, data.partyTime, data.partyLocation)}
 <div style="text-align:center;margin-top:20px;">
 ${ctaButton(data.magicUrl, 'Pick Your Song')}
@@ -62,7 +65,6 @@ export function renderCreatorWelcomeEmail(data: {
 	creatorName: string;
 	partyName: string;
 	magicUrl: string;
-	adminUrl: string;
 }): string {
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#f0e6ff;">Your Party is Ready!</h1>
@@ -70,58 +72,14 @@ export function renderCreatorWelcomeEmail(data: {
 Hey ${data.creatorName}, <strong>${data.partyName}</strong> is live.
 </p>
 <p style="font-size:14px;color:#c4b5e0;">
-Bookmark these links — they're your keys to the party:
+Bookmark this link — it's your key to the party:
 </p>
 <div style="margin-top:16px;">
-<p style="font-size:13px;color:#7a6a9d;margin:0 0 4px;">Your Dashboard:</p>
+<p style="font-size:13px;color:#7a6a9d;margin:0 0 4px;">Your Party Page:</p>
 <a href="${data.magicUrl}" style="font-size:14px;color:#00f0ff;word-break:break-all;">${data.magicUrl}</a>
 </div>
-<div style="margin-top:12px;">
-<p style="font-size:13px;color:#7a6a9d;margin:0 0 4px;">Admin Panel:</p>
-<a href="${data.adminUrl}" style="font-size:14px;color:#d4ff00;word-break:break-all;">${data.adminUrl}</a>
-</div>
 <div style="text-align:center;margin-top:20px;">
-${ctaButton(data.magicUrl, 'Go to Dashboard')}
+${ctaButton(data.magicUrl, 'Go to Your Party')}
 </div>
-`);
-}
-
-export function renderBonusEarnedEmail(data: {
-	recipientName: string;
-	acceptedName: string;
-	partyName: string;
-	dashboardUrl: string;
-}): string {
-	return baseLayout(`
-<h1 style="font-size:24px;margin:0 0 8px;color:#f0e6ff;">Bonus Song Unlocked!</h1>
-<p style="font-size:16px;color:#c4b5e0;margin:0 0 16px;">
-<strong>${data.acceptedName}</strong> accepted your invite to <strong>${data.partyName}</strong>!
-</p>
-<p style="font-size:14px;color:#00ffa3;">
-You've earned a bonus song slot. Add another track to the playlist!
-</p>
-<div style="text-align:center;margin-top:20px;">
-${ctaButton(data.dashboardUrl, 'Add Bonus Song')}
-</div>
-`);
-}
-
-export function renderBonusBumpedEmail(data: {
-	recipientName: string;
-	partyName: string;
-	bumpedSongTitle: string;
-}): string {
-	return baseLayout(`
-<h1 style="font-size:24px;margin:0 0 8px;color:#f0e6ff;">Playlist Update</h1>
-<p style="font-size:16px;color:#c4b5e0;margin:0 0 16px;">
-<strong>${data.partyName}</strong> is filling up!
-</p>
-<p style="font-size:14px;color:#c4b5e0;">
-Your bonus song "<strong>${data.bumpedSongTitle}</strong>" was bumped to make room for a new guest.
-Your entry song is safe — entry songs are never dropped.
-</p>
-<p style="font-size:14px;color:#7a6a9d;margin-top:16px;">
-The party's going to be great!
-</p>
 `);
 }
