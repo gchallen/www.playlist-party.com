@@ -4,6 +4,7 @@
 	import SongCard from '$lib/components/SongCard.svelte';
 	import InviteTree from '$lib/components/InviteTree.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
+	import { MAX_COMMENT_LENGTH } from '$lib/comment';
 
 	let { data, form } = $props();
 
@@ -220,6 +221,13 @@
 						</div>
 					{/if}
 
+					<div>
+						<label for="comment" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Comment <span class="text-text-muted/50 font-normal">(optional)</span></label>
+						<textarea id="comment" name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
+							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+							placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"></textarea>
+					</div>
+
 					<input type="hidden" name="durationSeconds" value={durationSeconds || ''} />
 					<div bind:this={playerWrapper} style="position: absolute; width: 0; height: 0; overflow: hidden;"></div>
 
@@ -309,6 +317,7 @@
 								canMoveUp={i > 0}
 								canMoveDown={i < data.songs.length - 1}
 								token={data.attendee.inviteToken}
+								comment={song.comment}
 							/>
 						{/each}
 					</div>
@@ -326,6 +335,7 @@
 								title={song.youtubeTitle}
 								channelName={song.youtubeChannelName || ''}
 								position={i + 1}
+								comment={song.comment}
 							/>
 						{/each}
 					</div>
@@ -364,6 +374,9 @@
 								<span>Duration: <span class="text-neon-cyan">{formatShortDuration(addSongDuration)}</span></span>
 							</div>
 						{/if}
+						<textarea name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
+							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+							placeholder="Why this song? (optional)"></textarea>
 						<input type="hidden" name="durationSeconds" value={addSongDuration || ''} />
 						<div bind:this={addSongPlayerWrapper} style="position: absolute; width: 0; height: 0; overflow: hidden;"></div>
 					</form>

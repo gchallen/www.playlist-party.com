@@ -8,6 +8,7 @@ import { fetchYouTubeMetadata } from '$lib/server/youtube';
 import { sendInviteEmail } from '$lib/server/email';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
 import type { SongInfo } from '$lib/server/playlist';
+import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import type { PageServerLoad, Actions } from './$types';
 
 function isCreator(attendee: { depth: number; invitedBy: number | null }): boolean {
@@ -111,6 +112,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			youtubeChannelName: s.youtubeChannelName,
 			durationSeconds: s.durationSeconds,
 			position: s.position,
+			comment: s.comment,
 			addedByName,
 			isMine: s.addedBy === attendee.id
 		};
@@ -152,7 +154,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			youtubeTitle: s.youtubeTitle,
 			youtubeThumbnail: s.youtubeThumbnail,
 			youtubeChannelName: s.youtubeChannelName,
-			durationSeconds: s.durationSeconds
+			durationSeconds: s.durationSeconds,
+			comment: s.comment
 		}));
 		result.maxSongs = maxSongs === Infinity ? -1 : maxSongs; // -1 signals unlimited
 		result.songsUsed = mySongs.length;
@@ -272,6 +275,10 @@ export const actions = {
 			where: eq(songs.partyId, party.id)
 		});
 
+		// Read optional comment
+		const commentRaw = data.get('comment')?.toString()?.trim() || null;
+		const comment = commentRaw ? commentRaw.slice(0, MAX_COMMENT_LENGTH) : null;
+
 		// Add the song
 		await db.insert(songs).values({
 			partyId: party.id,
@@ -281,6 +288,7 @@ export const actions = {
 			youtubeThumbnail: metadata.thumbnail,
 			youtubeChannelName: metadata.channelName,
 			durationSeconds,
+			comment,
 			position: currentSongs.length
 		});
 
@@ -382,6 +390,10 @@ export const actions = {
 			where: eq(songs.partyId, party.id)
 		});
 
+		// Read optional comment
+		const commentRaw = data.get('comment')?.toString()?.trim() || null;
+		const comment = commentRaw ? commentRaw.slice(0, MAX_COMMENT_LENGTH) : null;
+
 		await db.insert(songs).values({
 			partyId: party.id,
 			addedBy: attendee.id,
@@ -390,6 +402,7 @@ export const actions = {
 			youtubeThumbnail: metadata.thumbnail,
 			youtubeChannelName: metadata.channelName,
 			durationSeconds,
+			comment,
 			position: currentSongs.length
 		});
 

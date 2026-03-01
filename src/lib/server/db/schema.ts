@@ -56,6 +56,7 @@ export const songs = sqliteTable(
 		youtubeTitle: text('youtube_title').notNull(),
 		youtubeThumbnail: text('youtube_thumbnail').notNull(),
 		youtubeChannelName: text('youtube_channel_name'),
+		comment: text('comment'),
 		durationSeconds: integer('duration_seconds').notNull(),
 		position: integer('position').notNull(),
 		addedAt: text('added_at')
