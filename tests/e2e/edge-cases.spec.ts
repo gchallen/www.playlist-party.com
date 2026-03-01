@@ -17,7 +17,7 @@ async function createParty(
 ): Promise<string> {
 	const creatorEmail = options.creatorEmail || uniqueEmail('host');
 	await page.goto('/');
-	await page.getByRole('button', { name: 'Start a Party' }).click();
+	await page.getByRole('link', { name: 'Start a Party' }).click();
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill('2026-07-04');
 	await page.locator('#createdBy').fill(options.createdBy || 'Test Host');

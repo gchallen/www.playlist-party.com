@@ -23,7 +23,7 @@ async function createParty(
 	const creatorEmail = options.creatorEmail || uniqueEmail('host');
 
 	await page.goto('/');
-	await page.getByRole('button', { name: 'Start a Party' }).click();
+	await page.getByRole('link', { name: 'Start a Party' }).click();
 
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill(options.date || '2026-07-04');
@@ -53,12 +53,12 @@ test.describe('Party Creation', () => {
 	test('landing page shows hero and Start a Party button', async ({ page }) => {
 		await page.goto('/');
 		await expect(page.getByRole('heading', { name: 'PLAYLIST PARTY' })).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Start a Party' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Start a Party' })).toBeVisible();
 	});
 
 	test('clicking Start a Party reveals the creation form', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('button', { name: 'Start a Party' }).click();
+		await page.getByRole('link', { name: 'Start a Party' }).click();
 		await expect(page.locator('#name')).toBeVisible();
 		await expect(page.locator('#createdBy')).toBeVisible();
 		await expect(page.locator('[data-testid="creator-email"]')).toBeVisible();
@@ -82,7 +82,7 @@ test.describe('Party Creation', () => {
 
 	test('genre picker shows capacity info when times are set', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('button', { name: 'Start a Party' }).click();
+		await page.getByRole('link', { name: 'Start a Party' }).click();
 
 		await page.locator('#time').fill('18:00');
 		await page.locator('[data-testid="end-time"]').fill('21:00');
@@ -100,7 +100,7 @@ test.describe('Party Creation', () => {
 
 	test('max attendees defaults to 50', async ({ page }) => {
 		await page.goto('/');
-		await page.getByRole('button', { name: 'Start a Party' }).click();
+		await page.getByRole('link', { name: 'Start a Party' }).click();
 		const val = await page.locator('[data-testid="max-attendees"]').inputValue();
 		expect(val).toBe('50');
 	});
