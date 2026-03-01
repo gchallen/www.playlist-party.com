@@ -232,7 +232,7 @@
 					<div bind:this={playerWrapper} style="position: absolute; width: 0; height: 0; overflow: hidden;"></div>
 
 					<button type="submit" data-testid="accept-btn"
-						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-void transition-all duration-300">
+						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
 						Accept & Add Song
 					</button>
 				</form>
@@ -365,7 +365,7 @@
 								class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
 								placeholder="https://youtube.com/watch?v=..." />
 							<button type="submit"
-								class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-neon-pink text-void hover:bg-neon-pink/90 transition-colors flex-shrink-0">
+								class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-neon-pink text-on-accent hover:bg-neon-pink/90 transition-colors flex-shrink-0">
 								Add
 							</button>
 						</div>
@@ -531,12 +531,21 @@
 
 <style>
 	.cta-btn {
+		box-shadow: 0 4px 15px rgba(229, 34, 114, 0.3);
+	}
+
+	.cta-btn:hover {
+		box-shadow: 0 6px 25px rgba(229, 34, 114, 0.4);
+		transform: translateY(-1px);
+	}
+
+	:global(:root[data-theme="dark"]) .cta-btn {
 		box-shadow:
 			0 0 15px rgba(255, 45, 120, 0.3),
 			0 0 30px rgba(255, 45, 120, 0.1);
 	}
 
-	.cta-btn:hover {
+	:global(:root[data-theme="dark"]) .cta-btn:hover {
 		box-shadow:
 			0 0 20px rgba(255, 45, 120, 0.5),
 			0 0 40px rgba(255, 45, 120, 0.2);

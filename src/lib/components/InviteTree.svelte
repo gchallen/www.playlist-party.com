@@ -66,24 +66,24 @@
 <style>
 	.accepted-dot {
 		background: var(--color-neon-mint);
-		box-shadow: 0 0 6px rgba(0, 255, 163, 0.5);
+		box-shadow: 0 0 6px color-mix(in srgb, var(--color-neon-mint) 50%, transparent);
 	}
 
 	.pending-dot {
-		background: rgba(122, 106, 157, 0.4);
+		background: color-mix(in srgb, var(--color-text-muted) 40%, transparent);
 		animation: pulse-glow 2s ease-in-out infinite;
 	}
 
 	.node-card.is-accepted {
-		background: rgba(26, 15, 46, 0.6);
+		background: var(--glass-bg);
 		backdrop-filter: blur(8px);
-		border: 1px solid rgba(0, 255, 163, 0.15);
+		border: 1px solid color-mix(in srgb, var(--color-neon-mint) 15%, transparent);
 		color: var(--color-text-primary);
 	}
 
 	.node-card.is-pending {
-		background: rgba(26, 15, 46, 0.3);
-		border: 1px dashed rgba(122, 106, 157, 0.25);
+		background: color-mix(in srgb, var(--glass-bg) 50%, transparent);
+		border: 1px dashed color-mix(in srgb, var(--color-text-muted) 25%, transparent);
 		color: var(--color-text-muted);
 		font-style: italic;
 	}

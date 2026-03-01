@@ -149,10 +149,19 @@
 
 <style>
 	.song-card:hover:not(.is-playing) {
+		background: rgba(139, 48, 199, 0.06);
+	}
+
+	:global(:root[data-theme="dark"]) .song-card:hover:not(.is-playing) {
 		background: rgba(42, 26, 78, 0.5);
 	}
 
 	.song-card.is-playing {
+		background: rgba(229, 34, 114, 0.06);
+		border: 1px solid rgba(229, 34, 114, 0.12);
+	}
+
+	:global(:root[data-theme="dark"]) .song-card.is-playing {
 		background: rgba(255, 45, 120, 0.08);
 		border: 1px solid rgba(255, 45, 120, 0.15);
 	}

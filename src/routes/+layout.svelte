@@ -1,5 +1,6 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import '../app.css';
 
 	let { children } = $props();
@@ -15,6 +16,8 @@
 	/>
 </svelte:head>
 
+<ThemeToggle />
+
 <div class="min-h-screen relative">
 	<div
 		class="fixed inset-0 pointer-events-none opacity-[0.02] z-50"
@@ -25,7 +28,7 @@
 	<div
 		class="fixed inset-0 pointer-events-none -z-10"
 		aria-hidden="true"
-		style="background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(180, 77, 255, 0.08) 0%, transparent 70%), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(255, 45, 120, 0.05) 0%, transparent 60%), var(--color-void);"
+		style="background: var(--bg-gradient), var(--color-void);"
 	></div>
 
 	{@render children()}
