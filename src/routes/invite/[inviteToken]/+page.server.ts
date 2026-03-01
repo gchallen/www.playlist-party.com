@@ -143,7 +143,8 @@ export const actions = {
 					inviter.name,
 					name,
 					party.name,
-					dashboardUrl
+					dashboardUrl,
+					platform
 				);
 			}
 		}
@@ -198,7 +199,8 @@ export const actions = {
 							bumpedAttendee.email,
 							bumpedAttendee.name,
 							party.name,
-							bumpedSong.youtubeTitle
+							bumpedSong.youtubeTitle,
+							platform
 						);
 					}
 				}

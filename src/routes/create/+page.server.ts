@@ -70,7 +70,7 @@ export const actions = {
 		const magicUrl = `${origin}/attendee/${inviteToken}`;
 		const adminUrl = `${origin}/party/${partyCode}/admin/${adminToken}`;
 
-		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, adminUrl);
+		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, adminUrl, platform);
 
 		redirect(303, `/attendee/${inviteToken}`);
 	}

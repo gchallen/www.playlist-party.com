@@ -184,7 +184,8 @@ export const actions = {
 			party.date,
 			party.time,
 			party.location,
-			magicUrl
+			magicUrl,
+			platform
 		);
 
 		return { inviteSent: name };

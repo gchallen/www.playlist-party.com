@@ -21,28 +21,58 @@ export function clearSentEmails(): void {
 	emailCounter = 0;
 }
 
+async function sendViaResend(
+	to: string,
+	subject: string,
+	html: string,
+	apiKey: string,
+	fromEmail: string
+): Promise<void> {
+	const res = await fetch('https://api.resend.com/emails', {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${apiKey}`,
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			from: fromEmail,
+			to,
+			subject,
+			html
+		})
+	});
+
+	if (!res.ok) {
+		const body = await res.text();
+		console.error(`Resend API error (${res.status}): ${body}`);
+	}
+}
+
 export async function sendEmail(
 	to: string,
 	subject: string,
 	html: string,
 	type: EmailMessage['type'],
-	metadata: Record<string, string> = {}
+	metadata: Record<string, string> = {},
+	platform?: App.Platform
 ): Promise<void> {
-	const message: EmailMessage = {
-		id: `email_${++emailCounter}`,
-		to,
-		subject,
-		html,
-		sentAt: new Date().toISOString(),
-		type,
-		metadata
-	};
+	const apiKey = platform?.env?.RESEND_API_KEY;
+	const fromEmail = platform?.env?.RESEND_FROM_EMAIL || 'noreply@playlist-party.com';
 
-	sentEmails.push(message);
-
-	// In production with RESEND_API_KEY, this would call the Resend API:
-	// POST https://api.resend.com/emails
-	// For now, all emails go to the in-memory store.
+	if (apiKey) {
+		await sendViaResend(to, subject, html, apiKey, fromEmail);
+	} else {
+		const message: EmailMessage = {
+			id: `email_${++emailCounter}`,
+			to,
+			subject,
+			html,
+			sentAt: new Date().toISOString(),
+			type,
+			metadata
+		};
+		sentEmails.push(message);
+	}
 }
 
 export async function sendInviteEmail(
@@ -53,7 +83,8 @@ export async function sendInviteEmail(
 	partyDate: string,
 	partyTime: string | null,
 	partyLocation: string | null,
-	magicUrl: string
+	magicUrl: string,
+	platform?: App.Platform
 ): Promise<void> {
 	const { renderInviteEmail } = await import('./email-templates');
 	const html = renderInviteEmail({
@@ -70,7 +101,7 @@ export async function sendInviteEmail(
 		inviterName,
 		partyName,
 		magicUrl
-	});
+	}, platform);
 }
 
 export async function sendCreatorWelcomeEmail(
@@ -78,7 +109,8 @@ export async function sendCreatorWelcomeEmail(
 	creatorName: string,
 	partyName: string,
 	magicUrl: string,
-	adminUrl: string
+	adminUrl: string,
+	platform?: App.Platform
 ): Promise<void> {
 	const { renderCreatorWelcomeEmail } = await import('./email-templates');
 	const html = renderCreatorWelcomeEmail({ creatorName, partyName, magicUrl, adminUrl });
@@ -87,7 +119,7 @@ export async function sendCreatorWelcomeEmail(
 		partyName,
 		magicUrl,
 		adminUrl
-	});
+	}, platform);
 }
 
 export async function sendBonusEarnedEmail(
@@ -95,7 +127,8 @@ export async function sendBonusEarnedEmail(
 	recipientName: string,
 	acceptedName: string,
 	partyName: string,
-	dashboardUrl: string
+	dashboardUrl: string,
+	platform?: App.Platform
 ): Promise<void> {
 	const { renderBonusEarnedEmail } = await import('./email-templates');
 	const html = renderBonusEarnedEmail({ recipientName, acceptedName, partyName, dashboardUrl });
@@ -104,7 +137,8 @@ export async function sendBonusEarnedEmail(
 		`${acceptedName} accepted your invite to ${partyName}!`,
 		html,
 		'bonus_earned',
-		{ recipientName, acceptedName, partyName, dashboardUrl }
+		{ recipientName, acceptedName, partyName, dashboardUrl },
+		platform
 	);
 }
 
@@ -112,7 +146,8 @@ export async function sendBonusBumpedEmail(
 	to: string,
 	recipientName: string,
 	partyName: string,
-	bumpedSongTitle: string
+	bumpedSongTitle: string,
+	platform?: App.Platform
 ): Promise<void> {
 	const { renderBonusBumpedEmail } = await import('./email-templates');
 	const html = renderBonusBumpedEmail({ recipientName, partyName, bumpedSongTitle });
@@ -121,6 +156,7 @@ export async function sendBonusBumpedEmail(
 		`${partyName} is filling up — your bonus song was bumped`,
 		html,
 		'bonus_bumped',
-		{ recipientName, partyName, bumpedSongTitle }
+		{ recipientName, partyName, bumpedSongTitle },
+		platform
 	);
 }

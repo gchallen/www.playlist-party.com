@@ -6,3 +6,7 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 binding = "DB"
 database_name = "playlist-party-db"
 database_id = "placeholder-replace-with-real-id"
+
+# Secrets (set via `wrangler secret put`):
+# RESEND_API_KEY — Resend API key for sending emails
+# RESEND_FROM_EMAIL — sender address (e.g. noreply@playlist-party.com)
