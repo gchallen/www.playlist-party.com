@@ -99,7 +99,9 @@ export const actions = {
 		await sendEmailVerification(email, verifyUrl, platform);
 		await recordEmailSend(db, email, 'email_verification');
 
-		return { emailSent: true };
+		// In dev (no Resend key), return the link directly so it can be clicked
+		const isDev = !platform?.env?.RESEND_API_KEY;
+		return { emailSent: true, devVerifyUrl: isDev ? verifyUrl : null };
 	},
 
 	create: async ({ request, platform, url, cookies }) => {

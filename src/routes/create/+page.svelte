@@ -201,12 +201,21 @@
 			<!-- State 1: Email verification -->
 			{#if emailSent || form?.emailSent}
 				<div class="glass rounded-2xl p-6 md:p-8 text-center" data-testid="email-sent-message">
-					<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Check Your Email</h2>
-					<p class="text-text-secondary">
-						We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>.
-						Click the link to continue creating your party.
-					</p>
-					<p class="text-text-muted text-sm mt-4">The link expires in 30 minutes.</p>
+					{#if form?.devVerifyUrl}
+						<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Verify Your Email</h2>
+						<p class="text-text-secondary mb-4">Click the link below to continue creating your party.</p>
+						<a href={form.devVerifyUrl} data-testid="dev-verify-link"
+							class="inline-block cta-btn font-heading font-bold text-lg py-3 px-6 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
+							Verify &amp; Continue
+						</a>
+					{:else}
+						<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Check Your Email</h2>
+						<p class="text-text-secondary">
+							We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>.
+							Click the link to continue creating your party.
+						</p>
+						<p class="text-text-muted text-sm mt-4">The link expires in 30 minutes.</p>
+					{/if}
 				</div>
 			{:else}
 				<form method="POST" action="?/verify" use:enhance={() => {
@@ -225,7 +234,7 @@
 						</div>
 					{/if}
 
-					<p class="text-text-secondary text-sm">To prevent abuse, we need to verify your email before you can create a party.</p>
+					<p class="text-text-secondary text-sm">Let's get started by verifying your email address.</p>
 
 					<div>
 						<label for="email" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Email</label>
