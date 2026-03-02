@@ -12,3 +12,4 @@ migrations_dir = "drizzle"
 # Secrets (set via `wrangler secret put`):
 # RESEND_API_KEY — Resend API key for sending emails
 # RESEND_FROM_EMAIL — sender address (e.g. noreply@playlist-party.com)
+# HMAC_SECRET — secret key for HMAC-based email verification tokens

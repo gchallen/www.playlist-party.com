@@ -53,12 +53,27 @@ wrangler secret put RESEND_API_KEY
 
 wrangler secret put RESEND_FROM_EMAIL
 # e.g. noreply@playlist-party.com (must match a verified domain in Resend)
+
+wrangler secret put HMAC_SECRET
+# Random secret for email verification tokens (e.g. openssl rand -hex 32)
 ```
 
 ## 4. Deploy
 
+The easiest way to deploy is the deploy script:
+
+```bash
+./deploy.sh              # Full deploy: tests → build → migrate → deploy
+./deploy.sh --skip-tests # Skip Playwright tests
+./deploy.sh --dry-run    # Print steps without executing
+./deploy.sh --force      # Allow deploy with uncommitted changes
+```
+
+Or deploy manually:
+
 ```bash
 bun run build
+wrangler d1 migrations apply playlist-party-db --remote
 wrangler pages deploy .svelte-kit/cloudflare
 ```
 
