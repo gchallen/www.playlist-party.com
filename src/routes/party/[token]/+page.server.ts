@@ -79,8 +79,9 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		targetDuration
 	);
 
-	// Build attendee name map
+	// Build attendee name map and find host ID
 	const attendeeMap = new Map(allAttendees.map((a) => [a.id, a.name]));
+	const hostId = allAttendees.find((a) => isCreator(a))?.id ?? null;
 
 	// Song attribution filtering
 	const attribution = party.songAttribution as 'hidden' | 'own_tree' | 'visible';
@@ -123,7 +124,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			position: s.position,
 			comment: s.comment,
 			addedByName,
-			isMine: s.addedBy === attendee.id
+			isMine: s.addedBy === attendee.id,
+			isHost: s.addedBy === hostId
 		};
 	});
 

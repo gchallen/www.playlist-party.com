@@ -9,6 +9,7 @@
 		addedBy,
 		revealed = false,
 		isMine = false,
+		isHost = false,
 		isPlaying = false,
 		position,
 		showControls = false,
@@ -30,6 +31,7 @@
 		addedBy?: string | null;
 		revealed?: boolean;
 		isMine?: boolean;
+		isHost?: boolean;
 		isPlaying?: boolean;
 		position: number;
 		showControls?: boolean;
@@ -110,10 +112,14 @@
 					</svg>
 				{/if}
 			</p>
-			{#if revealed && addedBy}
-				<p class="text-neon-mint text-xs mt-0.5">Added by {addedBy}</p>
-			{:else if isMine}
-				<p class="text-neon-cyan text-xs mt-0.5">Your song</p>
+			{#if isMine}
+				<p class="text-neon-cyan text-xs mt-0.5">You</p>
+			{:else if isHost}
+				<p class="text-neon-mint text-xs mt-0.5">Host</p>
+			{:else if revealed && addedBy}
+				<p class="text-neon-mint text-xs mt-0.5">{addedBy}</p>
+			{:else}
+				<p class="text-text-muted text-xs mt-0.5">Guest</p>
 			{/if}
 		</div>
 

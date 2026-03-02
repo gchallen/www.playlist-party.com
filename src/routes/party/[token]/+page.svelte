@@ -403,7 +403,8 @@
 
 		<!-- ─── ACCEPTED ATTENDEE / CREATOR MODE ─── -->
 		{:else}
-			<!-- Stats bar -->
+			<!-- Stats bar (host only) -->
+			{#if data.isCreator}
 			<div class="mt-3 flex flex-wrap gap-3 text-sm font-heading">
 				<span class="text-text-secondary">
 					{data.acceptedCount} / {data.party.maxAttendees} attendees
@@ -416,6 +417,7 @@
 					{/if}
 				</span>
 			</div>
+			{/if}
 
 			<!-- Welcome bar -->
 			<div class="mt-4 glass rounded-2xl p-5">
@@ -514,7 +516,7 @@
 							</svg>
 							Send Invite
 						</button>
-						<p class="text-text-muted text-xs mt-2 ml-1">
+						<p class="text-neon-cyan font-heading font-semibold text-sm mt-3">
 							Each invite you send earns you +1 song slot!
 						</p>
 					</form>
@@ -616,7 +618,7 @@
 				<div class="mt-4">
 					<PlayerControls
 						title={currentSong?.youtubeTitle ?? ''}
-						addedBy={currentSong?.addedByName ?? ''}
+						addedBy={currentSong?.isMine ? 'You' : currentSong?.isHost ? 'Host' : currentSong?.addedByName || 'Guest'}
 						youtubeId={currentSong?.youtubeId ?? ''}
 						isPlaying={isActuallyPlaying}
 						{currentTime}
@@ -671,6 +673,7 @@
 								addedBy={song.addedByName}
 								revealed={!!song.addedByName}
 								isMine={song.isMine}
+								isHost={song.isHost}
 								isPlaying={currentPlayingIndex === i && isActuallyPlaying}
 								onclick={() => playSong(i)}
 								showControls={data.isCreator}
