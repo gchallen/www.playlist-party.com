@@ -5,7 +5,8 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 [[d1_databases]]
 binding = "DB"
 database_name = "playlist-party-db"
-database_id = "placeholder-replace-with-real-id"
+database_id = "87dfa629-0d0e-435f-9ff1-5a0335f30d7e"
+migrations_dir = "drizzle"
 
 # Secrets (set via `wrangler secret put`):
 # RESEND_API_KEY — Resend API key for sending emails
