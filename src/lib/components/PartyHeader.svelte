@@ -1,17 +1,24 @@
 <script lang="ts">
+	import { formatTime } from '$lib/time';
+
 	let {
 		name,
 		date,
 		time,
 		location,
+		locationUrl,
 		description
 	}: {
 		name: string;
 		date: string;
 		time?: string;
 		location?: string;
+		locationUrl?: string;
 		description?: string;
 	} = $props();
+
+	let formattedTime = $derived(time ? formatTime(time) : null);
+	let locationDisplay = $derived(location || (locationUrl ? 'View on Google Maps' : null));
 </script>
 
 <header class="glass rounded-2xl p-6 md:p-8 neon-border">
@@ -33,10 +40,10 @@
 				<rect x="3" y="4" width="18" height="18" rx="2" />
 				<path d="M16 2v4M8 2v4M3 10h18" />
 			</svg>
-			{date}{#if time}<span class="text-text-muted">&nbsp;at&nbsp;</span>{time}{/if}
+			{date}{#if formattedTime}<span class="text-text-muted">&nbsp;at&nbsp;</span>{formattedTime}{/if}
 		</span>
 
-		{#if location}
+		{#if locationDisplay}
 			<span class="flex items-center gap-2">
 				<svg
 					class="w-4 h-4 text-neon-pink"
@@ -50,7 +57,13 @@
 					<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
 					<circle cx="12" cy="10" r="3" />
 				</svg>
-				{location}
+				{#if locationUrl}
+					<a href={locationUrl} target="_blank" rel="noopener noreferrer" class="text-neon-cyan hover:underline">
+						{locationDisplay}
+					</a>
+				{:else}
+					{locationDisplay}
+				{/if}
 			</span>
 		{/if}
 	</div>

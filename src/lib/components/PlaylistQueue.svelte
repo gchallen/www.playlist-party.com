@@ -109,7 +109,7 @@
 		<div class="p-8 text-center">
 			<div
 				class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center opacity-30"
-				style="background: linear-gradient(135deg, rgba(180, 77, 255, 0.2), rgba(255, 45, 120, 0.2));"
+				style="background: rgba(0, 0, 0, 0.06);"
 			>
 				<svg class="w-8 h-8 text-neon-purple" viewBox="0 0 24 24" fill="currentColor">
 					<path

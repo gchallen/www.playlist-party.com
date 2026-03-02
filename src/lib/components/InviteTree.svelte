@@ -25,7 +25,7 @@
 			>
 				{node.name || 'Pending...'}
 				{#if node.depth > 0}
-					<span class="text-text-muted/40 text-xs ml-1.5">depth {node.depth}</span>
+					<span class="text-text-muted text-xs ml-1.5">depth {node.depth}</span>
 				{/if}
 			</div>
 		</div>

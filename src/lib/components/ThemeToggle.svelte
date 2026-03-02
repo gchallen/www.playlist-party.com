@@ -19,7 +19,7 @@
 
 <button
 	onclick={toggle}
-	class="fixed top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center bg-surface/80 backdrop-blur-sm border border-neon-purple/15 text-text-secondary hover:text-neon-pink transition-colors duration-200 cursor-pointer"
+	class="fixed top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center bg-surface border border-neon-purple/20 text-text-secondary hover:text-neon-pink transition-colors duration-200 cursor-pointer"
 	title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
 	aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
 >

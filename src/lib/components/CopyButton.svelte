@@ -13,14 +13,14 @@
 	const confetti = [
 		{ cx: '-35px', cy: '-45px', cr: '150deg', bg: 'var(--color-neon-pink)' },
 		{ cx: '40px', cy: '-40px', cr: '-120deg', bg: 'var(--color-neon-cyan)' },
-		{ cx: '-50px', cy: '5px', cr: '200deg', bg: 'var(--color-neon-yellow)' },
-		{ cx: '50px', cy: '10px', cr: '-80deg', bg: 'var(--color-neon-mint)' },
-		{ cx: '-20px', cy: '-55px', cr: '90deg', bg: 'var(--color-neon-purple)' },
-		{ cx: '30px', cy: '-50px', cr: '-160deg', bg: 'var(--color-neon-pink)' },
-		{ cx: '-45px', cy: '-20px', cr: '260deg', bg: 'var(--color-neon-cyan)' },
-		{ cx: '45px', cy: '-30px', cr: '-40deg', bg: 'var(--color-neon-yellow)' },
+		{ cx: '-50px', cy: '5px', cr: '200deg', bg: 'var(--color-neon-mint)' },
+		{ cx: '50px', cy: '10px', cr: '-80deg', bg: 'var(--color-neon-pink)' },
+		{ cx: '-20px', cy: '-55px', cr: '90deg', bg: 'var(--color-neon-cyan)' },
+		{ cx: '30px', cy: '-50px', cr: '-160deg', bg: 'var(--color-neon-mint)' },
+		{ cx: '-45px', cy: '-20px', cr: '260deg', bg: 'var(--color-neon-pink)' },
+		{ cx: '45px', cy: '-30px', cr: '-40deg', bg: 'var(--color-neon-cyan)' },
 		{ cx: '-10px', cy: '-65px', cr: '310deg', bg: 'var(--color-neon-mint)' },
-		{ cx: '55px', cy: '-15px', cr: '-220deg', bg: 'var(--color-neon-purple)' }
+		{ cx: '55px', cy: '-15px', cr: '-220deg', bg: 'var(--color-neon-pink)' }
 	];
 
 	async function handleCopy() {
@@ -97,18 +97,26 @@
 	.copy-btn {
 		background: var(--color-surface-light);
 		color: var(--color-text-primary);
-		border: 1px solid rgba(180, 77, 255, 0.2);
+		border: 1px solid rgba(0, 0, 0, 0.1);
+	}
+
+	:global(:root[data-theme="dark"]) .copy-btn {
+		border-color: rgba(255, 255, 255, 0.1);
 	}
 
 	.copy-btn:hover:not(.is-copied) {
-		border-color: rgba(180, 77, 255, 0.4);
+		border-color: rgba(0, 0, 0, 0.2);
 		background: var(--color-surface-hover);
 	}
 
+	:global(:root[data-theme="dark"]) .copy-btn:hover:not(.is-copied) {
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+
 	.copy-btn.is-copied {
-		background: rgba(0, 255, 163, 0.12);
+		background: color-mix(in srgb, var(--color-neon-mint) 12%, transparent);
 		color: var(--color-neon-mint);
-		border-color: rgba(0, 255, 163, 0.25);
+		border-color: color-mix(in srgb, var(--color-neon-mint) 25%, transparent);
 	}
 
 	.confetti-piece {

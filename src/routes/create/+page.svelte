@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { parseFlexibleTime, formatTime } from '$lib/time';
 
 	let { form } = $props();
 
@@ -16,22 +17,41 @@
 	let genre = $state('pop');
 	let customMinutes = $state(4);
 	let customSeconds = $state(0);
-	let startTime = $state('');
-	let endTime = $state('');
 	let maxAttendeesInput = $state(50);
 	let manualOverride = $state(false);
+
+	// Flexible time input + duration
+	let startTimeInput = $state('');
+	let durationHours = $state<number | null>(null);
+	let parsedStartTime = $derived(parseFlexibleTime(startTimeInput));
+
+	// Compute end time from start + duration for DB storage
+	let parsedEndTime = $derived.by(() => {
+		if (!parsedStartTime || !durationHours || durationHours <= 0) return null;
+		const [sh, sm] = parsedStartTime.split(':').map(Number);
+		const totalMinutes = sh * 60 + sm + Math.round(durationHours * 60);
+		const eh = Math.floor(totalMinutes / 60) % 24;
+		const em = totalMinutes % 60;
+		return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+	});
+
+	// Other form fields for persistence
+	let partyName = $state('');
+	let description = $state('');
+	let date = $state('');
+	let locationUrl = $state('');
+	let createdBy = $state('');
+	let creatorEmail = $state('');
+	let maxDepthInput = $state('');
+	let maxInvitesInput = $state('');
 
 	let avgSongDurationSeconds = $derived(
 		genre === 'custom' ? customMinutes * 60 + customSeconds : (GENRE_DURATIONS[genre] ?? 210)
 	);
 
 	let partyDurationMinutes = $derived.by(() => {
-		if (!startTime || !endTime) return null;
-		const [sh, sm] = startTime.split(':').map(Number);
-		const [eh, em] = endTime.split(':').map(Number);
-		let diff = (eh * 60 + em) - (sh * 60 + sm);
-		if (diff <= 0) diff += 24 * 60;
-		return diff;
+		if (!durationHours || durationHours <= 0) return null;
+		return Math.round(durationHours * 60);
 	});
 
 	let calculatedGuests = $derived.by(() => {
@@ -64,6 +84,71 @@
 			: `${mins}-minute`;
 		return `Your ${durationStr} party can host up to ${calculatedGuests} guests with everyone getting at least one song`;
 	});
+
+	// Location URL validation
+	let isValidLocationUrl = $derived.by(() => {
+		if (!locationUrl.trim()) return false;
+		try {
+			const url = new URL(locationUrl.trim());
+			const host = url.hostname.toLowerCase();
+			return host.includes('google.com') || host.includes('goo.gl') || host.includes('maps.app.goo.gl');
+		} catch {
+			return false;
+		}
+	});
+
+	let locationUrlError = $derived(locationUrl.trim() && !isValidLocationUrl);
+
+	// Form persistence
+	const STORAGE_KEY = 'create-party-form';
+	let restored = $state(false);
+
+	// Restore from sessionStorage on mount (runs first)
+	$effect(() => {
+		try {
+			const stored = sessionStorage.getItem(STORAGE_KEY);
+			if (stored) {
+				const data = JSON.parse(stored);
+				if (data.partyName) partyName = data.partyName;
+				if (data.description) description = data.description;
+				if (data.date) date = data.date;
+				if (data.startTimeInput) startTimeInput = data.startTimeInput;
+				if (data.durationHours != null) durationHours = data.durationHours;
+				if (data.locationUrl) locationUrl = data.locationUrl;
+				if (data.createdBy) createdBy = data.createdBy;
+				if (data.creatorEmail) creatorEmail = data.creatorEmail;
+				if (data.genre) genre = data.genre;
+				if (data.customMinutes !== undefined) customMinutes = data.customMinutes;
+				if (data.customSeconds !== undefined) customSeconds = data.customSeconds;
+				if (data.maxAttendeesInput !== undefined) maxAttendeesInput = data.maxAttendeesInput;
+				if (data.manualOverride !== undefined) manualOverride = data.manualOverride;
+				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
+				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
+			}
+		} catch {
+			// ignore
+		}
+		restored = true;
+		return () => {};
+	});
+
+	// Save to sessionStorage on change (only after restore completes)
+	$effect(() => {
+		// Read all fields so Svelte subscribes to them
+		const data = {
+			partyName, description, date, startTimeInput, durationHours,
+			locationUrl, createdBy, creatorEmail, genre,
+			customMinutes, customSeconds, maxAttendeesInput,
+			manualOverride, maxDepthInput, maxInvitesInput
+		};
+		if (!restored) return;
+		try {
+			sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+		} catch {
+			// ignore
+		}
+	});
+
 </script>
 
 <svelte:head>
@@ -71,13 +156,13 @@
 </svelte:head>
 
 <main class="relative min-h-screen overflow-hidden px-4 py-12 md:py-20">
-	<section class="relative z-10 max-w-lg mx-auto">
+	<section class="relative z-10 max-w-xl mx-auto">
 		<div class="text-center mb-2">
 			<a href="/" class="inline-block font-display text-lg text-neon-pink neon-text-subtle tracking-wider mb-6">
 				PLAYLIST PARTY
 			</a>
 			<h1 class="font-heading text-4xl md:text-5xl font-bold gradient-text">Start a Party</h1>
-			<p class="text-text-muted mt-2 text-lg">Set up your event and start building the playlist</p>
+			<p class="text-text-secondary mt-2 text-lg">Set up your event and start building the playlist</p>
 		</div>
 
 		{#if form?.error}
@@ -86,58 +171,81 @@
 			</div>
 		{/if}
 
-		<form method="POST" use:enhance class="glass rounded-2xl p-6 md:p-8 space-y-5">
+		<form method="POST" use:enhance={() => {
+			return async ({ result }) => {
+				if (result.type === 'redirect') {
+					try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+					window.location.href = result.location;
+				}
+			};
+		}} class="glass rounded-2xl p-6 md:p-8 space-y-5">
 			<div>
 				<label for="name" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Party Name</label>
-				<input type="text" id="name" name="name" required
+				<input type="text" id="name" name="name" required bind:value={partyName}
 					class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 					placeholder="e.g. Kyle's Birthday Bash" />
 			</div>
 
 			<div>
 				<label for="description" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Description</label>
-				<textarea id="description" name="description" rows="3"
+				<textarea id="description" name="description" rows="3" bind:value={description}
 					class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none"
 					placeholder="What's the vibe?"></textarea>
 			</div>
 
-			<div class="grid grid-cols-2 gap-4">
+			<div class="grid grid-cols-[2fr_1fr_1fr] gap-4">
 				<div>
 					<label for="date" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Date</label>
-					<input type="date" id="date" name="date" required
+					<input type="date" id="date" name="date" required bind:value={date}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
 				</div>
 				<div>
-					<label for="time" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Start Time</label>
-					<input type="time" id="time" name="time" bind:value={startTime} onchange={resetOverride}
-						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
-				</div>
-			</div>
-
-			<div class="grid grid-cols-2 gap-4">
-				<div>
-					<label for="endTime" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">End Time</label>
-					<input type="time" id="endTime" name="endTime" data-testid="end-time" bind:value={endTime} onchange={resetOverride}
-						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
-				</div>
-				<div>
-					<label for="location" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Location</label>
-					<input type="text" id="location" name="location"
+					<label for="startTimeInput" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Start Time</label>
+					<input type="text" id="startTimeInput" bind:value={startTimeInput} oninput={resetOverride}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-						placeholder="Where's the party?" />
+						placeholder="e.g. 7pm" />
+					<input type="hidden" name="time" value={parsedStartTime ?? ''} />
+					{#if parsedStartTime}
+						<p class="text-neon-cyan text-xs font-heading mt-1 px-1">{formatTime(parsedStartTime)}</p>
+					{:else if startTimeInput.trim()}
+						<p class="text-neon-pink text-xs font-heading mt-1 px-1">Couldn't parse time</p>
+					{/if}
+				</div>
+				<div>
+					<label for="durationHours" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Duration</label>
+					<input type="number" id="durationHours" data-testid="duration-hours" bind:value={durationHours} oninput={resetOverride}
+						step="0.5" min="0.5" max="24"
+						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
+						placeholder="Hours" />
+					<input type="hidden" name="durationHours" value={durationHours ?? ''} />
+					{#if parsedStartTime && parsedEndTime}
+						<p class="text-neon-cyan text-xs font-heading mt-1 px-1">Ends {formatTime(parsedEndTime)}</p>
+					{/if}
 				</div>
 			</div>
 
 			<div>
+				<label for="locationUrl" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Location</label>
+				<input type="text" id="locationUrl" name="locationUrl" bind:value={locationUrl}
+					class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
+					placeholder="Paste a Google Maps link" />
+				{#if isValidLocationUrl}
+					<p class="text-neon-cyan text-xs font-heading mt-1 px-1">&#10003; Google Maps link</p>
+				{:else if locationUrlError}
+					<p class="text-neon-pink text-xs font-heading mt-1 px-1">Paste a Google Maps URL</p>
+				{/if}
+			</div>
+
+			<div>
 				<label for="createdBy" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Name</label>
-				<input type="text" id="createdBy" name="createdBy" required
+				<input type="text" id="createdBy" name="createdBy" required bind:value={createdBy}
 					class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 					placeholder="Who's throwing this?" />
 			</div>
 
 			<div>
 				<label for="creatorEmail" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Email</label>
-				<input type="email" id="creatorEmail" name="creatorEmail" data-testid="creator-email" required
+				<input type="email" id="creatorEmail" name="creatorEmail" data-testid="creator-email" required bind:value={creatorEmail}
 					class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 					placeholder="you@example.com" />
 			</div>
@@ -197,7 +305,7 @@
 						</div>
 						<div>
 							<label for="maxInvitesPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invites Per Guest</label>
-							<input type="number" id="maxInvitesPerGuest" name="maxInvitesPerGuest" min="1"
+							<input type="number" id="maxInvitesPerGuest" name="maxInvitesPerGuest" min="1" bind:value={maxInvitesInput}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 								placeholder="Unlimited" />
 						</div>
@@ -205,14 +313,14 @@
 
 					<div>
 						<label for="maxDepth" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Max Invite Depth</label>
-						<input type="number" id="maxDepth" name="maxDepth" min="1"
+						<input type="number" id="maxDepth" name="maxDepth" min="1" bind:value={maxDepthInput}
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 							placeholder="No limit" />
 					</div>
 				</div>
 			</div>
 
-			<p class="text-text-muted/60 text-sm font-heading px-1">
+			<p class="text-text-muted text-sm font-heading px-1">
 				The playlist may run slightly over the party duration — that's by design!
 			</p>
 
@@ -226,25 +334,20 @@
 
 <style>
 	.cta-btn {
-		box-shadow: 0 4px 15px rgba(229, 34, 114, 0.3);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
 
 	.cta-btn:hover {
-		box-shadow: 0 6px 25px rgba(229, 34, 114, 0.4);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 		transform: translateY(-2px);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn {
-		box-shadow:
-			0 0 15px rgba(255, 45, 120, 0.4),
-			0 0 30px rgba(255, 45, 120, 0.2);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn:hover {
-		box-shadow:
-			0 0 20px rgba(255, 45, 120, 0.6),
-			0 0 40px rgba(255, 45, 120, 0.3),
-			0 0 60px rgba(255, 45, 120, 0.15);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-2px);
 	}
 </style>

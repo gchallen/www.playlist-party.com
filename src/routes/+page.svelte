@@ -38,11 +38,10 @@
 		>
 			<div
 				class="w-full h-full rounded-full relative"
-				style="background: repeating-radial-gradient(circle at center, transparent 0px, transparent 4px, rgba(255,255,255,0.03) 4px, rgba(255,255,255,0.03) 5px), radial-gradient(circle, var(--color-surface-light) 0%, var(--color-surface) 100%);"
+				style="background: repeating-radial-gradient(circle at center, transparent 0px, transparent 4px, rgba(0,0,0,0.03) 4px, rgba(0,0,0,0.03) 5px), radial-gradient(circle, var(--color-surface-light) 0%, var(--color-surface) 100%);"
 			>
 				<div
-					class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35%] h-[35%] rounded-full"
-					style="background: linear-gradient(135deg, var(--color-neon-pink), var(--color-neon-purple));"
+					class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35%] h-[35%] rounded-full bg-neon-pink"
 				>
 					<div
 						class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[25%] h-[25%] rounded-full bg-void"
@@ -83,7 +82,7 @@
 			</div>
 
 			<div class="flex gap-5 md:gap-8 items-start">
-				<span class="font-display text-5xl md:text-6xl text-neon-purple shrink-0 leading-none mt-1">2</span>
+				<span class="font-display text-5xl md:text-6xl text-neon-pink shrink-0 leading-none mt-1">2</span>
 				<div>
 					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Grow the party.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
@@ -93,7 +92,7 @@
 			</div>
 
 			<div class="flex gap-5 md:gap-8 items-start">
-				<span class="font-display text-5xl md:text-6xl text-neon-cyan shrink-0 leading-none mt-1">3</span>
+				<span class="font-display text-5xl md:text-6xl text-neon-pink shrink-0 leading-none mt-1">3</span>
 				<div>
 					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Start the party.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
@@ -111,38 +110,24 @@
 
 <style>
 	.hero-title {
-		filter: drop-shadow(0 2px 12px rgba(229, 34, 114, 0.25));
-	}
-
-	:global(:root[data-theme="dark"]) .hero-title {
 		filter: none;
-		text-shadow:
-			0 0 10px rgba(255, 45, 120, 0.5),
-			0 0 20px rgba(255, 45, 120, 0.3),
-			0 0 40px rgba(255, 45, 120, 0.15),
-			0 0 80px rgba(255, 45, 120, 0.05);
 	}
 
 	.cta-btn {
-		box-shadow: 0 4px 15px rgba(229, 34, 114, 0.3);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
 
 	.cta-btn:hover {
-		box-shadow: 0 6px 25px rgba(229, 34, 114, 0.4);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 		transform: translateY(-2px);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn {
-		box-shadow:
-			0 0 15px rgba(255, 45, 120, 0.4),
-			0 0 30px rgba(255, 45, 120, 0.2);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn:hover {
-		box-shadow:
-			0 0 20px rgba(255, 45, 120, 0.6),
-			0 0 40px rgba(255, 45, 120, 0.3),
-			0 0 60px rgba(255, 45, 120, 0.15);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-2px);
 	}
 </style>

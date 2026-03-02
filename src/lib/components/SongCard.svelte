@@ -17,7 +17,12 @@
 		canMoveDown = false,
 		token,
 		comment,
-		onclick
+		onclick,
+		startTime,
+		isDraggable = false,
+		ondragstart,
+		ondragover,
+		ondragend
 	}: {
 		youtubeId: string;
 		title: string;
@@ -34,6 +39,11 @@
 		token?: string;
 		comment?: string | null;
 		onclick?: () => void;
+		startTime?: string | null;
+		isDraggable?: boolean;
+		ondragstart?: (e: DragEvent) => void;
+		ondragover?: (e: DragEvent) => void;
+		ondragend?: (e: DragEvent) => void;
 	} = $props();
 
 	let expanded = $state(false);
@@ -52,16 +62,23 @@
 <div
 	class="song-card w-full rounded-xl transition-all duration-200 text-left group"
 	class:is-playing={isPlaying}
-	class:cursor-pointer={!!comment}
+	class:cursor-pointer={!!comment && !isDraggable}
+	draggable={isDraggable ? 'true' : undefined}
+	{ondragstart}
+	{ondragover}
+	{ondragend}
 	onclick={toggleExpand}
 >
 	<div class="flex items-center gap-3 p-2">
 		<span
-			class="w-8 text-center font-heading font-bold text-sm flex-shrink-0"
+			class="w-14 text-left font-heading flex-shrink-0 pl-1"
 			class:text-neon-pink={isPlaying}
 			class:text-text-muted={!isPlaying}
 		>
-			{position}
+			<span class="font-bold text-sm">{position}</span>
+			{#if startTime}
+				<span class="block text-xs font-normal text-text-muted leading-tight">{startTime}</span>
+			{/if}
 		</span>
 
 		<button class="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden flex-shrink-0" {onclick}>
@@ -85,10 +102,10 @@
 			>
 				{title}
 			</p>
-			<p class="text-text-muted text-xs truncate">
+			<p class="text-text-secondary text-xs truncate">
 				{channelName}
 				{#if comment}
-					<svg class="inline-block w-3 h-3 ml-1 -mt-0.5 text-neon-purple/60" viewBox="0 0 24 24" fill="currentColor">
+					<svg class="inline-block w-3 h-3 ml-1 -mt-0.5 text-neon-purple" viewBox="0 0 24 24" fill="currentColor">
 						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
 					</svg>
 				{/if}
@@ -96,7 +113,7 @@
 			{#if revealed && addedBy}
 				<p class="text-neon-mint text-xs mt-0.5">Added by {addedBy}</p>
 			{:else if isMine}
-				<p class="text-neon-cyan/60 text-xs mt-0.5">Your song</p>
+				<p class="text-neon-cyan text-xs mt-0.5">Your song</p>
 			{/if}
 		</div>
 
@@ -112,6 +129,15 @@
 
 		{#if showControls && songId !== undefined && token}
 			<div class="flex items-center gap-1 flex-shrink-0">
+				{#if isDraggable}
+					<span data-testid="drag-handle" class="p-1.5 cursor-grab text-text-muted hover:text-neon-cyan transition-colors">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+							<circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+							<circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+							<circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+						</svg>
+					</span>
+				{:else}
 				{#if canMoveUp}
 					<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
 						<input type="hidden" name="songId" value={songId} />
@@ -130,6 +156,7 @@
 						</button>
 					</form>
 				{/if}
+				{/if}
 				<form method="POST" action="/party/{token}?/removeSong" use:enhance>
 					<input type="hidden" name="songId" value={songId} />
 					<button type="submit" data-testid="remove-song-btn" class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors" title="Remove song">
@@ -141,7 +168,7 @@
 	</div>
 
 	{#if comment && expanded}
-		<div class="comment-box mx-2 mb-2 ml-12 p-2.5 rounded-lg bg-surface/60 border border-neon-purple/10 text-xs text-text-secondary font-heading leading-relaxed">
+		<div class="comment-box mx-2 mb-2 ml-12 p-2.5 rounded-lg bg-surface-light border border-neon-purple/15 text-xs text-text-secondary font-heading leading-relaxed">
 			{@html renderComment(comment)}
 		</div>
 	{/if}
@@ -149,21 +176,21 @@
 
 <style>
 	.song-card:hover:not(.is-playing) {
-		background: rgba(139, 48, 199, 0.06);
+		background: rgba(0, 0, 0, 0.03);
 	}
 
 	:global(:root[data-theme="dark"]) .song-card:hover:not(.is-playing) {
-		background: rgba(42, 26, 78, 0.5);
+		background: rgba(255, 255, 255, 0.04);
 	}
 
 	.song-card.is-playing {
-		background: rgba(229, 34, 114, 0.06);
-		border: 1px solid rgba(229, 34, 114, 0.12);
+		background: rgba(194, 48, 36, 0.06);
+		border: 1px solid rgba(194, 48, 36, 0.12);
 	}
 
 	:global(:root[data-theme="dark"]) .song-card.is-playing {
-		background: rgba(255, 45, 120, 0.08);
-		border: 1px solid rgba(255, 45, 120, 0.15);
+		background: rgba(230, 59, 46, 0.08);
+		border: 1px solid rgba(230, 59, 46, 0.15);
 	}
 
 	.song-card:not(.is-playing) {
