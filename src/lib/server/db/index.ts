@@ -1,10 +1,11 @@
 import { drizzle } from 'drizzle-orm/d1';
-import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
-export type Database = ReturnType<typeof drizzle<typeof schema>> | ReturnType<typeof drizzleSqlite<typeof schema>>;
+// Use a loose type so we don't need a static import of better-sqlite3's drizzle
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _db: any = null;
 
-let _db: Database | null = null;
+export type Database = ReturnType<typeof drizzle<typeof schema>>;
 
 export async function getDb(platform?: App.Platform): Promise<Database> {
 	if (_db) return _db;
@@ -14,7 +15,8 @@ export async function getDb(platform?: App.Platform): Promise<Database> {
 		return _db;
 	}
 
-	// Local/Docker: use better-sqlite3
+	// Local/Docker: fully dynamic imports to keep better-sqlite3 out of the Cloudflare bundle
+	const { drizzle: drizzleSqlite } = await import('drizzle-orm/better-sqlite3');
 	const BetterSqlite3 = (await import('better-sqlite3')).default;
 	const sqlite = new BetterSqlite3('local.db');
 	sqlite.pragma('journal_mode = WAL');
