@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
+import type { Database } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
 import { generateInviteToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
@@ -10,6 +11,7 @@ import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
 import type { SongInfo } from '$lib/server/playlist';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
+import { parseInviteLines } from '$lib/parse-invites';
 import type { PageServerLoad, Actions } from './$types';
 
 function isCreator(attendee: { depth: number; invitedBy: number | null }): boolean {
@@ -26,6 +28,58 @@ function maskEmail(email: string): string {
 
 function toSongInfo(s: { id: number; addedBy: number; durationSeconds: number; addedAt: string }): SongInfo {
 	return { id: s.id, addedBy: s.addedBy, durationSeconds: s.durationSeconds, addedAt: s.addedAt };
+}
+
+interface InviteValidationContext {
+	db: Database;
+	party: { id: number; maxAttendees: number; maxDepth: number | null; maxInvitesPerGuest: number | null; time: string | null; endTime: string | null; name: string; date: string; location: string | null; locationUrl: string | null };
+	attendee: { id: number; name: string; depth: number };
+	allAttendees: Array<{ id: number; email: string; invitedBy: number | null }>;
+	allSongs: SongInfo[];
+	targetDuration: number | null;
+}
+
+async function validateInvite(
+	ctx: InviteValidationContext,
+	name: string,
+	email: string
+): Promise<string | null> {
+	// Check max attendees
+	if (ctx.allAttendees.length >= ctx.party.maxAttendees) {
+		return 'Party is full — max attendees reached';
+	}
+
+	// Check max depth
+	if (ctx.party.maxDepth !== null && ctx.attendee.depth + 1 > ctx.party.maxDepth) {
+		return 'Maximum invite depth reached';
+	}
+
+	// Check maxInvitesPerGuest
+	const myInvites = ctx.allAttendees.filter((a) => a.invitedBy === ctx.attendee.id);
+	if (ctx.party.maxInvitesPerGuest !== null && myInvites.length >= ctx.party.maxInvitesPerGuest) {
+		return `You can only send ${ctx.party.maxInvitesPerGuest} invites`;
+	}
+
+	// Check canIssueInvitations (duration gating)
+	if (!canIssueInvitations(ctx.allAttendees.length, ctx.party.maxAttendees, ctx.allSongs, ctx.targetDuration)) {
+		return 'The playlist is full — no room for more guests right now';
+	}
+
+	// Check duplicate email
+	const existingAttendee = ctx.allAttendees.find(
+		(a) => a.email.toLowerCase() === email.toLowerCase()
+	);
+	if (existingAttendee) {
+		return 'This person has already been invited!';
+	}
+
+	// Rate limit check
+	const rateLimit = await checkEmailRateLimit(ctx.db, email);
+	if (!rateLimit.allowed) {
+		return rateLimit.retryAfterMessage || 'Too many emails sent to this address';
+	}
+
+	return null;
 }
 
 export const load: PageServerLoad = async ({ params, platform, cookies }) => {
@@ -472,47 +526,22 @@ export const actions = {
 		});
 		if (!party) return fail(404, { inviteError: 'Party not found' });
 
-		const allAttendees = await db.query.attendees.findMany({
+		const allAttendeesList = await db.query.attendees.findMany({
 			where: eq(attendees.partyId, party.id)
 		});
 
-		// Check max attendees
-		if (allAttendees.length >= party.maxAttendees) {
-			return fail(400, { inviteError: 'Party is full — max attendees reached' });
-		}
-
-		// Check max depth
-		if (party.maxDepth !== null && attendee.depth + 1 > party.maxDepth) {
-			return fail(400, { inviteError: 'Maximum invite depth reached' });
-		}
-
-		// Check maxInvitesPerGuest
-		const myInvites = allAttendees.filter((a) => a.invitedBy === attendee.id);
-		if (party.maxInvitesPerGuest !== null && myInvites.length >= party.maxInvitesPerGuest) {
-			return fail(400, { inviteError: `You can only send ${party.maxInvitesPerGuest} invites` });
-		}
-
-		// Check canIssueInvitations (duration gating)
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, party.id)
 		});
 		const targetDuration = computeTargetDuration(party.time, party.endTime);
-		if (!canIssueInvitations(allAttendees.length, party.maxAttendees, allSongs.map(toSongInfo), targetDuration)) {
-			return fail(400, { inviteError: 'The playlist is full — no room for more guests right now' });
-		}
 
-		// Check duplicate email
-		const existingAttendee = allAttendees.find(
-			(a) => a.email.toLowerCase() === email.toLowerCase()
+		const validationError = await validateInvite(
+			{ db, party, attendee, allAttendees: allAttendeesList, allSongs: allSongs.map(toSongInfo), targetDuration },
+			name,
+			email
 		);
-		if (existingAttendee) {
-			return fail(400, { inviteError: 'This person has already been invited!' });
-		}
-
-		// Rate limit check
-		const rateLimit = await checkEmailRateLimit(db, email);
-		if (!rateLimit.allowed) {
-			return fail(429, { inviteError: rateLimit.retryAfterMessage });
+		if (validationError) {
+			return fail(400, { inviteError: validationError });
 		}
 
 		const newToken = generateInviteToken();
@@ -542,6 +571,97 @@ export const actions = {
 		await recordEmailSend(db, email, 'invite');
 
 		return { inviteSent: name, inviteUrl: magicUrl };
+	},
+
+	bulkInvite: async ({ params, request, platform, url }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const text = data.get('bulkText')?.toString() || '';
+		const parsed = parseInviteLines(text);
+
+		if (parsed.length === 0) {
+			return fail(400, { bulkError: 'No valid entries found. Each line needs a name and email.' });
+		}
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { bulkError: 'Not found' });
+
+		if (!isCreator(attendee)) {
+			return fail(403, { bulkError: 'Only the party creator can use bulk invite' });
+		}
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { bulkError: 'Party not found' });
+
+		const bulkResults: Array<{ name: string; email: string; success: boolean; error?: string; inviteUrl?: string }> = [];
+
+		// Track emails within this batch to catch duplicates
+		const batchEmails = new Set<string>();
+
+		for (const entry of parsed) {
+			// Check for duplicates within the batch
+			const emailLower = entry.email.toLowerCase();
+			if (batchEmails.has(emailLower)) {
+				bulkResults.push({ name: entry.name, email: entry.email, success: false, error: 'Duplicate in this batch' });
+				continue;
+			}
+
+			// Re-fetch attendees each iteration so newly added ones are visible
+			const allAttendeesList = await db.query.attendees.findMany({
+				where: eq(attendees.partyId, party.id)
+			});
+			const allSongs = await db.query.songs.findMany({
+				where: eq(songs.partyId, party.id)
+			});
+			const targetDuration = computeTargetDuration(party.time, party.endTime);
+
+			const validationError = await validateInvite(
+				{ db, party, attendee, allAttendees: allAttendeesList, allSongs: allSongs.map(toSongInfo), targetDuration },
+				entry.name,
+				entry.email
+			);
+
+			if (validationError) {
+				bulkResults.push({ name: entry.name, email: entry.email, success: false, error: validationError });
+				continue;
+			}
+
+			const newToken = generateInviteToken();
+
+			await db.insert(attendees).values({
+				partyId: party.id,
+				name: entry.name,
+				email: entry.email,
+				invitedBy: attendee.id,
+				inviteToken: newToken,
+				depth: attendee.depth + 1
+			});
+
+			const magicUrl = `${url.origin}/party/${newToken}`;
+			await sendInviteEmail(
+				entry.email,
+				entry.name,
+				attendee.name,
+				party.name,
+				party.date,
+				party.time,
+				party.location,
+				magicUrl,
+				platform,
+				party.locationUrl
+			);
+			await recordEmailSend(db, entry.email, 'invite');
+
+			batchEmails.add(emailLower);
+			bulkResults.push({ name: entry.name, email: entry.email, success: true, inviteUrl: magicUrl });
+		}
+
+		return { bulkResults };
 	},
 
 	removeSong: async ({ params, request, platform }) => {

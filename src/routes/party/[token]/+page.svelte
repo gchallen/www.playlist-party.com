@@ -10,6 +10,7 @@
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
 	import { computeSongStartTimes } from '$lib/time';
 	import { loadYouTubeIframeApi } from '$lib/youtube-api';
+	import { parseInviteLines } from '$lib/parse-invites';
 
 	let { data, form } = $props();
 
@@ -157,6 +158,11 @@
 
 	const videoId = $derived(youtubeUrl ? extractYouTubeId(youtubeUrl) : null);
 	const addSongVideoId = $derived(addSongUrl ? extractYouTubeId(addSongUrl) : null);
+
+	// ─── Bulk invite state ───
+	let bulkMode = $state(false);
+	let bulkText = $state('');
+	const bulkParsed = $derived(bulkText ? parseInviteLines(bulkText) : []);
 
 	function formatDuration(totalSeconds: number): string {
 		const hours = Math.floor(totalSeconds / 3600);
@@ -494,6 +500,7 @@
 				{/if}
 
 				{#if data.canInvite}
+					{#if !bulkMode}
 					<form method="POST" action="?/sendInvite" use:enhance class="glass rounded-2xl p-5" data-testid="invite-form">
 						<div class="flex flex-col sm:flex-row gap-3 mb-3">
 							<div class="flex-1">
@@ -522,6 +529,73 @@
 							</p>
 						{/if}
 					</form>
+					{/if}
+
+					{#if data.isCreator}
+						<button
+							type="button"
+							data-testid="bulk-toggle"
+							class="mt-3 font-heading text-xs font-semibold text-neon-cyan hover:text-neon-cyan/80 transition-colors"
+							onclick={() => bulkMode = !bulkMode}
+						>
+							{bulkMode ? 'Switch to single invite' : 'Bulk invite multiple people'}
+						</button>
+
+						{#if bulkMode}
+							{#if form?.bulkError}
+								<div class="mt-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+									{form.bulkError}
+								</div>
+							{/if}
+
+							{#if form?.bulkResults}
+								<div class="mt-3 space-y-1.5" data-testid="bulk-results">
+									{#each form.bulkResults as result}
+										<div class="p-2.5 rounded-xl text-sm font-heading flex items-start gap-2 border {result.success ? 'bg-neon-mint/10 border-neon-mint/20 text-neon-mint' : 'bg-neon-pink/10 border-neon-pink/20 text-neon-pink'}">
+											<span class="flex-shrink-0 mt-0.5">{result.success ? '✓' : '✗'}</span>
+											<span>
+												{result.name} ({result.email})
+												{#if result.error}
+													— {result.error}
+												{/if}
+											</span>
+										</div>
+									{/each}
+								</div>
+							{/if}
+
+							<form method="POST" action="?/bulkInvite" use:enhance class="mt-3 glass rounded-2xl p-5" data-testid="bulk-invite-form">
+								<label for="bulk-text" class="block font-heading text-xs font-semibold text-text-secondary mb-1.5">
+									Paste names and emails, one per line
+								</label>
+								<textarea
+									id="bulk-text"
+									name="bulkText"
+									rows="6"
+									required
+									bind:value={bulkText}
+									data-testid="bulk-textarea"
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm font-mono resize-y"
+									placeholder={"John Doe john@example.com\nJane Smith <jane@example.com>\nBob, bob@test.com"}
+								></textarea>
+
+								{#if bulkParsed.length > 0}
+									<p class="text-neon-cyan text-xs font-heading mt-2" data-testid="bulk-preview-count">
+										{bulkParsed.length} {bulkParsed.length === 1 ? 'invite' : 'invites'} detected
+									</p>
+								{/if}
+
+								<button type="submit" data-testid="bulk-send-btn"
+									disabled={bulkParsed.length === 0}
+									class="mt-3 inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
+									<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+										<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
+									</svg>
+									Send {bulkParsed.length} {bulkParsed.length === 1 ? 'Invite' : 'Invites'}
+								</button>
+							</form>
+						{/if}
+					{/if}
 				{:else}
 					<div class="glass rounded-2xl p-5 text-center">
 						<p class="text-text-muted text-sm">
