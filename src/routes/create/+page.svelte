@@ -18,6 +18,8 @@
 	let customMinutes = $state(4);
 	let customSeconds = $state(0);
 	let maxAttendeesInput = $state(50);
+	let songsPerGuestInput = $state(1);
+	let songsPerGuestOverride = $state(false);
 	let manualOverride = $state(false);
 
 	// Flexible time input + duration
@@ -73,6 +75,24 @@
 
 	function resetOverride() {
 		manualOverride = false;
+		songsPerGuestOverride = false;
+	}
+
+	let defaultSongsPerGuest = $derived.by(() => {
+		if (!calculatedGuests || !maxAttendeesInput || maxAttendeesInput <= 0) return 1;
+		return Math.max(1, Math.ceil(calculatedGuests / maxAttendeesInput));
+	});
+
+	$effect(() => {
+		if (!songsPerGuestOverride) {
+			songsPerGuestInput = defaultSongsPerGuest;
+		}
+	});
+
+	function handleSongsPerGuestInput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		songsPerGuestInput = Math.max(1, parseInt(target.value) || 1);
+		songsPerGuestOverride = true;
 	}
 
 	let capacityInfo = $derived.by(() => {
@@ -82,7 +102,8 @@
 		const durationStr = hours > 0
 			? mins > 0 ? `${hours}h ${mins}m` : `${hours}-hour`
 			: `${mins}-minute`;
-		return `Your ${durationStr} party can host up to ${calculatedGuests} guests with everyone getting at least one song`;
+		const songWord = songsPerGuestInput === 1 ? 'song' : 'songs';
+		return `Your ${durationStr} party fits ~${calculatedGuests} songs — each of ${maxAttendeesInput} guests picks ${songsPerGuestInput} ${songWord}`;
 	});
 
 	// Location URL validation
@@ -122,6 +143,8 @@
 				if (data.customSeconds !== undefined) customSeconds = data.customSeconds;
 				if (data.maxAttendeesInput !== undefined) maxAttendeesInput = data.maxAttendeesInput;
 				if (data.manualOverride !== undefined) manualOverride = data.manualOverride;
+				if (data.songsPerGuestInput !== undefined) songsPerGuestInput = data.songsPerGuestInput;
+				if (data.songsPerGuestOverride !== undefined) songsPerGuestOverride = data.songsPerGuestOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
 			}
@@ -139,7 +162,8 @@
 			partyName, description, date, startTimeInput, durationHours,
 			locationUrl, createdBy, creatorEmail, genre,
 			customMinutes, customSeconds, maxAttendeesInput,
-			manualOverride, maxDepthInput, maxInvitesInput
+			manualOverride, songsPerGuestInput, songsPerGuestOverride,
+			maxDepthInput, maxInvitesInput
 		};
 		if (!restored) return;
 		try {
@@ -296,15 +320,21 @@
 				<p class="font-heading text-sm font-semibold text-text-muted uppercase tracking-wider mb-4">Guest Limits</p>
 
 				<div class="space-y-4">
-					<div class="grid grid-cols-2 gap-4">
+					<div class="grid grid-cols-3 gap-4">
 						<div>
-							<label for="maxAttendees" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Maximum Guests</label>
+							<label for="maxAttendees" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Max Guests</label>
 							<input type="number" id="maxAttendees" name="maxAttendees" data-testid="max-attendees"
 								value={maxAttendeesInput} oninput={handleMaxAttendeesInput} min="2" required
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
 						</div>
 						<div>
-							<label for="maxInvitesPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invites Per Guest</label>
+							<label for="songsPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Songs / Guest</label>
+							<input type="number" id="songsPerGuest" name="songsPerGuest" data-testid="songs-per-guest"
+								value={songsPerGuestInput} oninput={handleSongsPerGuestInput} min="1" required
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+						</div>
+						<div>
+							<label for="maxInvitesPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invites / Guest</label>
 							<input type="number" id="maxInvitesPerGuest" name="maxInvitesPerGuest" min="1" bind:value={maxInvitesInput}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
 								placeholder="Unlimited" />

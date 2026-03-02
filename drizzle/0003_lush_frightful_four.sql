@@ -1,0 +1,1 @@
+ALTER TABLE `parties` ADD `songs_per_guest` integer DEFAULT 1 NOT NULL;

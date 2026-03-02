@@ -41,11 +41,11 @@ function parseTimeToMinutes(t: string): number | null {
 /**
  * How many songs can this person have?
  * Creator: Infinity
- * Attendee: 1 (for accepting) + number of invites sent
+ * Attendee: songsPerGuest (for accepting) + number of invites sent
  */
-export function computeMaxSongs(isCreator: boolean, invitesSent: number): number {
+export function computeMaxSongs(isCreator: boolean, invitesSent: number, songsPerGuest = 1): number {
 	if (isCreator) return Infinity;
-	return 1 + invitesSent;
+	return songsPerGuest + invitesSent;
 }
 
 /**

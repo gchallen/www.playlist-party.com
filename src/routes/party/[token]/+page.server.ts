@@ -69,7 +69,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const myInvites = allAttendees.filter((a) => a.invitedBy === attendee.id);
 	const invitesSent = myInvites.length;
 
-	const maxSongs = computeMaxSongs(creator, invitesSent);
+	const songsPerGuest = party.songsPerGuest ?? 1;
+	const maxSongs = computeMaxSongs(creator, invitesSent, songsPerGuest);
 	const mySongs = allSongs.filter((s) => s.addedBy === attendee.id);
 
 	const canInvite = canIssueInvitations(
@@ -144,6 +145,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			maxAttendees: party.maxAttendees,
 			maxDepth: party.maxDepth,
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
+			songsPerGuest: party.songsPerGuest ?? 1,
 			songAttribution: party.songAttribution
 		},
 		attendee: {
@@ -372,7 +374,7 @@ export const actions = {
 			where: eq(attendees.partyId, party.id)
 		});
 		const invitesSent = allAttendees.filter((a) => a.invitedBy === attendee.id).length;
-		const maxSongs = computeMaxSongs(creator, invitesSent);
+		const maxSongs = computeMaxSongs(creator, invitesSent, party.songsPerGuest ?? 1);
 		const mySongs = await db.query.songs.findMany({
 			where: and(eq(songs.partyId, party.id), eq(songs.addedBy, attendee.id))
 		});
@@ -669,6 +671,12 @@ export const actions = {
 		} else if (maxInvitesRaw) {
 			const parsed = parseInt(maxInvitesRaw, 10);
 			if (!isNaN(parsed) && parsed >= 0) updates.maxInvitesPerGuest = parsed;
+		}
+
+		const songsPerGuestRaw = data.get('songsPerGuest')?.toString()?.trim();
+		if (songsPerGuestRaw) {
+			const parsed = parseInt(songsPerGuestRaw, 10);
+			if (!isNaN(parsed) && parsed >= 1) updates.songsPerGuest = parsed;
 		}
 
 		const attribution = data.get('songAttribution')?.toString()?.trim();

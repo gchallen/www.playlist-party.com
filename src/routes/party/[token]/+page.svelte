@@ -434,7 +434,7 @@
 							Your songs: <span class="text-neon-cyan">{slotsDisplay}</span>
 						</span>
 						<span class="text-text-muted text-sm ml-2">
-							(1 for accepting{#if (data as any).invitesSent > 0} + {(data as any).invitesSent} for invites sent{/if})
+							({data.party.songsPerGuest} for joining{#if (data as any).invitesSent > 0} + {(data as any).invitesSent} for invites sent{/if})
 						</span>
 					</div>
 				{/if}
@@ -739,15 +739,26 @@
 							</select>
 						</div>
 
-						<div>
-							<label for="setting-max-invites" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
-								Max Invites Per Guest
-							</label>
-							<input type="number" id="setting-max-invites" name="maxInvitesPerGuest" min="0"
-								data-testid="max-invites-per-guest"
-								value={data.party.maxInvitesPerGuest ?? ''}
-								placeholder="Unlimited"
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm" />
+						<div class="grid grid-cols-2 gap-4">
+							<div>
+								<label for="setting-songs-per-guest" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
+									Songs Per Guest
+								</label>
+								<input type="number" id="setting-songs-per-guest" name="songsPerGuest" min="1"
+									data-testid="setting-songs-per-guest"
+									value={data.party.songsPerGuest}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm" />
+							</div>
+							<div>
+								<label for="setting-max-invites" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
+									Max Invites Per Guest
+								</label>
+								<input type="number" id="setting-max-invites" name="maxInvitesPerGuest" min="0"
+									data-testid="max-invites-per-guest"
+									value={data.party.maxInvitesPerGuest ?? ''}
+									placeholder="Unlimited"
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm" />
+							</div>
 						</div>
 
 						<button type="submit"

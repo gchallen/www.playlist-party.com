@@ -25,6 +25,7 @@ class PartySimulator {
 	maxAttendees: number;
 	maxInvitesPerGuest: number | null;
 	maxDepth: number | null;
+	songsPerGuest: number;
 
 	attendees: SimAttendee[] = [];
 	songs: SongInfo[] = [];
@@ -38,11 +39,13 @@ class PartySimulator {
 		maxAttendees?: number;
 		maxInvitesPerGuest?: number | null;
 		maxDepth?: number | null;
+		songsPerGuest?: number;
 	} = {}) {
 		this.targetDurationSeconds = config.targetDurationSeconds ?? null;
 		this.maxAttendees = config.maxAttendees ?? 100;
 		this.maxInvitesPerGuest = config.maxInvitesPerGuest ?? null;
 		this.maxDepth = config.maxDepth ?? null;
+		this.songsPerGuest = config.songsPerGuest ?? 1;
 	}
 
 	createHost(name: string, email = `${name.toLowerCase()}@test.com`): SimAttendee {
@@ -137,7 +140,7 @@ class PartySimulator {
 		if (!attendee.accepted && !attendee.isCreator) return { success: false, droppedSongIds: [] };
 		if (durationSeconds <= 0) return { success: false, droppedSongIds: [] };
 
-		const maxSongs = computeMaxSongs(attendee.isCreator, attendee.invitesSent);
+		const maxSongs = computeMaxSongs(attendee.isCreator, attendee.invitesSent, this.songsPerGuest);
 		const currentSongs = this.songs.filter(s => s.addedBy === attendee.id).length;
 		if (currentSongs >= maxSongs) return { success: false, droppedSongIds: [] };
 
@@ -222,12 +225,91 @@ describe('computeMaxSongs', () => {
 	it('returns Infinity for creator', () => {
 		expect(computeMaxSongs(true, 0)).toBe(Infinity);
 		expect(computeMaxSongs(true, 10)).toBe(Infinity);
+		expect(computeMaxSongs(true, 0, 3)).toBe(Infinity);
 	});
 
-	it('returns 1 + invitesSent for attendee', () => {
+	it('returns songsPerGuest + invitesSent for attendee (default 1)', () => {
 		expect(computeMaxSongs(false, 0)).toBe(1);
 		expect(computeMaxSongs(false, 3)).toBe(4);
 		expect(computeMaxSongs(false, 10)).toBe(11);
+	});
+
+	it('uses songsPerGuest parameter', () => {
+		expect(computeMaxSongs(false, 0, 2)).toBe(2);
+		expect(computeMaxSongs(false, 3, 2)).toBe(5);
+		expect(computeMaxSongs(false, 0, 3)).toBe(3);
+		expect(computeMaxSongs(false, 5, 3)).toBe(8);
+	});
+});
+
+describe('songsPerGuest', () => {
+	it('attendee gets songsPerGuest slots on accept', () => {
+		const sim = new PartySimulator({ targetDurationSeconds: 10800, songsPerGuest: 2 });
+		const host = sim.createHost('Host');
+		const alice = sim.sendInvite(host, 'Alice', 'alice@test.com')!;
+		sim.acceptInvite(alice, 200);
+
+		// Should be able to add 1 more (2 total: entry + 1 bonus from songsPerGuest=2)
+		const result = sim.addSong(alice, 200);
+		expect(result.success).toBe(true);
+		expect(sim.songCountFor(alice)).toBe(2);
+
+		// Third should fail (no invites sent)
+		const result2 = sim.addSong(alice, 200);
+		expect(result2.success).toBe(false);
+	});
+
+	it('songsPerGuest=3 with invites stacks correctly', () => {
+		const sim = new PartySimulator({ targetDurationSeconds: 10800, songsPerGuest: 3 });
+		const host = sim.createHost('Host');
+		const alice = sim.sendInvite(host, 'Alice', 'alice@test.com')!;
+		sim.acceptInvite(alice, 200);
+
+		// Alice has 3 base slots + 0 invites = 3 total
+		sim.addSong(alice, 200);
+		sim.addSong(alice, 200);
+		expect(sim.songCountFor(alice)).toBe(3);
+
+		// Can't add 4th without sending invites
+		expect(sim.addSong(alice, 200).success).toBe(false);
+
+		// Send invite → +1 slot = 4 total
+		sim.sendInvite(alice, 'Bob', 'bob@test.com');
+		expect(sim.addSong(alice, 200).success).toBe(true);
+		expect(sim.songCountFor(alice)).toBe(4);
+	});
+
+	it('simulation with songsPerGuest=2, 10 guests, converges', () => {
+		const sim = new PartySimulator({
+			targetDurationSeconds: 3 * 3600,
+			maxAttendees: 50,
+			songsPerGuest: 2
+		});
+		const host = sim.createHost('Host');
+
+		const guests: SimAttendee[] = [];
+		for (let i = 0; i < 10; i++) {
+			const g = sim.sendInvite(host, `Guest${i}`, `guest${i}@test.com`)!;
+			expect(g).not.toBeNull();
+			guests.push(g);
+		}
+
+		// All accept
+		for (const g of guests) {
+			sim.acceptInvite(g, 210);
+		}
+
+		// Each uses their second slot
+		for (const g of guests) {
+			sim.addSong(g, 210);
+		}
+
+		expect(sim.everyoneHasAtLeastOneSong()).toBe(true);
+		// With songsPerGuest=2, each guest should have 2 songs (if not trimmed)
+		// Total: 10 guests × 2 songs × 210s = 4200s, under 10800s target
+		for (const g of guests) {
+			expect(sim.songCountFor(g)).toBe(2);
+		}
 	});
 });
 

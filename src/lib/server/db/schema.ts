@@ -14,6 +14,7 @@ export const parties = sqliteTable('parties', {
 	maxDepth: integer('max_depth'),
 	maxAttendees: integer('max_attendees').notNull(),
 	maxInvitesPerGuest: integer('max_invites_per_guest'),
+	songsPerGuest: integer('songs_per_guest').notNull().default(1),
 	songAttribution: text('song_attribution').notNull().default('hidden'),
 	createdAt: text('created_at')
 		.notNull()

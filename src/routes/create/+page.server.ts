@@ -81,6 +81,7 @@ export const actions = {
 		const maxDepth = maxDepthRaw ? parseInt(maxDepthRaw, 10) : null;
 		const maxInvitesRaw = data.get('maxInvitesPerGuest')?.toString()?.trim();
 		const maxInvitesPerGuest = maxInvitesRaw ? parseInt(maxInvitesRaw, 10) : null;
+		const songsPerGuest = Math.max(1, parseInt(data.get('songsPerGuest')?.toString() || '1', 10) || 1);
 
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
@@ -134,7 +135,8 @@ export const actions = {
 				creatorEmail,
 				maxDepth,
 				maxAttendees,
-				maxInvitesPerGuest
+				maxInvitesPerGuest,
+				songsPerGuest
 			})
 			.returning();
 
