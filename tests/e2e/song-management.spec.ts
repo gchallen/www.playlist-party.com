@@ -21,6 +21,13 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
+async function verifyEmail(page: Page, email: string): Promise<void> {
+	await page.locator('[data-testid="verify-email-input"]').waitFor();
+	await page.locator('[data-testid="verify-email-input"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
+}
+
 async function createParty(
 	page: Page,
 	options: {
@@ -50,6 +57,7 @@ async function createParty(
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
+	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 
@@ -76,8 +84,9 @@ async function sendInviteAndGetPath(
 	return getInvitePathFromEmail(request, inviteeEmail);
 }
 
-async function acceptInvite(page: Page, path: string, name?: string): Promise<void> {
+async function acceptInvite(page: Page, path: string, email: string, name?: string): Promise<void> {
 	await page.goto(path);
+	await verifyEmail(page, email);
 	if (name) {
 		await page.locator('[data-testid="name-input"]').fill(name);
 	}
@@ -97,7 +106,7 @@ test.describe('Song Slots', () => {
 		await createParty(page, { creatorEmail: uniqueEmail('slot-host') });
 		const email = uniqueEmail('slot');
 		const path = await sendInviteAndGetPath(page, request, 'SlotTest', email);
-		await acceptInvite(page, path, 'SlotTest');
+		await acceptInvite(page, path, email, 'SlotTest');
 
 		// Should show 1/1 songs
 		await expect(page.locator('[data-testid="song-slots"]')).toContainText('1 / 1');
@@ -107,7 +116,7 @@ test.describe('Song Slots', () => {
 		await createParty(page, { creatorEmail: uniqueEmail('earn-host') });
 		const emailA = uniqueEmail('earnA');
 		const pathA = await sendInviteAndGetPath(page, request, 'Alice', emailA);
-		await acceptInvite(page, pathA, 'Alice');
+		await acceptInvite(page, pathA, emailA, 'Alice');
 
 		// Alice sends an invite — should now have 2 slots
 		const emailB = uniqueEmail('earnB');
@@ -122,7 +131,7 @@ test.describe('Song Slots', () => {
 		await createParty(page, { creatorEmail: uniqueEmail('noslot-host') });
 		const email = uniqueEmail('noslot');
 		const path = await sendInviteAndGetPath(page, request, 'NoSlot', email);
-		await acceptInvite(page, path, 'NoSlot');
+		await acceptInvite(page, path, email, 'NoSlot');
 
 		// At 1/1 — the add song form should not be visible (no slots left)
 		await expect(page.locator('text=Add a Song')).not.toBeVisible();
@@ -144,7 +153,7 @@ test.describe('Creator Song Management', () => {
 		const email = uniqueEmail('rm-guest');
 		const path = await sendInviteAndGetPath(page, request, 'Guest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, 'Guest');
+		await acceptInvite(page2, path, email, 'Guest');
 		await page2.close();
 
 		// Reload creator page — should see the remove button
@@ -158,7 +167,7 @@ test.describe('Creator Song Management', () => {
 		const email = uniqueEmail('del-guest');
 		const path = await sendInviteAndGetPath(page, request, 'Guest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, 'Guest');
+		await acceptInvite(page2, path, email, 'Guest');
 		await page2.close();
 
 		await page.reload();
@@ -182,11 +191,11 @@ test.describe('Creator Song Management', () => {
 		const path2 = await sendInviteAndGetPath(page, request, 'G2', email2);
 
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path1, 'G1');
+		await acceptInvite(page2, path1, email1, 'G1');
 		await page2.close();
 
 		const page3 = await page.context().newPage();
-		await acceptInvite(page3, path2, 'G2');
+		await acceptInvite(page3, path2, email2, 'G2');
 		await page3.close();
 
 		await page.reload();
@@ -239,6 +248,7 @@ test.describe('Duplicate Song Rejection', () => {
 
 		const page2 = await page.context().newPage();
 		await page2.goto(path1);
+		await verifyEmail(page2, email1);
 		await page2.locator('[data-testid="name-input"]').fill('First');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page2.evaluate(() => {
@@ -255,6 +265,7 @@ test.describe('Duplicate Song Rejection', () => {
 
 		const page3 = await page.context().newPage();
 		await page3.goto(path2);
+		await verifyEmail(page3, email2);
 		await page3.locator('[data-testid="name-input"]').fill('Second');
 		await page3.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page3.evaluate(() => {

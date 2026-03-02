@@ -6,6 +6,13 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
+async function verifyEmail(page: Page, email: string): Promise<void> {
+	await page.locator('[data-testid="verify-email-input"]').waitFor();
+	await page.locator('[data-testid="verify-email-input"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
+}
+
 async function createParty(
 	page: Page,
 	options: {
@@ -27,6 +34,7 @@ async function createParty(
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
+	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 
@@ -61,9 +69,8 @@ test.describe('Validation Errors', () => {
 		const data = await res.json();
 		const path = data.emails[0].metadata.magicUrl.match(/\/party\/[a-zA-Z0-9_-]+/)[0];
 
-		// Try accepting without filling in a YouTube URL (browser validation will stop it,
-		// but we can bypass by removing the required attribute)
 		await page.goto(path);
+		await verifyEmail(page, inviteeEmail);
 		await page.locator('[data-testid="name-input"]').fill('');
 		await page.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page.evaluate(() => {
@@ -92,6 +99,7 @@ test.describe('Validation Errors', () => {
 		const path = data.emails[0].metadata.magicUrl.match(/\/party\/[a-zA-Z0-9_-]+/)[0];
 
 		await page.goto(path);
+		await verifyEmail(page, inviteeEmail);
 		await page.locator('[data-testid="name-input"]').fill('YTVal');
 		// Remove required from URL field
 		await page.evaluate(() => {
@@ -119,6 +127,7 @@ test.describe('Validation Errors', () => {
 		const path = data.emails[0].metadata.magicUrl.match(/\/party\/[a-zA-Z0-9_-]+/)[0];
 
 		await page.goto(path);
+		await verifyEmail(page, inviteeEmail);
 		await page.locator('[data-testid="name-input"]').fill('BadYT');
 		await page.locator('[data-testid="youtube-url"]').fill('https://example.com/not-youtube');
 		await page.evaluate(() => {
@@ -148,6 +157,7 @@ test.describe('Validation Errors', () => {
 
 		// Accept
 		await page.goto(path);
+		await verifyEmail(page, inviteeEmail);
 		await page.locator('[data-testid="name-input"]').fill('ReAccept');
 		await page.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page.evaluate(() => {
@@ -157,7 +167,7 @@ test.describe('Validation Errors', () => {
 		await page.locator('[data-testid="accept-btn"]').click();
 		await page.waitForSelector('text=Welcome');
 
-		// Revisit — should show dashboard, not accept form
+		// Revisit — session cookie has verified flag, so gate is skipped
 		await page.goto(path);
 		await expect(page.locator('text=Welcome, ReAccept!')).toBeVisible();
 		// Accept button should NOT be visible
@@ -178,11 +188,11 @@ test.describe('Security', () => {
 		const res = await request.get(`/api/emails?to=${encodeURIComponent(inviteeEmail)}&type=invite`);
 		const data = await res.json();
 		const path = data.emails[0].metadata.magicUrl.match(/\/party\/[a-zA-Z0-9_-]+/)[0];
-		const token = path.split('/party/')[1];
 
 		// Accept the invite
 		const page2 = await page.context().newPage();
 		await page2.goto(path);
+		await verifyEmail(page2, inviteeEmail);
 		await page2.locator('[data-testid="name-input"]').fill('Guest');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page2.evaluate(() => {
@@ -212,6 +222,7 @@ test.describe('Security', () => {
 
 		const page2 = await page.context().newPage();
 		await page2.goto(path);
+		await verifyEmail(page2, inviteeEmail);
 		await page2.locator('[data-testid="name-input"]').fill('Guest');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=9bZkp7q19f0');
 		await page2.evaluate(() => {
@@ -266,6 +277,7 @@ test.describe('Security', () => {
 
 		const page2 = await page.context().newPage();
 		await page2.goto(path);
+		await verifyEmail(page2, email1);
 		await page2.locator('[data-testid="name-input"]').fill('Hidden');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=kJQP7kiw5Fk');
 		await page2.evaluate(() => {

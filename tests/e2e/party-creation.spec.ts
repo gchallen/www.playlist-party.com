@@ -6,6 +6,13 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
+async function verifyEmail(page: Page, email: string): Promise<void> {
+	await page.locator('[data-testid="verify-email-input"]').waitFor();
+	await page.locator('[data-testid="verify-email-input"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
+}
+
 async function createParty(
 	page: Page,
 	options: {
@@ -44,6 +51,7 @@ async function createParty(
 
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
+	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 

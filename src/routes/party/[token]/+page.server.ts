@@ -15,11 +15,19 @@ function isCreator(attendee: { depth: number; invitedBy: number | null }): boole
 	return attendee.depth === 0 && attendee.invitedBy === null;
 }
 
+function maskEmail(email: string): string {
+	const [local, domain] = email.split('@');
+	const maskedLocal = local[0] + '***' + (local.length > 1 ? local[local.length - 1] : '');
+	const domainParts = domain.split('.');
+	const maskedDomain = domainParts[0][0] + '***' + '.' + domainParts.slice(1).join('.');
+	return maskedLocal + '@' + maskedDomain;
+}
+
 function toSongInfo(s: { id: number; addedBy: number; durationSeconds: number; addedAt: string }): SongInfo {
 	return { id: s.id, addedBy: s.addedBy, durationSeconds: s.durationSeconds, addedAt: s.addedAt };
 }
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const db = await getDb(platform);
 
 	const attendee = await db.query.attendees.findFirst({
@@ -38,6 +46,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		error(404, 'Party not found');
 	}
 
+	const verified = cookies.get(`pv_${params.token}`) === '1';
 	const creator = isCreator(attendee);
 	const isPending = !attendee.acceptedAt;
 
@@ -120,6 +129,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	// Base return data
 	const result: Record<string, unknown> = {
+		verified,
+		maskedEmail: maskEmail(attendee.email),
 		party: {
 			name: party.name,
 			description: party.description,
@@ -183,6 +194,32 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 };
 
 export const actions = {
+	verify: async ({ params, request, platform, cookies }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const email = data.get('email')?.toString()?.trim();
+		if (!email) return fail(400, { verifyError: 'Email is required' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { verifyError: 'Not found' });
+
+		if (email.toLowerCase() !== attendee.email.toLowerCase()) {
+			return fail(400, { verifyError: 'Email does not match this invite' });
+		}
+
+		cookies.set(`pv_${params.token}`, '1', {
+			path: `/party/${params.token}`,
+			httpOnly: true,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 30 // 30 days
+		});
+
+		return { verified: true };
+	},
+
 	accept: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();

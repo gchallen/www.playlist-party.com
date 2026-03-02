@@ -181,6 +181,36 @@
 			description={data.isPending ? data.party.description : undefined}
 		/>
 
+		{#if !data.verified}
+			<!-- ─── EMAIL VERIFICATION GATE ─── -->
+			<div class="mt-8 glass rounded-2xl p-6 md:p-8" data-testid="verify-gate">
+				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">Confirm Your Identity</h2>
+				<p class="text-text-secondary mb-6 font-heading text-sm">
+					Enter the email address for <span class="text-neon-cyan">{data.maskedEmail}</span> to continue.
+				</p>
+
+				{#if form?.verifyError}
+					<div class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+						{form.verifyError}
+					</div>
+				{/if}
+
+				<form method="POST" action="?/verify" use:enhance class="space-y-4">
+					<div>
+						<label for="verify-email" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Your Email</label>
+						<input type="email" id="verify-email" name="email" required
+							data-testid="verify-email-input"
+							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
+							placeholder="you@email.com" />
+					</div>
+					<button type="submit" data-testid="verify-email-btn"
+						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
+						Continue
+					</button>
+				</form>
+			</div>
+		{:else}
+
 		<!-- ─── PENDING INVITEE MODE ─── -->
 		{#if data.isPending}
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8">
@@ -525,6 +555,7 @@
 					</form>
 				</section>
 			{/if}
+		{/if}
 		{/if}
 	</div>
 </div>

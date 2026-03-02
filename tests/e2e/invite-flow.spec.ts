@@ -19,6 +19,13 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
+async function verifyEmail(page: Page, email: string): Promise<void> {
+	await page.locator('[data-testid="verify-email-input"]').waitFor();
+	await page.locator('[data-testid="verify-email-input"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
+}
+
 async function createParty(
 	page: Page,
 	options: {
@@ -48,6 +55,7 @@ async function createParty(
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
+	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 
@@ -74,8 +82,9 @@ async function sendInviteAndGetPath(
 	return getInvitePathFromEmail(request, inviteeEmail);
 }
 
-async function acceptInvite(page: Page, path: string, name?: string): Promise<void> {
+async function acceptInvite(page: Page, path: string, email: string, name?: string): Promise<void> {
 	await page.goto(path);
+	await verifyEmail(page, email);
 	if (name) {
 		await page.locator('[data-testid="name-input"]').fill(name);
 	}
@@ -122,6 +131,7 @@ test.describe('Invite and Accept', () => {
 		const path = await sendInviteAndGetPath(page, request, 'Bob', inviteeEmail);
 
 		await page.goto(path);
+		await verifyEmail(page, inviteeEmail);
 		await expect(page.locator('text=You\'re Invited!')).toBeVisible();
 		await expect(page.locator('[data-testid="name-input"]')).toHaveValue('Bob');
 	});
@@ -130,7 +140,7 @@ test.describe('Invite and Accept', () => {
 		await createParty(page, { creatorEmail: uniqueEmail('accept-host') });
 		const inviteeEmail = uniqueEmail('accept');
 		const path = await sendInviteAndGetPath(page, request, 'Charlie', inviteeEmail);
-		await acceptInvite(page, path, 'Charlie');
+		await acceptInvite(page, path, inviteeEmail, 'Charlie');
 
 		await expect(page.locator('text=Welcome, Charlie!')).toBeVisible();
 		await expect(page.locator('[data-testid="song-slots"]')).toBeVisible();
@@ -140,9 +150,9 @@ test.describe('Invite and Accept', () => {
 		await createParty(page, { creatorEmail: uniqueEmail('dbl-host') });
 		const inviteeEmail = uniqueEmail('dbl');
 		const path = await sendInviteAndGetPath(page, request, 'Dave', inviteeEmail);
-		await acceptInvite(page, path, 'Dave');
+		await acceptInvite(page, path, inviteeEmail, 'Dave');
 
-		// Revisit
+		// Revisit — session cookie has verified flag, so gate is skipped
 		await page.goto(path);
 		await expect(page.locator('text=Welcome, Dave!')).toBeVisible();
 	});
@@ -177,7 +187,7 @@ test.describe('Invite and Accept', () => {
 
 		// Accept first invite
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path1, 'Accepted');
+		await acceptInvite(page2, path1, email1, 'Accepted');
 		await page2.close();
 
 		// Reload creator page
@@ -193,12 +203,12 @@ test.describe('Invite Chains', () => {
 
 		const emailA = uniqueEmail('chainA');
 		const pathA = await sendInviteAndGetPath(page, request, 'Alice', emailA);
-		await acceptInvite(page, pathA, 'Alice');
+		await acceptInvite(page, pathA, emailA, 'Alice');
 
 		// Alice sends invite to Bob
 		const emailB = uniqueEmail('chainB');
 		const pathB = await sendInviteAndGetPath(page, request, 'Bob', emailB);
-		await acceptInvite(page, pathB, 'Bob');
+		await acceptInvite(page, pathB, emailB, 'Bob');
 
 		await expect(page.locator('text=Welcome, Bob!')).toBeVisible();
 	});
@@ -211,7 +221,7 @@ test.describe('Invite Chains', () => {
 
 		const emailA = uniqueEmail('depthA');
 		const pathA = await sendInviteAndGetPath(page, request, 'Alice', emailA);
-		await acceptInvite(page, pathA, 'Alice');
+		await acceptInvite(page, pathA, emailA, 'Alice');
 
 		// Alice (depth 1) tries to invite — should fail since maxDepth is 1
 		await page.locator('[data-testid="invite-name"]').fill('Bob');

@@ -58,6 +58,9 @@ ${partyDetails(data.partyDate, data.partyTime, data.partyLocation)}
 <div style="text-align:center;margin-top:20px;">
 ${ctaButton(data.magicUrl, 'Pick Your Song')}
 </div>
+<p style="font-size:12px;color:#7a6a9d;margin-top:16px;">
+This link is just for you — please don't forward it. Want to bring a friend? Use the invite form after you accept!
+</p>
 `);
 }
 
@@ -81,5 +84,8 @@ Bookmark this link — it's your key to the party:
 <div style="text-align:center;margin-top:20px;">
 ${ctaButton(data.magicUrl, 'Go to Your Party')}
 </div>
+<p style="font-size:12px;color:#7a6a9d;margin-top:16px;">
+This link is personal to you — don't share it.
+</p>
 `);
 }
