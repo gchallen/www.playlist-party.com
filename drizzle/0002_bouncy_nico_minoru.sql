@@ -1,0 +1,1 @@
+ALTER TABLE `parties` ADD `location_url` text;

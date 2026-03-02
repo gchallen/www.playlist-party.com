@@ -8,6 +8,7 @@ export const parties = sqliteTable('parties', {
 	time: text('time'),
 	endTime: text('end_time'),
 	location: text('location'),
+	locationUrl: text('location_url'),
 	createdBy: text('created_by').notNull(),
 	creatorEmail: text('creator_email').notNull(),
 	maxDepth: integer('max_depth'),
