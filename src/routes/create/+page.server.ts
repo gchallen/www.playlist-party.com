@@ -65,18 +65,35 @@ async function resolveLocationUrl(rawUrl: string): Promise<{ location: string | 
 	return { location: placeName, locationUrl: finalUrl };
 }
 
-export const load: PageServerLoad = async ({ url, platform }) => {
-	const token = url.searchParams.get('token');
-	if (!token) {
+const VERIFY_COOKIE = 'create_verify_token';
+
+export const load: PageServerLoad = async ({ url, platform, cookies }) => {
+	const tokenFromUrl = url.searchParams.get('token');
+
+	if (tokenFromUrl) {
+		const result = verifySignedToken(tokenFromUrl, platform);
+		if (result) {
+			cookies.set(VERIFY_COOKIE, tokenFromUrl, {
+				path: '/create',
+				httpOnly: true,
+				sameSite: 'lax'
+			});
+			redirect(303, '/create');
+		}
 		return { verifiedEmail: null, verificationToken: null };
 	}
 
-	const result = verifySignedToken(token, platform);
-	if (!result) {
-		return { verifiedEmail: null, verificationToken: null };
+	const tokenFromCookie = cookies.get(VERIFY_COOKIE);
+	if (tokenFromCookie) {
+		const result = verifySignedToken(tokenFromCookie, platform);
+		if (result) {
+			return { verifiedEmail: result.email, verificationToken: tokenFromCookie };
+		}
+		// Token expired or invalid — clear stale cookie
+		cookies.delete(VERIFY_COOKIE, { path: '/create' });
 	}
 
-	return { verifiedEmail: result.email, verificationToken: token };
+	return { verifiedEmail: null, verificationToken: null };
 };
 
 export const actions = {
@@ -199,6 +216,7 @@ export const actions = {
 		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, platform);
 		await recordEmailSend(db, creatorEmail, 'creator_welcome');
 
+		cookies.delete(VERIFY_COOKIE, { path: '/create' });
 		cookies.set(`pv_${inviteToken}`, '1', {
 			path: `/party/${inviteToken}`,
 			httpOnly: true,
