@@ -21,7 +21,7 @@
 	let loopEnabled = $state(true);
 	let volume = $state(1);
 	let muted = $state(false);
-	let ytPlayer: YouTubePlayer;
+	let ytPlayer = $state<YouTubePlayer>();
 
 	// ─── Drag-and-drop state ───
 	let songOverride = $state<typeof data.songs | null>(null);
@@ -676,14 +676,15 @@
 								isHost={song.isHost}
 								isPlaying={currentPlayingIndex === i && isActuallyPlaying}
 								onclick={() => playSong(i)}
-								showControls={data.isCreator}
+								showControls={data.isCreator || song.isMine}
+								showRemove={data.isCreator}
 								songId={song.id}
 								canMoveUp={i > 0}
 								canMoveDown={i < localSongs.length - 1}
 								token={data.attendee.inviteToken}
 								comment={song.comment}
 								startTime={songStartTimes[i]}
-								isDraggable={data.isCreator}
+								isDraggable={data.isCreator || song.isMine}
 								ondragstart={(e) => handleDragStart(i, song.id, e)}
 								ondragover={(e) => handleDragOver(i, e)}
 								ondragend={handleDragEnd}

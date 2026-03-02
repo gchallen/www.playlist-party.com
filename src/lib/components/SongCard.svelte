@@ -13,6 +13,7 @@
 		isPlaying = false,
 		position,
 		showControls = false,
+		showRemove = false,
 		songId,
 		canMoveUp = false,
 		canMoveDown = false,
@@ -35,6 +36,7 @@
 		isPlaying?: boolean;
 		position: number;
 		showControls?: boolean;
+		showRemove?: boolean;
 		songId?: number;
 		canMoveUp?: boolean;
 		canMoveDown?: boolean;
@@ -133,42 +135,46 @@
 			</div>
 		{/if}
 
-		{#if showControls && songId !== undefined && token}
+		{#if (showControls || showRemove) && songId !== undefined && token}
 			<div class="flex items-center gap-1 flex-shrink-0">
-				{#if isDraggable}
-					<span data-testid="drag-handle" class="p-1.5 cursor-grab text-text-muted hover:text-neon-cyan transition-colors">
-						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-							<circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
-							<circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-							<circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
-						</svg>
-					</span>
-				{:else}
-				{#if canMoveUp}
-					<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
+				{#if showControls}
+					{#if isDraggable}
+						<span data-testid="drag-handle" class="p-1.5 cursor-grab text-text-muted hover:text-neon-cyan transition-colors">
+							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+								<circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+								<circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+								<circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+							</svg>
+						</span>
+					{:else}
+						{#if canMoveUp}
+							<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
+								<input type="hidden" name="songId" value={songId} />
+								<input type="hidden" name="direction" value="up" />
+								<button type="submit" data-testid="move-up-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move up">
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+								</button>
+							</form>
+						{/if}
+						{#if canMoveDown}
+							<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
+								<input type="hidden" name="songId" value={songId} />
+								<input type="hidden" name="direction" value="down" />
+								<button type="submit" data-testid="move-down-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move down">
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+								</button>
+							</form>
+						{/if}
+					{/if}
+				{/if}
+				{#if showRemove}
+					<form method="POST" action="/party/{token}?/removeSong" use:enhance>
 						<input type="hidden" name="songId" value={songId} />
-						<input type="hidden" name="direction" value="up" />
-						<button type="submit" data-testid="move-up-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move up">
-							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+						<button type="submit" data-testid="remove-song-btn" class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors" title="Remove song">
+							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
 						</button>
 					</form>
 				{/if}
-				{#if canMoveDown}
-					<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
-						<input type="hidden" name="songId" value={songId} />
-						<input type="hidden" name="direction" value="down" />
-						<button type="submit" data-testid="move-down-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move down">
-							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-						</button>
-					</form>
-				{/if}
-				{/if}
-				<form method="POST" action="/party/{token}?/removeSong" use:enhance>
-					<input type="hidden" name="songId" value={songId} />
-					<button type="submit" data-testid="remove-song-btn" class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors" title="Remove song">
-						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-					</button>
-				</form>
 			</div>
 		{/if}
 	</div>

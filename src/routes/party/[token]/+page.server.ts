@@ -584,7 +584,6 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can reorder songs' });
 
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, attendee.partyId),
@@ -593,6 +592,11 @@ export const actions = {
 
 		const idx = allSongs.findIndex((s) => s.id === songId);
 		if (idx === -1) return fail(404, { error: 'Song not found' });
+
+		// Song must belong to this attendee, or attendee must be the creator
+		if (!isCreator(attendee) && allSongs[idx].addedBy !== attendee.id) {
+			return fail(403, { error: 'You can only reorder your own songs' });
+		}
 		if (newPosition >= allSongs.length) return fail(400, { error: 'Invalid position' });
 
 		// Splice out and insert at new position
@@ -623,7 +627,6 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can reorder songs' });
 
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, attendee.partyId),
@@ -632,6 +635,11 @@ export const actions = {
 
 		const idx = allSongs.findIndex((s) => s.id === songId);
 		if (idx === -1) return fail(404, { error: 'Song not found' });
+
+		// Song must belong to this attendee, or attendee must be the creator
+		if (!isCreator(attendee) && allSongs[idx].addedBy !== attendee.id) {
+			return fail(403, { error: 'You can only reorder your own songs' });
+		}
 
 		const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
 		if (swapIdx < 0 || swapIdx >= allSongs.length) return fail(400, { error: 'Cannot move further' });

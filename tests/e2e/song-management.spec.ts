@@ -204,7 +204,7 @@ test.describe('Creator Song Management', () => {
 		expect(handleCount).toBeGreaterThanOrEqual(2);
 	});
 
-	test('non-creator does not see drag handles', async ({ page, request }) => {
+	test('non-creator sees drag handles only on own songs', async ({ page, request }) => {
 		await createParty(page, { creatorEmail: uniqueEmail('nodrag-host') });
 
 		const email1 = uniqueEmail('nodrag1');
@@ -219,8 +219,10 @@ test.describe('Creator Song Management', () => {
 		const page3 = await page.context().newPage();
 		await acceptInvite(page3, path2, email2, 'G2');
 
-		// Non-creator should not see drag handles
-		await expect(page3.locator('[data-testid="drag-handle"]')).toHaveCount(0);
+		// Non-creator should see drag handle only on their own song (1 of 2)
+		await expect(page3.locator('[data-testid="drag-handle"]')).toHaveCount(1);
+		// Non-creator should not see remove buttons
+		await expect(page3.locator('[data-testid="remove-song-btn"]')).toHaveCount(0);
 		await page3.close();
 	});
 
