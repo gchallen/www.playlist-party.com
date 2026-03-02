@@ -138,6 +138,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			time: party.time,
 			endTime: party.endTime,
 			location: party.location,
+			locationUrl: party.locationUrl,
 			maxAttendees: party.maxAttendees,
 			maxDepth: party.maxDepth,
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
@@ -524,7 +525,8 @@ export const actions = {
 			party.time,
 			party.location,
 			magicUrl,
-			platform
+			platform,
+			party.locationUrl
 		);
 
 		return { inviteSent: name, inviteUrl: magicUrl };
@@ -562,6 +564,45 @@ export const actions = {
 		}
 
 		return { songRemoved: true };
+	},
+
+	moveSong: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const songId = parseInt(data.get('songId')?.toString() || '', 10);
+		const newPosition = parseInt(data.get('newPosition')?.toString() || '', 10);
+		if (isNaN(songId) || isNaN(newPosition) || newPosition < 0) {
+			return fail(400, { error: 'Invalid request' });
+		}
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can reorder songs' });
+
+		const allSongs = await db.query.songs.findMany({
+			where: eq(songs.partyId, attendee.partyId),
+			orderBy: songs.position
+		});
+
+		const idx = allSongs.findIndex((s) => s.id === songId);
+		if (idx === -1) return fail(404, { error: 'Song not found' });
+		if (newPosition >= allSongs.length) return fail(400, { error: 'Invalid position' });
+
+		// Splice out and insert at new position
+		const [moved] = allSongs.splice(idx, 1);
+		allSongs.splice(newPosition, 0, moved);
+
+		// Update all positions
+		for (let i = 0; i < allSongs.length; i++) {
+			if (allSongs[i].position !== i) {
+				await db.update(songs).set({ position: i }).where(eq(songs.id, allSongs[i].id));
+			}
+		}
+
+		return { reordered: true };
 	},
 
 	reorderSong: async ({ params, request, platform }) => {

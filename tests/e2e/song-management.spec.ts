@@ -57,7 +57,6 @@ async function createParty(
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
-	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 
@@ -181,7 +180,7 @@ test.describe('Creator Song Management', () => {
 		expect(songCountAfter).toBe(songCountBefore - 1);
 	});
 
-	test('creator sees reorder buttons', async ({ page, request }) => {
+	test('creator sees drag handles on songs', async ({ page, request }) => {
 		await createParty(page, { creatorEmail: uniqueEmail('reord-host') });
 
 		// Add two guests to have multiple songs
@@ -199,9 +198,74 @@ test.describe('Creator Song Management', () => {
 		await page3.close();
 
 		await page.reload();
-		// Should see move down on first, move up on second
-		await expect(page.locator('[data-testid="move-down-btn"]').first()).toBeVisible();
-		await expect(page.locator('[data-testid="move-up-btn"]').first()).toBeVisible();
+		// Creator should see drag handles for reordering
+		await expect(page.locator('[data-testid="drag-handle"]').first()).toBeVisible();
+		const handleCount = await page.locator('[data-testid="drag-handle"]').count();
+		expect(handleCount).toBeGreaterThanOrEqual(2);
+	});
+
+	test('non-creator does not see drag handles', async ({ page, request }) => {
+		await createParty(page, { creatorEmail: uniqueEmail('nodrag-host') });
+
+		const email1 = uniqueEmail('nodrag1');
+		const path1 = await sendInviteAndGetPath(page, request, 'G1', email1);
+		const email2 = uniqueEmail('nodrag2');
+		const path2 = await sendInviteAndGetPath(page, request, 'G2', email2);
+
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path1, email1, 'G1');
+		await page2.close();
+
+		const page3 = await page.context().newPage();
+		await acceptInvite(page3, path2, email2, 'G2');
+
+		// Non-creator should not see drag handles
+		await expect(page3.locator('[data-testid="drag-handle"]')).toHaveCount(0);
+		await page3.close();
+	});
+
+	test('moveSong action reorders songs', async ({ page, request }) => {
+		await createParty(page, { creatorEmail: uniqueEmail('move-host') });
+
+		// Add two guests
+		const email1 = uniqueEmail('move1');
+		const path1 = await sendInviteAndGetPath(page, request, 'First', email1);
+		const email2 = uniqueEmail('move2');
+		const path2 = await sendInviteAndGetPath(page, request, 'Second', email2);
+
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path1, email1, 'First');
+		await page2.close();
+
+		const page3 = await page.context().newPage();
+		await acceptInvite(page3, path2, email2, 'Second');
+		await page3.close();
+
+		// Reload creator page — should see two songs
+		await page.reload();
+		const cards = page.locator('.song-card');
+		await expect(cards).toHaveCount(2);
+
+		// Get first song's title
+		const firstTitle = await cards.nth(0).locator('p').first().textContent();
+		const secondTitle = await cards.nth(1).locator('p').first().textContent();
+		expect(firstTitle).toBeTruthy();
+		expect(secondTitle).toBeTruthy();
+		expect(firstTitle).not.toBe(secondTitle);
+
+		// Use the moveSong action via page.evaluate (includes session cookies)
+		const songId = await cards.nth(0).locator('form input[name="songId"]').first().inputValue();
+		await page.evaluate(async (sid) => {
+			const fd = new FormData();
+			fd.set('songId', sid);
+			fd.set('newPosition', '1');
+			await fetch('?/moveSong', { method: 'POST', body: fd });
+		}, songId);
+
+		// Reload and verify order is swapped
+		await page.reload();
+		const newFirstTitle = await page.locator('.song-card').nth(0).locator('p').first().textContent();
+		expect(newFirstTitle).toBe(secondTitle);
 	});
 });
 
@@ -235,6 +299,55 @@ test.describe('Creator Settings', () => {
 		await page.reload();
 		const value = await page.locator('[data-testid="max-invites-per-guest"]').inputValue();
 		expect(value).toBe('3');
+	});
+});
+
+test.describe('Song Timeline', () => {
+	test('songs display estimated start times when party has a start time', async ({ page, request }) => {
+		// Create party with a start time set
+		const creatorEmail = uniqueEmail('timeline-host');
+		await page.goto('/');
+		await page.getByRole('link', { name: 'Start a Party' }).click();
+		await page.locator('#name').fill('Timeline Party');
+		await page.locator('#date').fill('2026-07-04');
+		await page.locator('#createdBy').fill('Timeline Host');
+		await page.locator('[data-testid="creator-email"]').fill(creatorEmail);
+		await page.locator('#startTimeInput').fill('8pm');
+		await page.getByRole('button', { name: 'Create Party' }).click();
+		await page.waitForURL(/\/party\//);
+
+		const email = uniqueEmail('timeline-guest');
+		const path = await sendInviteAndGetPath(page, request, 'TimeGuest', email);
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, email, 'TimeGuest');
+		await page2.close();
+
+		// Reload creator page — song card should have a start time displayed
+		await page.reload();
+		const songCards = page.locator('.song-card');
+		await expect(songCards).toHaveCount(1);
+
+		// The start time appears as text containing AM or PM (e.g., "8 PM")
+		const cardText = await songCards.first().textContent();
+		expect(cardText).toMatch(/\d{1,2}(:\d{2})?\s*(AM|PM)/);
+	});
+
+	test('songs do not display start times when party has no start time', async ({ page, request }) => {
+		await createParty(page, { creatorEmail: uniqueEmail('notime-host') });
+
+		const email = uniqueEmail('notime-guest');
+		const path = await sendInviteAndGetPath(page, request, 'NoTimeGuest', email);
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, email, 'NoTimeGuest');
+		await page2.close();
+
+		await page.reload();
+		const songCards = page.locator('.song-card');
+		await expect(songCards).toHaveCount(1);
+
+		// No AM/PM text should appear in the card
+		const cardText = await songCards.first().textContent();
+		expect(cardText).not.toMatch(/\d{1,2}(:\d{2})?\s*(AM|PM)/);
 	});
 });
 

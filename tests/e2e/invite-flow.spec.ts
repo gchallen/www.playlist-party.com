@@ -55,7 +55,6 @@ async function createParty(
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
-	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 

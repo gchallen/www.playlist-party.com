@@ -3,19 +3,77 @@ import { getDb } from '$lib/server/db';
 import { parties, attendees } from '$lib/server/db/schema';
 import { generateInviteToken } from '$lib/server/tokens';
 import { sendCreatorWelcomeEmail } from '$lib/server/email';
+import { parseFlexibleTime } from '$lib/time';
 import type { Actions } from './$types';
 
+const MAPS_DOMAINS = ['google.com', 'google.co', 'goo.gl', 'maps.app.goo.gl'];
+
+function isGoogleMapsUrl(urlStr: string): boolean {
+	try {
+		const url = new URL(urlStr);
+		const host = url.hostname.toLowerCase();
+		return MAPS_DOMAINS.some((d) => host === d || host.endsWith('.' + d));
+	} catch {
+		return false;
+	}
+}
+
+function extractPlaceName(mapsUrl: string): string | null {
+	try {
+		const url = new URL(mapsUrl);
+
+		// /place/Empire+State+Building/@... → "Empire State Building"
+		const placeMatch = url.pathname.match(/\/place\/([^/@]+)/);
+		if (placeMatch) {
+			return decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+		}
+
+		// ?q=Central+Park
+		const q = url.searchParams.get('q');
+		if (q) {
+			// Skip if it looks like bare coordinates
+			if (/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(q.trim())) return null;
+			return decodeURIComponent(q.replace(/\+/g, ' '));
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+async function resolveLocationUrl(rawUrl: string): Promise<{ location: string | null; locationUrl: string }> {
+	let finalUrl = rawUrl;
+
+	// Follow redirects for shortened URLs
+	try {
+		const url = new URL(rawUrl);
+		const host = url.hostname.toLowerCase();
+		if (host === 'goo.gl' || host === 'maps.app.goo.gl') {
+			const res = await fetch(rawUrl, { redirect: 'follow' });
+			if (res.url && res.url !== rawUrl) {
+				finalUrl = res.url;
+			}
+		}
+	} catch {
+		// Keep original URL on fetch failure
+	}
+
+	const placeName = extractPlaceName(finalUrl);
+	return { location: placeName, locationUrl: finalUrl };
+}
+
 export const actions = {
-	default: async ({ request, platform, url }) => {
+	default: async ({ request, platform, url, cookies }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
 
 		const name = data.get('name')?.toString()?.trim();
 		const description = data.get('description')?.toString()?.trim() || null;
 		const date = data.get('date')?.toString()?.trim();
-		const time = data.get('time')?.toString()?.trim() || null;
-		const endTime = data.get('endTime')?.toString()?.trim() || null;
-		const location = data.get('location')?.toString()?.trim() || null;
+		const rawTime = data.get('time')?.toString()?.trim() || null;
+		const rawDurationHours = data.get('durationHours')?.toString()?.trim() || null;
+		const rawLocationUrl = data.get('locationUrl')?.toString()?.trim() || null;
 		const createdBy = data.get('createdBy')?.toString()?.trim();
 		const creatorEmail = data.get('creatorEmail')?.toString()?.trim();
 		const maxAttendees = parseInt(data.get('maxAttendees')?.toString() || '50', 10);
@@ -31,6 +89,35 @@ export const actions = {
 		if (isNaN(maxAttendees) || maxAttendees < 2)
 			return fail(400, { error: 'Max attendees must be at least 2' });
 
+		// Parse start time (safety net — client already sends HH:MM)
+		const time = rawTime ? (parseFlexibleTime(rawTime) ?? null) : null;
+		if (rawTime && !time) return fail(400, { error: 'Invalid start time' });
+
+		// Compute end time from start + duration
+		let endTime: string | null = null;
+		if (time && rawDurationHours) {
+			const hours = parseFloat(rawDurationHours);
+			if (isNaN(hours) || hours <= 0) return fail(400, { error: 'Invalid duration' });
+			const [sh, sm] = time.split(':').map(Number);
+			const totalMinutes = sh * 60 + sm + Math.round(hours * 60);
+			const eh = Math.floor(totalMinutes / 60) % 24;
+			const em = totalMinutes % 60;
+			endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+		}
+
+		// Resolve location URL
+		let location: string | null = null;
+		let locationUrl: string | null = null;
+
+		if (rawLocationUrl) {
+			if (!isGoogleMapsUrl(rawLocationUrl)) {
+				return fail(400, { error: 'Location must be a Google Maps link' });
+			}
+			const resolved = await resolveLocationUrl(rawLocationUrl);
+			location = resolved.location;
+			locationUrl = resolved.locationUrl;
+		}
+
 		const inviteToken = generateInviteToken();
 
 		const [party] = await db
@@ -42,6 +129,7 @@ export const actions = {
 				time,
 				endTime,
 				location,
+				locationUrl,
 				createdBy,
 				creatorEmail,
 				maxDepth,
@@ -61,6 +149,13 @@ export const actions = {
 
 		const magicUrl = `${url.origin}/party/${inviteToken}`;
 		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, platform);
+
+		cookies.set(`pv_${inviteToken}`, '1', {
+			path: `/party/${inviteToken}`,
+			httpOnly: true,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 * 30
+		});
 
 		redirect(303, `/party/${inviteToken}`);
 	}

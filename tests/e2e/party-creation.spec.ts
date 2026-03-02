@@ -21,7 +21,7 @@ async function createParty(
 		creatorEmail?: string;
 		date?: string;
 		startTime?: string;
-		endTime?: string;
+		durationHours?: number;
 		maxAttendees?: number;
 		maxDepth?: number;
 		maxInvitesPerGuest?: number;
@@ -34,8 +34,8 @@ async function createParty(
 
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill(options.date || '2026-07-04');
-	if (options.startTime) await page.locator('#time').fill(options.startTime);
-	if (options.endTime) await page.locator('[data-testid="end-time"]').fill(options.endTime);
+	if (options.startTime) await page.locator('#startTimeInput').fill(options.startTime);
+	if (options.durationHours !== undefined) await page.locator('[data-testid="duration-hours"]').fill(String(options.durationHours));
 	await page.locator('#createdBy').fill(options.createdBy || 'Test Host');
 	await page.locator('[data-testid="creator-email"]').fill(creatorEmail);
 
@@ -51,7 +51,6 @@ async function createParty(
 
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
-	await verifyEmail(page, creatorEmail);
 	return page.url();
 }
 
@@ -92,8 +91,8 @@ test.describe('Party Creation', () => {
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Start a Party' }).click();
 
-		await page.locator('#time').fill('18:00');
-		await page.locator('[data-testid="end-time"]').fill('21:00');
+		await page.locator('#startTimeInput').fill('6pm');
+		await page.locator('[data-testid="duration-hours"]').fill('3');
 		await page.locator('[data-testid="genre-select"]').selectOption('jazz');
 		await expect(page.locator('[data-testid="guest-capacity-info"]')).toBeVisible();
 	});

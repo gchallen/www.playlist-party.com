@@ -1,141 +1,137 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 
 	let {
 		videoId = '',
 		autoplay = false,
 		onended,
 		onready,
-		onerror
+		onerror,
+		onplaystatechange,
+		onprogress
 	}: {
 		videoId?: string;
 		autoplay?: boolean;
 		onended?: () => void;
 		onready?: () => void;
 		onerror?: (code: number) => void;
+		onplaystatechange?: (playing: boolean) => void;
+		onprogress?: (percent: number) => void;
 	} = $props();
 
-	let expanded = $state(false);
 	let playerReady = $state(false);
 	let player: any = null;
-	const containerId = `yt-${Math.random().toString(36).slice(2, 9)}`;
+	let playerCreated = false;
+	let lastLoadedVideoId = '';
+	let progressInterval: ReturnType<typeof setInterval> | null = null;
+	let containerEl: HTMLDivElement;
 
-	$effect(() => {
-		if (typeof window === 'undefined') return;
+	function startProgressTracking() {
+		stopProgressTracking();
+		progressInterval = setInterval(() => {
+			if (!player || !playerReady) return;
+			try {
+				const current = player.getCurrentTime();
+				const duration = player.getDuration();
+				if (duration > 0) onprogress?.((current / duration) * 100);
+			} catch {}
+		}, 500);
+	}
 
-		const initialVideoId = untrack(() => videoId);
-		const shouldAutoplay = untrack(() => autoplay);
+	function stopProgressTracking() {
+		if (progressInterval) {
+			clearInterval(progressInterval);
+			progressInterval = null;
+		}
+	}
 
-		const initPlayer = () => {
-			const el = document.getElementById(containerId);
-			if (!el) return;
+	async function createPlayer(initialVideoId: string) {
+		if (playerCreated) return;
+		playerCreated = true;
+		lastLoadedVideoId = initialVideoId;
 
-			player = new (window as any).YT.Player(containerId, {
-				width: '100%',
-				height: '100%',
-				videoId: initialVideoId || undefined,
-				playerVars: {
-					autoplay: shouldAutoplay ? 1 : 0,
-					modestbranding: 1,
-					rel: 0,
-					playsinline: 1
+		const YT = await loadYouTubeIframeApi();
+
+		const target = document.createElement('div');
+		containerEl.appendChild(target);
+
+		player = new YT.Player(target, {
+			width: '100%',
+			height: '100%',
+			videoId: initialVideoId,
+			playerVars: {
+				autoplay: autoplay ? 1 : 0,
+				rel: 0,
+				modestbranding: 1,
+				playsinline: 1
+			},
+			events: {
+				onReady: () => {
+					playerReady = true;
+					onready?.();
 				},
-				events: {
-					onReady: () => {
-						playerReady = true;
-						onready?.();
-					},
-					onStateChange: (e: any) => {
-						if (e.data === (window as any).YT.PlayerState.ENDED) {
-							onended?.();
-						}
-					},
-					onError: (e: any) => {
-						onerror?.(e.data);
+				onStateChange: (e: any) => {
+					if (e.data === 1) {
+						onplaystatechange?.(true);
+						startProgressTracking();
+					} else if (e.data === 2) {
+						onplaystatechange?.(false);
+						stopProgressTracking();
+					} else if (e.data === 0) {
+						onplaystatechange?.(false);
+						onprogress?.(100);
+						stopProgressTracking();
+						onended?.();
 					}
+				},
+				onError: (e: any) => {
+					onerror?.(e.data);
 				}
-			});
-		};
-
-		if ((window as any).YT?.Player) {
-			initPlayer();
-		} else {
-			const existing = document.querySelector('script[src*="youtube.com/iframe_api"]');
-			if (!existing) {
-				const tag = document.createElement('script');
-				tag.src = 'https://www.youtube.com/iframe_api';
-				document.head.appendChild(tag);
 			}
-			(window as any).onYouTubeIframeAPIReady = initPlayer;
-		}
-
-		return () => {
-			if (player?.destroy) player.destroy();
-		};
-	});
+		});
+	}
 
 	$effect(() => {
-		if (!player || !playerReady || !videoId) return;
-		if (autoplay) {
+		if (!videoId) return;
+
+		if (!playerCreated) {
+			createPlayer(videoId);
+		} else if (player && playerReady && videoId !== lastLoadedVideoId) {
+			lastLoadedVideoId = videoId;
+			onprogress?.(0);
 			player.loadVideoById(videoId);
-		} else {
-			player.cueVideoById(videoId);
 		}
 	});
+
+	export function togglePlayPause() {
+		if (!player || !playerReady) return;
+		const state = player.getPlayerState();
+		if (state === 1) {
+			player.pauseVideo();
+		} else {
+			player.playVideo();
+		}
+	}
+
+	export function play() {
+		if (!player || !playerReady) return;
+		player.playVideo();
+	}
 </script>
 
-{#if videoId}
-	<div class="fixed bottom-0 left-0 right-0 z-40 transition-all duration-300">
-		<div
-			class="glass-strong mx-auto transition-all duration-300"
-			class:rounded-t-2xl={!expanded}
-			class:max-w-sm={!expanded}
-			class:mx-4={!expanded}
-			class:w-full={expanded}
-		>
-			<div class="flex items-center justify-between px-3 py-2 border-b border-neon-purple/15">
-				<span class="font-heading text-xs font-semibold text-neon-cyan tracking-wider uppercase"
-					>Now Playing</span
-				>
-				<button
-					class="p-1 rounded text-text-muted hover:text-text-primary transition-colors"
-					onclick={() => (expanded = !expanded)}
-					aria-label={expanded ? 'Collapse player' : 'Expand player'}
-				>
-					<svg
-						class="w-4 h-4 transition-transform duration-200"
-						class:rotate-180={expanded}
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M18 15l-6-6-6 6" />
-					</svg>
-				</button>
+<div class="glass rounded-2xl overflow-hidden">
+	<div class="player-container relative bg-void/50">
+		<div bind:this={containerEl} class="absolute inset-0"></div>
+		{#if !playerReady && videoId}
+			<div class="absolute inset-0 flex items-center justify-center bg-void/80">
+				<div class="w-8 h-8 border-2 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin"></div>
 			</div>
-
-			<div class="player-container relative bg-void/50" class:expanded>
-				<div id={containerId} class="absolute inset-0"></div>
-				{#if !playerReady}
-					<div class="absolute inset-0 flex items-center justify-center">
-						<div
-							class="w-8 h-8 border-2 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin"
-						></div>
-					</div>
-				{/if}
-			</div>
-		</div>
+		{/if}
 	</div>
-{/if}
+</div>
 
 <style>
 	.player-container {
 		aspect-ratio: 16 / 9;
-		max-height: 200px;
-	}
-
-	.player-container.expanded {
-		max-height: 70vh;
 	}
 </style>

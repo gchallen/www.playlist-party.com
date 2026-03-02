@@ -1,23 +1,134 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import PartyHeader from '$lib/components/PartyHeader.svelte';
 	import SongCard from '$lib/components/SongCard.svelte';
+	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
+	import PlayerControls from '$lib/components/PlayerControls.svelte';
 	import InviteTree from '$lib/components/InviteTree.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
+	import { computeSongStartTimes } from '$lib/time';
+	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 
 	let { data, form } = $props();
 
+	// ─── Playback state ───
+	let currentPlayingIndex = $state<number | null>(null);
+	let isActuallyPlaying = $state(false);
+	let playerProgress = $state(0);
+	let ytPlayer: YouTubePlayer;
+
+	// ─── Drag-and-drop state ───
+	let songOverride = $state<typeof data.songs | null>(null);
+	const localSongs = $derived(songOverride ?? data.songs);
+	let dragIdx = $state<number | null>(null);
+	let dragSongId = $state<number | null>(null);
+
+	// ─── Derived values ───
+	// If user has selected a song, show that; otherwise preload the first song
+	const currentVideoId = $derived(
+		currentPlayingIndex !== null && currentPlayingIndex < localSongs.length
+			? localSongs[currentPlayingIndex].youtubeId
+			: localSongs.length > 0
+				? localSongs[0].youtubeId
+				: ''
+	);
+	const userSelectedSong = $derived(currentPlayingIndex !== null);
+
+	const songStartTimes = $derived(
+		computeSongStartTimes(data.party.time, localSongs.map((s) => s.durationSeconds))
+	);
+
+	// ─── Playback handlers ───
+	function playSong(i: number) {
+		const wasNull = currentPlayingIndex === null;
+		const sameVideo = currentPlayingIndex === i ||
+			(wasNull && i === 0); // first track was already cued
+		currentPlayingIndex = i;
+		// If the video is already loaded (same ID), the $effect won't fire,
+		// so explicitly start playback
+		if (sameVideo) {
+			ytPlayer?.play();
+		}
+	}
+
+	const currentSong = $derived(
+		currentPlayingIndex !== null
+			? localSongs[currentPlayingIndex]
+			: localSongs.length > 0
+				? localSongs[0]
+				: null
+	);
+
+	const canPrev = $derived(currentPlayingIndex !== null && currentPlayingIndex > 0);
+	const canNext = $derived(
+		currentPlayingIndex !== null && currentPlayingIndex < localSongs.length - 1
+	);
+
+	function onPlayerEnded() {
+		if (canNext) {
+			currentPlayingIndex!++;
+		} else {
+			currentPlayingIndex = null;
+		}
+	}
+
+	function onPlayerError() {
+		if (canNext) {
+			currentPlayingIndex!++;
+		} else {
+			currentPlayingIndex = null;
+		}
+	}
+
+	function onPrev() {
+		if (canPrev) currentPlayingIndex!--;
+	}
+
+	function onNext() {
+		if (canNext) currentPlayingIndex!++;
+	}
+
+	// ─── Drag-and-drop handlers ───
+	function handleDragStart(i: number, songId: number, e: DragEvent) {
+		dragIdx = i;
+		dragSongId = songId;
+		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+	}
+
+	function handleDragOver(i: number, e: DragEvent) {
+		e.preventDefault();
+		if (dragIdx === null || dragIdx === i) return;
+		const items = [...localSongs];
+		const [moved] = items.splice(dragIdx, 1);
+		items.splice(i, 0, moved);
+		songOverride = items;
+		dragIdx = i;
+	}
+
+	async function handleDragEnd() {
+		if (dragSongId === null) return;
+		const newPos = localSongs.findIndex((s) => s.id === dragSongId);
+		const id = dragSongId;
+		dragSongId = null;
+		dragIdx = null;
+
+		const formData = new FormData();
+		formData.set('songId', String(id));
+		formData.set('newPosition', String(newPos));
+		await fetch(`?/moveSong`, { method: 'POST', body: formData });
+		songOverride = null;
+		await invalidateAll();
+	}
+
 	let youtubeUrl = $state('');
 	let durationSeconds = $state<number | null>(null);
-	let ytApiReady = $state(false);
-	let playerWrapper: HTMLDivElement;
 	let player: any = null;
 
 	// For add-song form (accepted attendees)
 	let addSongUrl = $state('');
 	let addSongDuration = $state<number | null>(null);
-	let addSongPlayerWrapper: HTMLDivElement;
 	let addSongPlayer: any = null;
 
 	const videoId = $derived(youtubeUrl ? extractYouTubeId(youtubeUrl) : null);
@@ -91,72 +202,65 @@
 		return nodeMap.get(root.id) || null;
 	});
 
-	// Load YouTube IFrame API
-	$effect(() => {
-		if (typeof window === 'undefined') return;
+	// Helper: create a hidden iframe to detect duration via YouTube embed API
+	function createDurationDetector(
+		vid: string,
+		onDuration: (seconds: number) => void
+	): { destroy: () => void } {
+		const iframe = document.createElement('iframe');
+		iframe.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
+		iframe.allow = 'autoplay';
+		iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?enablejsapi=1`;
+		document.body.appendChild(iframe);
 
-		if ((window as any).YT && (window as any).YT.Player) {
-			ytApiReady = true;
-			return;
-		}
+		let ytPlayer: any = null;
+		let destroyed = false;
 
-		if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-			const tag = document.createElement('script');
-			tag.src = 'https://www.youtube.com/iframe_api';
-			document.head.appendChild(tag);
-		}
-
-		const prev = (window as any).onYouTubeIframeAPIReady;
-		(window as any).onYouTubeIframeAPIReady = () => {
-			if (prev) prev();
-			ytApiReady = true;
+		iframe.onload = async () => {
+			if (destroyed) return;
+			const YT = await loadYouTubeIframeApi();
+			if (destroyed) return;
+			ytPlayer = new YT.Player(iframe, {
+				events: {
+					onReady: (event: any) => {
+						const dur = event.target.getDuration();
+						if (dur > 0) onDuration(Math.round(dur));
+					}
+				}
+			});
 		};
-	});
 
-	// Create/update player for accept form
+		return {
+			destroy() {
+				destroyed = true;
+				if (ytPlayer?.destroy) ytPlayer.destroy();
+				if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+			}
+		};
+	}
+
+	// Detect duration for accept form
 	$effect(() => {
 		if (!videoId) {
 			durationSeconds = null;
 			if (player) { player.destroy(); player = null; }
 			return;
 		}
-		if (!ytApiReady || !playerWrapper) return;
 		if (player) { player.destroy(); player = null; }
-		playerWrapper.innerHTML = '';
-		const target = document.createElement('div');
-		playerWrapper.appendChild(target);
-		player = new (window as any).YT.Player(target, {
-			height: '1', width: '1', videoId,
-			events: {
-				onReady: (event: any) => {
-					const dur = event.target.getDuration();
-					if (dur > 0) durationSeconds = Math.round(dur);
-				}
-			}
-		});
+		player = createDurationDetector(videoId, (dur) => { durationSeconds = dur; });
+		return () => { if (player) { player.destroy(); player = null; } };
 	});
 
-	// Create/update player for add-song form
+	// Detect duration for add-song form
 	$effect(() => {
 		if (!addSongVideoId) {
 			addSongDuration = null;
 			if (addSongPlayer) { addSongPlayer.destroy(); addSongPlayer = null; }
 			return;
 		}
-		if (!ytApiReady || !addSongPlayerWrapper) return;
 		if (addSongPlayer) { addSongPlayer.destroy(); addSongPlayer = null; }
-		addSongPlayerWrapper.innerHTML = '';
-		const target = document.createElement('div');
-		addSongPlayerWrapper.appendChild(target);
-		addSongPlayer = new (window as any).YT.Player(target, {
-			height: '1', width: '1', videoId: addSongVideoId,
-			events: {
-				onReady: (event: any) => {
-					const dur = event.target.getDuration();
-					if (dur > 0) addSongDuration = Math.round(dur);
-				}
-			}
-		});
+		addSongPlayer = createDurationDetector(addSongVideoId, (dur) => { addSongDuration = dur; });
+		return () => { if (addSongPlayer) { addSongPlayer.destroy(); addSongPlayer = null; } };
 	});
 </script>
 
@@ -178,6 +282,7 @@
 			date={data.party.date}
 			time={data.party.time}
 			location={data.party.location}
+			locationUrl={data.party.locationUrl}
 			description={data.isPending ? data.party.description : undefined}
 		/>
 
@@ -235,12 +340,17 @@
 					</div>
 
 					<div>
-						<label for="youtubeUrl" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Your Song</label>
+						<label for="youtubeUrl" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">
+							Your Song
+							<svg class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+						</label>
 						<input type="url" id="youtubeUrl" name="youtubeUrl" required bind:value={youtubeUrl}
 							data-testid="youtube-url"
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="https://youtube.com/watch?v=..." />
-						<p class="text-text-muted/60 text-xs mt-1.5 ml-1">Paste a YouTube link to add your track</p>
+							placeholder="Search YouTube, copy the link, paste it here" />
+						<p class="text-text-muted text-xs mt-1.5 ml-1">
+							Find a song on <a href="https://youtube.com" target="_blank" rel="noopener" class="text-neon-cyan hover:underline">youtube.com</a>, copy its URL, and paste it above
+						</p>
 					</div>
 
 					{#if durationSeconds}
@@ -252,14 +362,13 @@
 					{/if}
 
 					<div>
-						<label for="comment" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Comment <span class="text-text-muted/50 font-normal">(optional)</span></label>
+						<label for="comment" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Comment <span class="text-text-muted font-normal">(optional)</span></label>
 						<textarea id="comment" name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
 							placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"></textarea>
 					</div>
 
 					<input type="hidden" name="durationSeconds" value={durationSeconds || ''} />
-					<div bind:this={playerWrapper} style="position: absolute; width: 0; height: 0; overflow: hidden;"></div>
 
 					<button type="submit" data-testid="accept-btn"
 						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
@@ -271,12 +380,12 @@
 		<!-- ─── ACCEPTED ATTENDEE / CREATOR MODE ─── -->
 		{:else}
 			<!-- Stats bar -->
-			<div class="mt-3 flex flex-wrap gap-3 text-xs font-heading">
-				<span class="text-text-muted">
+			<div class="mt-3 flex flex-wrap gap-3 text-sm font-heading">
+				<span class="text-text-secondary">
 					{data.acceptedCount} / {data.party.maxAttendees} attendees
 				</span>
-				<span class="text-text-muted/30">|</span>
-				<span class="text-text-muted">
+				<span class="text-text-muted">|</span>
+				<span class="text-text-secondary">
 					{data.songs.length} songs &middot; {formatDuration(data.totalDuration)}
 					{#if data.targetDuration}
 						/ {formatDuration(data.targetDuration)}
@@ -298,123 +407,15 @@
 						<span class="font-heading text-sm text-text-secondary">
 							Your songs: <span class="text-neon-cyan">{slotsDisplay}</span>
 						</span>
-						<span class="text-text-muted text-xs ml-2">
+						<span class="text-text-muted text-sm ml-2">
 							(1 for accepting{#if (data as any).invitesSent > 0} + {(data as any).invitesSent} for invites sent{/if})
 						</span>
 					</div>
 				{/if}
 			</div>
 
-			<!-- Playlist Progress -->
-			{#if data.targetDuration || data.songs.length > 0}
-				<div class="mt-4 glass rounded-2xl p-4" data-testid="playlist-progress">
-					<div class="flex items-center justify-between mb-2">
-						<span class="font-heading text-sm font-semibold text-text-secondary">Playlist</span>
-					</div>
-					<div class="h-2 bg-surface rounded-full overflow-hidden">
-						<div class="h-full rounded-full transition-all duration-500"
-							style="width: {fillPercent}%; background: linear-gradient(90deg, var(--color-neon-cyan), var(--color-neon-mint));">
-						</div>
-					</div>
-					{#if data.totalDuration > (data.targetDuration || 0) && data.targetDuration}
-						<p class="text-xs text-neon-yellow/70 mt-1.5 font-heading">
-							Playlist is slightly over target — that's by design!
-						</p>
-					{/if}
-				</div>
-			{/if}
-
-			<!-- Song List -->
-			<section class="mt-6">
-				<h2 class="font-heading text-lg font-bold gradient-text mb-3">Playlist</h2>
-				{#if data.songs.length === 0}
-					<div class="glass rounded-2xl p-6 text-center">
-						<p class="text-text-muted text-sm">No songs yet. Be the first to add one!</p>
-					</div>
-				{:else}
-					<div class="glass rounded-2xl p-2 space-y-0.5">
-						{#each data.songs as song, i}
-							<SongCard
-								youtubeId={song.youtubeId}
-								title={song.youtubeTitle}
-								channelName={song.youtubeChannelName || ''}
-								position={i + 1}
-								addedBy={song.addedByName}
-								revealed={!!song.addedByName}
-								isMine={song.isMine}
-								showControls={data.isCreator}
-								songId={song.id}
-								canMoveUp={i > 0}
-								canMoveDown={i < data.songs.length - 1}
-								token={data.attendee.inviteToken}
-								comment={song.comment}
-							/>
-						{/each}
-					</div>
-				{/if}
-			</section>
-
-			<!-- My Songs (non-creator) -->
-			{#if !data.isCreator && (data as any).mySongs?.length > 0}
-				<section class="mt-6">
-					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Your Songs</h2>
-					<div class="glass rounded-2xl p-2 space-y-0.5">
-						{#each (data as any).mySongs as song, i}
-							<SongCard
-								youtubeId={song.youtubeId}
-								title={song.youtubeTitle}
-								channelName={song.youtubeChannelName || ''}
-								position={i + 1}
-								comment={song.comment}
-							/>
-						{/each}
-					</div>
-				</section>
-			{/if}
-
-			<!-- Add Song Form -->
-			{#if !data.isPending && ((data as any).songsUsed < maxSongs || data.isCreator)}
-				<div class="mt-4 glass rounded-2xl p-5">
-					<h3 class="font-heading font-semibold text-sm text-text-secondary mb-3">Add a Song</h3>
-
-					{#if form?.songError}
-						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
-							{form.songError}
-						</div>
-					{/if}
-
-					{#if form?.songAdded}
-						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading">
-							Song added!
-						</div>
-					{/if}
-
-					<form method="POST" action="?/addSong" use:enhance class="space-y-3">
-						<div class="flex gap-2">
-							<input type="url" name="youtubeUrl" required bind:value={addSongUrl}
-								class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-								placeholder="https://youtube.com/watch?v=..." />
-							<button type="submit"
-								class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-neon-pink text-on-accent hover:bg-neon-pink/90 transition-colors flex-shrink-0">
-								Add
-							</button>
-						</div>
-						{#if addSongDuration}
-							<div class="flex items-center gap-2 text-xs font-heading text-text-secondary">
-								<span>Duration: <span class="text-neon-cyan">{formatShortDuration(addSongDuration)}</span></span>
-							</div>
-						{/if}
-						<textarea name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
-							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-							placeholder="Why this song? (optional)"></textarea>
-						<input type="hidden" name="durationSeconds" value={addSongDuration || ''} />
-						<div bind:this={addSongPlayerWrapper} style="position: absolute; width: 0; height: 0; overflow: hidden;"></div>
-					</form>
-				</div>
-			{/if}
-
 			<!-- Invite Friends -->
-			<section class="mt-8">
+			<section class="mt-6">
 				<h2 class="font-heading text-lg font-bold gradient-text mb-3">Invite Friends</h2>
 
 				{#if form?.inviteError}
@@ -445,7 +446,7 @@
 									<div class="w-2 h-2 rounded-full flex-shrink-0"
 										class:bg-neon-mint={invite.accepted}
 										class:bg-text-muted={!invite.accepted}
-										style={invite.accepted ? 'box-shadow: 0 0 6px rgba(0, 255, 163, 0.5);' : 'opacity: 0.4;'}
+										style={invite.accepted ? '' : 'opacity: 0.4;'}
 									></div>
 									<div>
 										<span class="font-heading text-sm"
@@ -453,7 +454,7 @@
 											class:text-text-muted={!invite.accepted}>
 											{invite.name}
 										</span>
-										<span class="text-xs text-text-muted/60 ml-2">{invite.email}</span>
+										<span class="text-xs text-text-muted ml-2">{invite.email}</span>
 									</div>
 								</div>
 								<span class="text-xs font-heading"
@@ -489,7 +490,7 @@
 							</svg>
 							Send Invite
 						</button>
-						<p class="text-text-muted/60 text-xs mt-2 ml-1">
+						<p class="text-text-muted text-xs mt-2 ml-1">
 							Each invite you send earns you +1 song slot!
 						</p>
 					</form>
@@ -505,6 +506,160 @@
 					</div>
 				{/if}
 			</section>
+
+			<!-- Add Song Form -->
+			{#if !data.isPending && ((data as any).songsUsed < maxSongs || data.isCreator)}
+				<div class="mt-4 glass rounded-2xl p-5">
+					<h3 class="font-heading font-semibold text-sm text-text-secondary mb-3">
+						Add a Song
+						<svg class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+					</h3>
+
+					{#if form?.songError}
+						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+							{form.songError}
+						</div>
+					{/if}
+
+					{#if form?.songAdded}
+						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading">
+							Song added!
+						</div>
+					{/if}
+
+					<form method="POST" action="?/addSong" use:enhance class="space-y-3">
+						<div class="flex gap-2">
+							<input type="url" name="youtubeUrl" required bind:value={addSongUrl}
+								class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
+								placeholder="Paste a YouTube link" />
+							<button type="submit"
+								class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-neon-pink text-on-accent hover:bg-neon-pink/90 transition-colors flex-shrink-0">
+								Add
+							</button>
+						</div>
+						{#if addSongDuration}
+							<div class="flex items-center gap-2 text-xs font-heading text-text-secondary">
+								<span>Duration: <span class="text-neon-cyan">{formatShortDuration(addSongDuration)}</span></span>
+							</div>
+						{/if}
+						<textarea name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
+							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+							placeholder="Why this song? (optional)"></textarea>
+						<input type="hidden" name="durationSeconds" value={addSongDuration || ''} />
+					</form>
+				</div>
+			{/if}
+
+			<!-- My Songs (non-creator) -->
+			{#if !data.isCreator && (data as any).mySongs?.length > 0}
+				<section class="mt-6">
+					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Your Songs</h2>
+					<div class="glass rounded-2xl p-2 space-y-0.5">
+						{#each (data as any).mySongs as song, i}
+							<SongCard
+								youtubeId={song.youtubeId}
+								title={song.youtubeTitle}
+								channelName={song.youtubeChannelName || ''}
+								position={i + 1}
+								comment={song.comment}
+							/>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<!-- Playlist Progress -->
+			{#if data.targetDuration || data.songs.length > 0}
+				<div class="mt-6 glass rounded-2xl p-4" data-testid="playlist-progress">
+					<div class="flex items-center justify-between mb-2">
+						<span class="font-heading text-sm font-semibold text-text-secondary">Playlist</span>
+					</div>
+					<div class="h-2 bg-surface rounded-full overflow-hidden">
+						<div class="h-full rounded-full transition-all duration-500"
+							style="width: {fillPercent}%; background: linear-gradient(90deg, var(--color-neon-cyan), var(--color-neon-mint));">
+						</div>
+					</div>
+					{#if data.totalDuration > (data.targetDuration || 0) && data.targetDuration}
+						<p class="text-xs text-neon-yellow mt-1.5 font-heading">
+							Playlist is slightly over target — that's by design!
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Player Controls (top) -->
+			{#if localSongs.length > 0}
+				<div class="mt-4">
+					<PlayerControls
+						title={currentSong?.youtubeTitle ?? ''}
+						addedBy={currentSong?.addedByName ?? ''}
+						isPlaying={isActuallyPlaying}
+						progress={playerProgress}
+						videoId={currentVideoId}
+						onprev={canPrev ? onPrev : null}
+						onnext={canNext ? onNext : null}
+						ontoggle={() => {
+							if (currentPlayingIndex === null && localSongs.length > 0) {
+								currentPlayingIndex = 0;
+								ytPlayer?.play();
+							} else {
+								ytPlayer?.togglePlayPause();
+							}
+						}}
+					/>
+				</div>
+			{/if}
+
+			<!-- Song List -->
+			<section class="mt-4">
+				{#if localSongs.length === 0}
+					<div class="glass rounded-2xl p-6 text-center">
+						<p class="text-text-muted text-sm">No songs yet. Be the first to add one!</p>
+					</div>
+				{:else}
+					<div class="glass rounded-2xl p-2 space-y-0.5">
+						{#each localSongs as song, i (song.id)}
+							<SongCard
+								youtubeId={song.youtubeId}
+								title={song.youtubeTitle}
+								channelName={song.youtubeChannelName || ''}
+								position={i + 1}
+								addedBy={song.addedByName}
+								revealed={!!song.addedByName}
+								isMine={song.isMine}
+								isPlaying={currentPlayingIndex === i && isActuallyPlaying}
+								onclick={() => playSong(i)}
+								showControls={data.isCreator}
+								songId={song.id}
+								canMoveUp={i > 0}
+								canMoveDown={i < localSongs.length - 1}
+								token={data.attendee.inviteToken}
+								comment={song.comment}
+								startTime={songStartTimes[i]}
+								isDraggable={data.isCreator}
+								ondragstart={(e) => handleDragStart(i, song.id, e)}
+								ondragover={(e) => handleDragOver(i, e)}
+								ondragend={handleDragEnd}
+							/>
+						{/each}
+					</div>
+				{/if}
+			</section>
+
+			<!-- YouTube Video (bottom) -->
+			{#if localSongs.length > 0}
+				<div class="mt-4">
+					<YouTubePlayer
+						bind:this={ytPlayer}
+						videoId={currentVideoId}
+						autoplay={userSelectedSong}
+						onended={onPlayerEnded}
+						onerror={onPlayerError}
+						onplaystatechange={(playing) => isActuallyPlaying = playing}
+						onprogress={(p) => playerProgress = p}
+					/>
+				</div>
+			{/if}
 
 			<!-- Creator: Invite Tree -->
 			{#if data.isCreator && inviteTree}
@@ -557,29 +712,26 @@
 			{/if}
 		{/if}
 		{/if}
+
 	</div>
 </div>
 
 <style>
 	.cta-btn {
-		box-shadow: 0 4px 15px rgba(229, 34, 114, 0.3);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
 
 	.cta-btn:hover {
-		box-shadow: 0 6px 25px rgba(229, 34, 114, 0.4);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 		transform: translateY(-1px);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn {
-		box-shadow:
-			0 0 15px rgba(255, 45, 120, 0.3),
-			0 0 30px rgba(255, 45, 120, 0.1);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
 	:global(:root[data-theme="dark"]) .cta-btn:hover {
-		box-shadow:
-			0 0 20px rgba(255, 45, 120, 0.5),
-			0 0 40px rgba(255, 45, 120, 0.2);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-1px);
 	}
 </style>

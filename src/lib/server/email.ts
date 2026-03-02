@@ -84,7 +84,8 @@ export async function sendInviteEmail(
 	partyTime: string | null,
 	partyLocation: string | null,
 	magicUrl: string,
-	platform?: App.Platform
+	platform?: App.Platform,
+	partyLocationUrl?: string | null
 ): Promise<void> {
 	const { renderInviteEmail } = await import('./email-templates');
 	const html = renderInviteEmail({
@@ -94,6 +95,7 @@ export async function sendInviteEmail(
 		partyDate,
 		partyTime,
 		partyLocation,
+		partyLocationUrl,
 		magicUrl
 	});
 	await sendEmail(to, `You're invited to ${partyName}!`, html, 'invite', {
