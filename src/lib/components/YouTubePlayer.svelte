@@ -121,7 +121,12 @@
 
 	export function seekTo(seconds: number) {
 		if (!player || !playerReady) return;
+		const wasPlaying = player.getPlayerState() === 1;
 		player.seekTo(seconds, true);
+		if (!wasPlaying) {
+			// YouTube auto-starts on seek; pause to preserve stopped state
+			setTimeout(() => player.pauseVideo(), 0);
+		}
 	}
 
 	export function setVolume(vol: number) {

@@ -620,7 +620,7 @@
 						youtubeId={currentSong?.youtubeId ?? ''}
 						isPlaying={isActuallyPlaying}
 						{currentTime}
-						duration={currentDuration}
+						duration={currentDuration || currentSong?.durationSeconds || 0}
 						trackIndex={trackPosition.index}
 						totalTracks={trackPosition.total}
 						{currentPlaylistTime}
@@ -639,7 +639,7 @@
 							}
 						}}
 						onloop={() => loopEnabled = !loopEnabled}
-						onseek={(s) => ytPlayer?.seekTo(s)}
+						onseek={(s) => { currentTime = s; ytPlayer?.seekTo(s); }}
 						onvolume={(v) => {
 							volume = v;
 							if (muted && v > 0) muted = false;

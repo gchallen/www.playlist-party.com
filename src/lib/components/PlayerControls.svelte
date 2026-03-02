@@ -136,9 +136,9 @@
 		</button>
 
 		<!-- Current time box -->
-		<div class="text-right flex-shrink-0 ml-1" style="min-width: 3rem;">
-			<div class="text-xs font-heading text-text-primary leading-tight">{formatDuration(currentTime)}</div>
-			<div class="text-[10px] font-heading text-text-muted leading-tight">{formatDuration(currentPlaylistTime)}</div>
+		<div class="text-right flex-shrink-0 ml-1 tabular-nums font-mono" style="min-width: 3rem;">
+			<div class="text-xs text-text-primary leading-tight">{formatDuration(currentTime)}</div>
+			<div class="text-[10px] text-text-muted leading-tight">{formatDuration(currentPlaylistTime)}</div>
 		</div>
 
 		<!-- Seek slider -->
@@ -154,9 +154,9 @@
 		/>
 
 		<!-- Duration box -->
-		<div class="text-left flex-shrink-0" style="min-width: 3rem;">
-			<div class="text-xs font-heading text-text-primary leading-tight">{formatDuration(duration)}</div>
-			<div class="text-[10px] font-heading text-text-muted leading-tight">{formatDuration(totalPlaylistDuration)}</div>
+		<div class="text-left flex-shrink-0 tabular-nums font-mono" style="min-width: 3rem;">
+			<div class="text-xs text-text-primary leading-tight">{formatDuration(duration)}</div>
+			<div class="text-[10px] text-text-muted leading-tight">{formatDuration(totalPlaylistDuration)}</div>
 		</div>
 
 		<!-- Mute -->
@@ -194,29 +194,53 @@
 	.volume-slider {
 		-webkit-appearance: none;
 		appearance: none;
-		background: var(--color-surface);
-		border-radius: 9999px;
+		background: transparent;
 		cursor: pointer;
+		outline: none;
+		border: none;
+	}
+
+	.seek-slider::-webkit-slider-runnable-track,
+	.volume-slider::-webkit-slider-runnable-track {
+		height: 2px;
+		background: var(--color-neon-purple);
+		border-radius: 9999px;
+		border: none;
+	}
+
+	.seek-slider::-moz-range-track,
+	.volume-slider::-moz-range-track {
+		height: 2px;
+		background: var(--color-neon-purple);
+		border-radius: 9999px;
+		border: none;
 	}
 
 	.seek-slider::-webkit-slider-thumb,
 	.volume-slider::-webkit-slider-thumb {
 		-webkit-appearance: none;
 		appearance: none;
-		width: 12px;
-		height: 12px;
+		width: 10px;
+		height: 10px;
 		border-radius: 50%;
 		background: var(--color-neon-pink);
 		cursor: pointer;
+		margin-top: -4px;
+		border: none;
 	}
 
 	.seek-slider::-moz-range-thumb,
 	.volume-slider::-moz-range-thumb {
-		width: 12px;
-		height: 12px;
+		width: 10px;
+		height: 10px;
 		border-radius: 50%;
 		background: var(--color-neon-pink);
 		border: none;
 		cursor: pointer;
+	}
+
+	.seek-slider:focus,
+	.volume-slider:focus {
+		outline: none;
 	}
 </style>
