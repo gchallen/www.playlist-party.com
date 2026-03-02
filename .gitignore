@@ -27,6 +27,9 @@ local.db
 local.db-shm
 local.db-wal
 
+# Backups
+backups/
+
 # Test artifacts
 playwright-report/
 test-results/
