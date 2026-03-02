@@ -222,9 +222,8 @@
 					return async ({ result, update }) => {
 						if (result.type === 'success' && result.data?.emailSent) {
 							emailSent = true;
-						} else {
-							await update();
 						}
+						await update();
 					};
 				}} class="glass rounded-2xl p-6 md:p-8 space-y-5" data-testid="verify-form">
 
