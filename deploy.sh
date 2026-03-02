@@ -41,13 +41,13 @@ if $SKIP_TESTS; then
   step "Skipping tests (--skip-tests)"
 else
   step "Running Playwright tests"
-  run env ADAPTER=node bun run build
+  run bun run build
   run env ADAPTER=node bunx playwright test
 fi
 
 # --- 3. Build for Cloudflare ---
 step "Building for Cloudflare"
-run bun run build
+run bunx vite build
 
 # --- 4. Apply D1 migrations ---
 step "Applying D1 migrations"
