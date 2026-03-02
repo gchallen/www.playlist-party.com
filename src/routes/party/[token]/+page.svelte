@@ -516,9 +516,11 @@
 							</svg>
 							Send Invite
 						</button>
-						<p class="text-neon-cyan font-heading font-semibold text-sm mt-3">
-							Each invite you send earns you +1 song slot!
-						</p>
+						{#if !data.isCreator}
+							<p class="text-neon-cyan font-heading font-semibold text-sm mt-3">
+								Each invite you send earns you +1 song slot!
+							</p>
+						{/if}
 					</form>
 				{:else}
 					<div class="glass rounded-2xl p-5 text-center">
