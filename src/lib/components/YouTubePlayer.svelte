@@ -16,7 +16,7 @@
 		onready?: () => void;
 		onerror?: (code: number) => void;
 		onplaystatechange?: (playing: boolean) => void;
-		onprogress?: (percent: number) => void;
+		onprogress?: (currentTime: number, duration: number) => void;
 	} = $props();
 
 	let playerReady = $state(false);
@@ -33,7 +33,7 @@
 			try {
 				const current = player.getCurrentTime();
 				const duration = player.getDuration();
-				if (duration > 0) onprogress?.((current / duration) * 100);
+				if (duration > 0) onprogress?.(current, duration);
 			} catch {}
 		}, 500);
 	}
@@ -79,7 +79,8 @@
 						stopProgressTracking();
 					} else if (e.data === 0) {
 						onplaystatechange?.(false);
-						onprogress?.(100);
+						const dur = player.getDuration();
+						onprogress?.(dur, dur);
 						stopProgressTracking();
 						onended?.();
 					}
@@ -98,7 +99,7 @@
 			createPlayer(videoId);
 		} else if (player && playerReady && videoId !== lastLoadedVideoId) {
 			lastLoadedVideoId = videoId;
-			onprogress?.(0);
+			onprogress?.(0, 0);
 			player.loadVideoById(videoId);
 		}
 	});
@@ -116,6 +117,26 @@
 	export function play() {
 		if (!player || !playerReady) return;
 		player.playVideo();
+	}
+
+	export function seekTo(seconds: number) {
+		if (!player || !playerReady) return;
+		player.seekTo(seconds, true);
+	}
+
+	export function setVolume(vol: number) {
+		if (!player || !playerReady) return;
+		player.setVolume(vol * 100);
+	}
+
+	export function mute() {
+		if (!player || !playerReady) return;
+		player.mute();
+	}
+
+	export function unmute() {
+		if (!player || !playerReady) return;
+		player.unMute();
 	}
 </script>
 

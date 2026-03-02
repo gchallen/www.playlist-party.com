@@ -16,7 +16,11 @@
 	// ─── Playback state ───
 	let currentPlayingIndex = $state<number | null>(null);
 	let isActuallyPlaying = $state(false);
-	let playerProgress = $state(0);
+	let currentTime = $state(0);
+	let currentDuration = $state(0);
+	let loopEnabled = $state(true);
+	let volume = $state(1);
+	let muted = $state(false);
 	let ytPlayer: YouTubePlayer;
 
 	// ─── Drag-and-drop state ───
@@ -39,6 +43,24 @@
 	const songStartTimes = $derived(
 		computeSongStartTimes(data.party.time, localSongs.map((s) => s.durationSeconds))
 	);
+
+	const totalPlaylistDuration = $derived(
+		localSongs.reduce((sum, s) => sum + (s.durationSeconds || 0), 0)
+	);
+
+	const currentPlaylistTime = $derived.by(() => {
+		if (currentPlayingIndex === null) return 0;
+		let t = 0;
+		for (let i = 0; i < currentPlayingIndex; i++) {
+			t += localSongs[i]?.durationSeconds || 0;
+		}
+		return t + currentTime;
+	});
+
+	const trackPosition = $derived({
+		index: currentPlayingIndex !== null ? currentPlayingIndex + 1 : 0,
+		total: localSongs.length
+	});
 
 	// ─── Playback handlers ───
 	function playSong(i: number) {
@@ -69,6 +91,8 @@
 	function onPlayerEnded() {
 		if (canNext) {
 			currentPlayingIndex!++;
+		} else if (loopEnabled && localSongs.length > 0) {
+			currentPlayingIndex = 0;
 		} else {
 			currentPlayingIndex = null;
 		}
@@ -593,9 +617,17 @@
 					<PlayerControls
 						title={currentSong?.youtubeTitle ?? ''}
 						addedBy={currentSong?.addedByName ?? ''}
+						youtubeId={currentSong?.youtubeId ?? ''}
 						isPlaying={isActuallyPlaying}
-						progress={playerProgress}
-						videoId={currentVideoId}
+						{currentTime}
+						duration={currentDuration}
+						trackIndex={trackPosition.index}
+						totalTracks={trackPosition.total}
+						{currentPlaylistTime}
+						{totalPlaylistDuration}
+						{loopEnabled}
+						{volume}
+						{muted}
 						onprev={canPrev ? onPrev : null}
 						onnext={canNext ? onNext : null}
 						ontoggle={() => {
@@ -605,6 +637,18 @@
 							} else {
 								ytPlayer?.togglePlayPause();
 							}
+						}}
+						onloop={() => loopEnabled = !loopEnabled}
+						onseek={(s) => ytPlayer?.seekTo(s)}
+						onvolume={(v) => {
+							volume = v;
+							if (muted && v > 0) muted = false;
+							ytPlayer?.setVolume(v);
+						}}
+						onmute={() => {
+							muted = !muted;
+							if (muted) ytPlayer?.mute();
+							else ytPlayer?.unmute();
 						}}
 					/>
 				</div>
@@ -656,7 +700,7 @@
 						onended={onPlayerEnded}
 						onerror={onPlayerError}
 						onplaystatechange={(playing) => isActuallyPlaying = playing}
-						onprogress={(p) => playerProgress = p}
+						onprogress={(t, d) => { currentTime = t; currentDuration = d; }}
 					/>
 				</div>
 			{/if}
