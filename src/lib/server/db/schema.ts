@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
 export const parties = sqliteTable('parties', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -66,4 +66,17 @@ export const songs = sqliteTable(
 			.$defaultFn(() => new Date().toISOString())
 	},
 	(table) => [uniqueIndex('songs_party_youtube_idx').on(table.partyId, table.youtubeId)]
+);
+
+export const emailSends = sqliteTable(
+	'email_sends',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		recipientEmail: text('recipient_email').notNull(),
+		emailType: text('email_type').notNull(),
+		sentAt: text('sent_at')
+			.notNull()
+			.$defaultFn(() => new Date().toISOString())
+	},
+	(table) => [index('idx_email_sends_recipient').on(table.recipientEmail)]
 );

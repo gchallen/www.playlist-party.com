@@ -28,8 +28,22 @@ async function verifyEmail(page: Page, email: string): Promise<void> {
 	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
 }
 
+async function verifyCreatorEmail(page: Page, request: any, email: string): Promise<void> {
+	await page.locator('[data-testid="creator-verify-email"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="email-sent-message"]').waitFor();
+
+	const res = await request.get(`/api/emails?to=${encodeURIComponent(email)}&type=email_verification`);
+	const data = await res.json();
+	const verifyUrl = data.emails[data.emails.length - 1].metadata.verifyUrl;
+	const url = new URL(verifyUrl);
+	await page.goto(`/create?token=${url.searchParams.get('token')}`);
+	await page.locator('#name').waitFor();
+}
+
 async function createParty(
 	page: Page,
+	request: any,
 	options: {
 		name?: string;
 		createdBy?: string;
@@ -42,10 +56,10 @@ async function createParty(
 	const creatorEmail = options.creatorEmail || uniqueEmail('host');
 	await page.goto('/');
 	await page.getByRole('link', { name: 'Start a Party' }).click();
+	await verifyCreatorEmail(page, request, creatorEmail);
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill('2026-07-04');
 	await page.locator('#createdBy').fill(options.createdBy || 'Test Host');
-	await page.locator('[data-testid="creator-email"]').fill(creatorEmail);
 	if (options.maxAttendees !== undefined) {
 		await page.locator('[data-testid="max-attendees"]').fill(String(options.maxAttendees));
 	}
@@ -102,7 +116,7 @@ async function acceptInvite(page: Page, path: string, email: string, name?: stri
 
 test.describe('Song Slots', () => {
 	test('attendee starts with 1 song slot (the accept song)', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('slot-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('slot-host') });
 		const email = uniqueEmail('slot');
 		const path = await sendInviteAndGetPath(page, request, 'SlotTest', email);
 		await acceptInvite(page, path, email, 'SlotTest');
@@ -112,7 +126,7 @@ test.describe('Song Slots', () => {
 	});
 
 	test('attendee gains +1 slot per invite sent', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('earn-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('earn-host') });
 		const emailA = uniqueEmail('earnA');
 		const pathA = await sendInviteAndGetPath(page, request, 'Alice', emailA);
 		await acceptInvite(page, pathA, emailA, 'Alice');
@@ -127,7 +141,7 @@ test.describe('Song Slots', () => {
 	});
 
 	test('attendee cannot add song when at slot limit', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('noslot-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('noslot-host') });
 		const email = uniqueEmail('noslot');
 		const path = await sendInviteAndGetPath(page, request, 'NoSlot', email);
 		await acceptInvite(page, path, email, 'NoSlot');
@@ -136,8 +150,8 @@ test.describe('Song Slots', () => {
 		await expect(page.locator('text=Add a Song')).not.toBeVisible();
 	});
 
-	test('creator can always add songs (unlimited)', async ({ page }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('unlim-host') });
+	test('creator can always add songs (unlimited)', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('unlim-host') });
 		// Creator should see "Your Party" and the add song form
 		await expect(page.locator('text=Your Party')).toBeVisible();
 		await expect(page.locator('text=Add a Song')).toBeVisible();
@@ -146,7 +160,7 @@ test.describe('Song Slots', () => {
 
 test.describe('Creator Song Management', () => {
 	test('creator sees remove buttons on songs', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('rm-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('rm-host') });
 
 		// Invite and accept a guest to get a song on the playlist
 		const email = uniqueEmail('rm-guest');
@@ -161,7 +175,7 @@ test.describe('Creator Song Management', () => {
 	});
 
 	test('creator can remove a song', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('del-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('del-host') });
 
 		const email = uniqueEmail('del-guest');
 		const path = await sendInviteAndGetPath(page, request, 'Guest', email);
@@ -181,7 +195,7 @@ test.describe('Creator Song Management', () => {
 	});
 
 	test('creator sees drag handles on songs', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('reord-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('reord-host') });
 
 		// Add two guests to have multiple songs
 		const email1 = uniqueEmail('reord1');
@@ -205,7 +219,7 @@ test.describe('Creator Song Management', () => {
 	});
 
 	test('non-creator sees drag handles only on own songs', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('nodrag-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('nodrag-host') });
 
 		const email1 = uniqueEmail('nodrag1');
 		const path1 = await sendInviteAndGetPath(page, request, 'G1', email1);
@@ -227,7 +241,7 @@ test.describe('Creator Song Management', () => {
 	});
 
 	test('moveSong action reorders songs', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('move-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('move-host') });
 
 		// Add two guests
 		const email1 = uniqueEmail('move1');
@@ -272,14 +286,14 @@ test.describe('Creator Song Management', () => {
 });
 
 test.describe('Creator Settings', () => {
-	test('creator sees settings panel', async ({ page }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('settings-host') });
+	test('creator sees settings panel', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('settings-host') });
 		await expect(page.locator('text=Party Settings')).toBeVisible();
 		await expect(page.locator('[data-testid="song-attribution"]')).toBeVisible();
 	});
 
-	test('creator can update song attribution setting', async ({ page }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('attr-host') });
+	test('creator can update song attribution setting', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('attr-host') });
 
 		await page.locator('[data-testid="song-attribution"]').selectOption('visible');
 		await page.getByRole('button', { name: 'Save Settings' }).click();
@@ -291,8 +305,8 @@ test.describe('Creator Settings', () => {
 		expect(value).toBe('visible');
 	});
 
-	test('creator can update max invites per guest', async ({ page }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('maxinv-host') });
+	test('creator can update max invites per guest', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('maxinv-host') });
 
 		await page.locator('[data-testid="max-invites-per-guest"]').fill('3');
 		await page.getByRole('button', { name: 'Save Settings' }).click();
@@ -310,10 +324,10 @@ test.describe('Song Timeline', () => {
 		const creatorEmail = uniqueEmail('timeline-host');
 		await page.goto('/');
 		await page.getByRole('link', { name: 'Start a Party' }).click();
+		await verifyCreatorEmail(page, request, creatorEmail);
 		await page.locator('#name').fill('Timeline Party');
 		await page.locator('#date').fill('2026-07-04');
 		await page.locator('#createdBy').fill('Timeline Host');
-		await page.locator('[data-testid="creator-email"]').fill(creatorEmail);
 		await page.locator('#startTimeInput').fill('8pm');
 		await page.getByRole('button', { name: 'Create Party' }).click();
 		await page.waitForURL(/\/party\//);
@@ -335,7 +349,7 @@ test.describe('Song Timeline', () => {
 	});
 
 	test('songs do not display start times when party has no start time', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('notime-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('notime-host') });
 
 		const email = uniqueEmail('notime-guest');
 		const path = await sendInviteAndGetPath(page, request, 'NoTimeGuest', email);
@@ -355,7 +369,7 @@ test.describe('Song Timeline', () => {
 
 test.describe('Duplicate Song Rejection', () => {
 	test('same YouTube URL cannot be added twice to a party', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('dupsong-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('dupsong-host') });
 
 		// Invite and accept first guest with a specific URL
 		const email1 = uniqueEmail('dupsong1');

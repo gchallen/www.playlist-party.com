@@ -13,8 +13,22 @@ async function verifyEmail(page: Page, email: string): Promise<void> {
 	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
 }
 
+async function verifyCreatorEmail(page: Page, request: any, email: string): Promise<void> {
+	await page.locator('[data-testid="creator-verify-email"]').fill(email);
+	await page.locator('[data-testid="verify-email-btn"]').click();
+	await page.locator('[data-testid="email-sent-message"]').waitFor();
+
+	const res = await request.get(`/api/emails?to=${encodeURIComponent(email)}&type=email_verification`);
+	const data = await res.json();
+	const verifyUrl = data.emails[data.emails.length - 1].metadata.verifyUrl;
+	const url = new URL(verifyUrl);
+	await page.goto(`/create?token=${url.searchParams.get('token')}`);
+	await page.locator('#name').waitFor();
+}
+
 async function createParty(
 	page: Page,
+	request: any,
 	options: {
 		name?: string;
 		createdBy?: string;
@@ -25,10 +39,10 @@ async function createParty(
 	const creatorEmail = options.creatorEmail || uniqueEmail('host');
 	await page.goto('/');
 	await page.getByRole('link', { name: 'Start a Party' }).click();
+	await verifyCreatorEmail(page, request, creatorEmail);
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill('2026-07-04');
 	await page.locator('#createdBy').fill(options.createdBy || 'Test Host');
-	await page.locator('[data-testid="creator-email"]').fill(creatorEmail);
 	if (options.maxAttendees !== undefined) {
 		await page.locator('[data-testid="max-attendees"]').fill(String(options.maxAttendees));
 	}
@@ -54,7 +68,7 @@ test.describe('Invalid Tokens', () => {
 test.describe('Validation Errors', () => {
 	test('accept form requires name', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('val-host');
-		await createParty(page, { creatorEmail });
+		await createParty(page, request, { creatorEmail });
 
 		// Send invite
 		const inviteeEmail = uniqueEmail('val-inv');
@@ -85,7 +99,7 @@ test.describe('Validation Errors', () => {
 
 	test('accept form requires YouTube URL', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('ytval-host');
-		await createParty(page, { creatorEmail });
+		await createParty(page, request, { creatorEmail });
 
 		const inviteeEmail = uniqueEmail('ytval-inv');
 		await page.locator('[data-testid="invite-name"]').fill('YTVal');
@@ -113,7 +127,7 @@ test.describe('Validation Errors', () => {
 
 	test('accept rejects invalid YouTube URLs', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('badyt-host');
-		await createParty(page, { creatorEmail });
+		await createParty(page, request, { creatorEmail });
 
 		const inviteeEmail = uniqueEmail('badyt-inv');
 		await page.locator('[data-testid="invite-name"]').fill('BadYT');
@@ -142,7 +156,7 @@ test.describe('Validation Errors', () => {
 
 	test('already-accepted invite cannot be re-accepted', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('reaccept-host');
-		await createParty(page, { creatorEmail });
+		await createParty(page, request, { creatorEmail });
 
 		const inviteeEmail = uniqueEmail('reaccept');
 		await page.locator('[data-testid="invite-name"]').fill('ReAccept');
@@ -176,7 +190,7 @@ test.describe('Validation Errors', () => {
 
 test.describe('Security', () => {
 	test('non-creator cannot access remove song action', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('sec-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('sec-host') });
 
 		const inviteeEmail = uniqueEmail('sec-guest');
 		await page.locator('[data-testid="invite-name"]').fill('Guest');
@@ -207,7 +221,7 @@ test.describe('Security', () => {
 	});
 
 	test('non-creator cannot access settings panel', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('sec2-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('sec2-host') });
 
 		const inviteeEmail = uniqueEmail('sec2-guest');
 		await page.locator('[data-testid="invite-name"]').fill('Guest');
@@ -237,7 +251,7 @@ test.describe('Security', () => {
 	});
 
 	test('non-creator cannot POST to removeSong action', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('sec3-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('sec3-host') });
 
 		const inviteeEmail = uniqueEmail('sec3-guest');
 		await page.locator('[data-testid="invite-name"]').fill('Guest');
@@ -262,7 +276,7 @@ test.describe('Security', () => {
 	});
 
 	test('attendee emails are not exposed in non-creator views', async ({ page, request }) => {
-		await createParty(page, { creatorEmail: uniqueEmail('noexp-host') });
+		await createParty(page, request, { creatorEmail: uniqueEmail('noexp-host') });
 
 		const email1 = uniqueEmail('noexp1');
 		await page.locator('[data-testid="invite-name"]').fill('Hidden');

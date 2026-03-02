@@ -29,6 +29,13 @@
       "when": 1772458441541,
       "tag": "0003_lush_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1772470902440,
+      "tag": "0004_even_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

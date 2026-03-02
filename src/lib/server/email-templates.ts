@@ -45,6 +45,24 @@ function partyDetails(
 	return details;
 }
 
+export function renderEmailVerification(data: {
+	email: string;
+	verifyUrl: string;
+}): string {
+	return baseLayout(`
+<h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Verify Your Email</h1>
+<p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
+Confirm <strong>${data.email}</strong> to start creating your party.
+</p>
+<div style="text-align:center;margin-top:20px;">
+${ctaButton(data.verifyUrl, 'Verify Email')}
+</div>
+<p style="font-size:12px;color:#706c68;margin-top:16px;">
+This link expires in 30 minutes. If you didn't request this, you can ignore this email.
+</p>
+`);
+}
+
 export function renderInviteEmail(data: {
 	inviteeName: string;
 	inviterName: string;

@@ -2,9 +2,11 @@ import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { parties, attendees } from '$lib/server/db/schema';
 import { generateInviteToken } from '$lib/server/tokens';
-import { sendCreatorWelcomeEmail } from '$lib/server/email';
+import { sendCreatorWelcomeEmail, sendEmailVerification } from '$lib/server/email';
+import { createSignedToken, verifySignedToken } from '$lib/server/hmac';
+import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
 import { parseFlexibleTime } from '$lib/time';
-import type { Actions } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 
 const MAPS_DOMAINS = ['google.com', 'google.co', 'goo.gl', 'maps.app.goo.gl'];
 
@@ -63,10 +65,53 @@ async function resolveLocationUrl(rawUrl: string): Promise<{ location: string | 
 	return { location: placeName, locationUrl: finalUrl };
 }
 
+export const load: PageServerLoad = async ({ url, platform }) => {
+	const token = url.searchParams.get('token');
+	if (!token) {
+		return { verifiedEmail: null, verificationToken: null };
+	}
+
+	const result = verifySignedToken(token, platform);
+	if (!result) {
+		return { verifiedEmail: null, verificationToken: null };
+	}
+
+	return { verifiedEmail: result.email, verificationToken: token };
+};
+
 export const actions = {
-	default: async ({ request, platform, url, cookies }) => {
+	verify: async ({ request, platform, url }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
+
+		const email = data.get('email')?.toString()?.trim()?.toLowerCase();
+		if (!email) return fail(400, { verifyError: 'Email is required' });
+
+		// Rate limit check
+		const rateLimit = await checkEmailRateLimit(db, email);
+		if (!rateLimit.allowed) {
+			return fail(429, { verifyError: rateLimit.retryAfterMessage });
+		}
+
+		const token = createSignedToken(email, platform);
+		const verifyUrl = `${url.origin}/create?token=${token}`;
+
+		await sendEmailVerification(email, verifyUrl, platform);
+		await recordEmailSend(db, email, 'email_verification');
+
+		return { emailSent: true };
+	},
+
+	create: async ({ request, platform, url, cookies }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		// Verify HMAC token
+		const verificationToken = data.get('verificationToken')?.toString();
+		if (!verificationToken) return fail(400, { error: 'Email verification required' });
+
+		const verified = verifySignedToken(verificationToken, platform);
+		if (!verified) return fail(400, { error: 'Verification expired. Please verify your email again.' });
 
 		const name = data.get('name')?.toString()?.trim();
 		const description = data.get('description')?.toString()?.trim() || null;
@@ -75,7 +120,7 @@ export const actions = {
 		const rawDurationHours = data.get('durationHours')?.toString()?.trim() || null;
 		const rawLocationUrl = data.get('locationUrl')?.toString()?.trim() || null;
 		const createdBy = data.get('createdBy')?.toString()?.trim();
-		const creatorEmail = data.get('creatorEmail')?.toString()?.trim();
+		const creatorEmail = verified.email;
 		const maxAttendees = parseInt(data.get('maxAttendees')?.toString() || '50', 10);
 		const maxDepthRaw = data.get('maxDepth')?.toString()?.trim();
 		const maxDepth = maxDepthRaw ? parseInt(maxDepthRaw, 10) : null;
@@ -86,7 +131,6 @@ export const actions = {
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
 		if (!createdBy) return fail(400, { error: 'Your name is required' });
-		if (!creatorEmail) return fail(400, { error: 'Your email is required' });
 		if (isNaN(maxAttendees) || maxAttendees < 2)
 			return fail(400, { error: 'Max attendees must be at least 2' });
 
@@ -151,6 +195,7 @@ export const actions = {
 
 		const magicUrl = `${url.origin}/party/${inviteToken}`;
 		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, platform);
+		await recordEmailSend(db, creatorEmail, 'creator_welcome');
 
 		cookies.set(`pv_${inviteToken}`, '1', {
 			path: `/party/${inviteToken}`,

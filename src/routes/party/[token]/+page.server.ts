@@ -6,6 +6,7 @@ import { generateInviteToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
 import { sendInviteEmail } from '$lib/server/email';
+import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
 import type { SongInfo } from '$lib/server/playlist';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
@@ -508,6 +509,12 @@ export const actions = {
 			return fail(400, { inviteError: 'This person has already been invited!' });
 		}
 
+		// Rate limit check
+		const rateLimit = await checkEmailRateLimit(db, email);
+		if (!rateLimit.allowed) {
+			return fail(429, { inviteError: rateLimit.retryAfterMessage });
+		}
+
 		const newToken = generateInviteToken();
 
 		await db.insert(attendees).values({
@@ -532,6 +539,7 @@ export const actions = {
 			platform,
 			party.locationUrl
 		);
+		await recordEmailSend(db, email, 'invite');
 
 		return { inviteSent: name, inviteUrl: magicUrl };
 	},

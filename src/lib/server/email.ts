@@ -4,7 +4,7 @@ export interface EmailMessage {
 	subject: string;
 	html: string;
 	sentAt: string;
-	type: 'invite' | 'creator_welcome';
+	type: 'invite' | 'creator_welcome' | 'email_verification';
 	metadata: Record<string, string>;
 }
 
@@ -103,6 +103,18 @@ export async function sendInviteEmail(
 		inviterName,
 		partyName,
 		magicUrl
+	}, platform);
+}
+
+export async function sendEmailVerification(
+	to: string,
+	verifyUrl: string,
+	platform?: App.Platform
+): Promise<void> {
+	const { renderEmailVerification } = await import('./email-templates');
+	const html = renderEmailVerification({ email: to, verifyUrl });
+	await sendEmail(to, 'Verify your email - Playlist Party', html, 'email_verification', {
+		verifyUrl
 	}, platform);
 }
 
