@@ -15,6 +15,7 @@ export const parties = sqliteTable('parties', {
 	maxAttendees: integer('max_attendees').notNull(),
 	maxInvitesPerGuest: integer('max_invites_per_guest'),
 	songsPerGuest: integer('songs_per_guest').notNull().default(1),
+	songsRequiredToRsvp: integer('songs_required_to_rsvp'),
 	songAttribution: text('song_attribution').notNull().default('hidden'),
 	customInviteMessage: text('custom_invite_message'),
 	createdAt: text('created_at')

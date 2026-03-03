@@ -105,7 +105,7 @@ async function acceptInvite(page: Page, path: string, email: string, name?: stri
 	}
 	await page.locator('[data-testid="youtube-url"]').fill(nextUrl());
 	await page.evaluate(() => {
-		const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+		const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 		if (el) el.value = '210';
 	});
 	await page.locator('[data-testid="accept-btn"]').click();
@@ -381,7 +381,7 @@ test.describe('Duplicate Song Rejection', () => {
 		await page2.locator('[data-testid="name-input"]').fill('First');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page2.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page2.locator('[data-testid="accept-btn"]').click();
@@ -398,7 +398,7 @@ test.describe('Duplicate Song Rejection', () => {
 		await page3.locator('[data-testid="name-input"]').fill('Second');
 		await page3.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page3.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page3.locator('[data-testid="accept-btn"]').click();

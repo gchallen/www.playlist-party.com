@@ -27,6 +27,8 @@
 	let maxAttendeesInput = $state(50);
 	let songsPerGuestInput = $state(1);
 	let songsPerGuestOverride = $state(false);
+	let songsRequiredToRsvpInput = $state(1);
+	let songsRequiredToRsvpOverride = $state(false);
 	let manualOverride = $state(false);
 
 	// Flexible time input + duration
@@ -85,6 +87,7 @@
 	function resetOverride() {
 		manualOverride = false;
 		songsPerGuestOverride = false;
+		songsRequiredToRsvpOverride = false;
 	}
 
 	let defaultSongsPerGuest = $derived.by(() => {
@@ -102,6 +105,18 @@
 		const target = e.target as HTMLInputElement;
 		songsPerGuestInput = Math.max(1, parseInt(target.value) || 1);
 		songsPerGuestOverride = true;
+	}
+
+	$effect(() => {
+		if (!songsRequiredToRsvpOverride) {
+			songsRequiredToRsvpInput = songsPerGuestInput;
+		}
+	});
+
+	function handleSongsRequiredToRsvpInput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		songsRequiredToRsvpInput = Math.max(1, Math.min(parseInt(target.value) || 1, songsPerGuestInput));
+		songsRequiredToRsvpOverride = true;
 	}
 
 	let capacityInfo = $derived.by(() => {
@@ -157,6 +172,8 @@
 				if (data.manualOverride !== undefined) manualOverride = data.manualOverride;
 				if (data.songsPerGuestInput !== undefined) songsPerGuestInput = data.songsPerGuestInput;
 				if (data.songsPerGuestOverride !== undefined) songsPerGuestOverride = data.songsPerGuestOverride;
+				if (data.songsRequiredToRsvpInput !== undefined) songsRequiredToRsvpInput = data.songsRequiredToRsvpInput;
+				if (data.songsRequiredToRsvpOverride !== undefined) songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
 				if (data.customInviteMessage !== undefined) customInviteMessage = data.customInviteMessage;
@@ -175,6 +192,7 @@
 			locationUrl, createdBy, genre,
 			customMinutes, customSeconds, maxAttendeesInput,
 			manualOverride, songsPerGuestInput, songsPerGuestOverride,
+			songsRequiredToRsvpInput, songsRequiredToRsvpOverride,
 			maxDepthInput, maxInvitesInput, customInviteMessage
 		};
 		if (!restored || !verifiedEmail) return;
@@ -402,7 +420,7 @@
 					<p class="font-heading text-sm font-semibold text-text-muted uppercase tracking-wider mb-4">Guest Limits</p>
 
 					<div class="space-y-4">
-						<div class="grid grid-cols-3 gap-4">
+						<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 							<div>
 								<label for="maxAttendees" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Max Guests</label>
 								<input type="number" id="maxAttendees" name="maxAttendees" data-testid="max-attendees"
@@ -413,6 +431,12 @@
 								<label for="songsPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Songs / Guest</label>
 								<input type="number" id="songsPerGuest" name="songsPerGuest" data-testid="songs-per-guest"
 									value={songsPerGuestInput} oninput={handleSongsPerGuestInput} min="1" required
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+							</div>
+							<div>
+								<label for="songsRequiredToRsvp" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">RSVP Songs</label>
+								<input type="number" id="songsRequiredToRsvp" name="songsRequiredToRsvp" data-testid="songs-required-to-rsvp"
+									value={songsRequiredToRsvpInput} oninput={handleSongsRequiredToRsvpInput} min="1" max={songsPerGuestInput}
 									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
 							</div>
 							<div>

@@ -146,6 +146,10 @@ export const actions = {
 		const maxInvitesRaw = data.get('maxInvitesPerGuest')?.toString()?.trim();
 		const maxInvitesPerGuest = maxInvitesRaw ? parseInt(maxInvitesRaw, 10) : null;
 		const songsPerGuest = Math.max(1, parseInt(data.get('songsPerGuest')?.toString() || '1', 10) || 1);
+		const songsRequiredToRsvpRaw = data.get('songsRequiredToRsvp')?.toString()?.trim();
+		const songsRequiredToRsvp = songsRequiredToRsvpRaw
+			? Math.max(1, Math.min(parseInt(songsRequiredToRsvpRaw, 10) || 1, songsPerGuest))
+			: null;
 
 		const rawCustomMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
 		const customInviteMessage = rawCustomMessage ? rawCustomMessage.slice(0, 2000) : null;
@@ -203,6 +207,7 @@ export const actions = {
 				maxAttendees,
 				maxInvitesPerGuest,
 				songsPerGuest,
+				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null,
 				customInviteMessage
 			})
 			.returning();

@@ -1,0 +1,1 @@
+ALTER TABLE `parties` ADD `songs_required_to_rsvp` integer;

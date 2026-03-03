@@ -87,7 +87,7 @@ test.describe('Validation Errors', () => {
 		await page.locator('[data-testid="name-input"]').fill('');
 		await page.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 			// Remove required from name field to bypass browser validation
 			const nameField = document.querySelector('[data-testid="name-input"]') as HTMLInputElement;
@@ -118,7 +118,7 @@ test.describe('Validation Errors', () => {
 		await page.evaluate(() => {
 			const urlField = document.querySelector('[data-testid="youtube-url"]') as HTMLInputElement;
 			if (urlField) urlField.removeAttribute('required');
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page.locator('[data-testid="accept-btn"]').click();
@@ -144,7 +144,7 @@ test.describe('Validation Errors', () => {
 		await page.locator('[data-testid="name-input"]').fill('BadYT');
 		await page.locator('[data-testid="youtube-url"]').fill('https://example.com/not-youtube');
 		await page.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 			// Remove type=url validation
 			const urlField = document.querySelector('[data-testid="youtube-url"]') as HTMLInputElement;
@@ -174,7 +174,7 @@ test.describe('Validation Errors', () => {
 		await page.locator('[data-testid="name-input"]').fill('ReAccept');
 		await page.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page.locator('[data-testid="accept-btn"]').click();
@@ -209,7 +209,7 @@ test.describe('Security', () => {
 		await page2.locator('[data-testid="name-input"]').fill('Guest');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page2.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page2.locator('[data-testid="accept-btn"]').click();
@@ -239,7 +239,7 @@ test.describe('Security', () => {
 		await page2.locator('[data-testid="name-input"]').fill('Guest');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=9bZkp7q19f0');
 		await page2.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page2.locator('[data-testid="accept-btn"]').click();
@@ -294,7 +294,7 @@ test.describe('Security', () => {
 		await page2.locator('[data-testid="name-input"]').fill('Hidden');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=kJQP7kiw5Fk');
 		await page2.evaluate(() => {
-			const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+			const el = document.querySelector('input[name="durationSeconds_0"]') as HTMLInputElement;
 			if (el) el.value = '210';
 		});
 		await page2.locator('[data-testid="accept-btn"]').click();
