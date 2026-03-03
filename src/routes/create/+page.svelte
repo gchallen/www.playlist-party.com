@@ -55,8 +55,8 @@
 	let maxDepthInput = $state('');
 	let maxInvitesInput = $state('');
 
-	const DEFAULT_INVITE_MESSAGE = "Pick a song to RSVP — your track is your entrance ticket.\n\nDon't bring a guest — invite them so they can contribute to the playlist!";
-	let customInviteMessage = $state(DEFAULT_INVITE_MESSAGE);
+	let customInviteSubject = $state('');
+	let customInviteMessage = $state('');
 
 	let avgSongDurationSeconds = $derived(
 		genre === 'custom' ? customMinutes * 60 + customSeconds : (GENRE_DURATIONS[genre] ?? 210)
@@ -176,6 +176,7 @@
 				if (data.songsRequiredToRsvpOverride !== undefined) songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
+				if (data.customInviteSubject !== undefined) customInviteSubject = data.customInviteSubject;
 				if (data.customInviteMessage !== undefined) customInviteMessage = data.customInviteMessage;
 			}
 		} catch {
@@ -193,7 +194,7 @@
 			customMinutes, customSeconds, maxAttendeesInput,
 			manualOverride, songsPerGuestInput, songsPerGuestOverride,
 			songsRequiredToRsvpInput, songsRequiredToRsvpOverride,
-			maxDepthInput, maxInvitesInput, customInviteMessage
+			maxDepthInput, maxInvitesInput, customInviteSubject, customInviteMessage
 		};
 		if (!restored || !verifiedEmail) return;
 		try {
@@ -223,21 +224,12 @@
 			<!-- State 1: Email verification -->
 			{#if emailSent || form?.emailSent}
 				<div class="glass rounded-2xl p-6 md:p-8 text-center" data-testid="email-sent-message">
-					{#if form?.devVerifyUrl}
-						<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Verify Your Email</h2>
-						<p class="text-text-secondary mb-4">Click the link below to continue creating your party.</p>
-						<a href={form.devVerifyUrl} data-testid="dev-verify-link"
-							class="inline-block cta-btn font-heading font-bold text-lg py-3 px-6 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
-							Verify &amp; Continue
-						</a>
-					{:else}
-						<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Check Your Email</h2>
-						<p class="text-text-secondary">
-							We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>.
-							Click the link to continue creating your party.
-						</p>
-						<p class="text-text-muted text-sm mt-4">The link expires in 30 minutes.</p>
-					{/if}
+					<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Check Your Email</h2>
+					<p class="text-text-secondary">
+						We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>.
+						Click the link to continue creating your party.
+					</p>
+					<p class="text-text-muted text-sm mt-4">The link expires in 30 minutes.</p>
 				</div>
 			{:else}
 				<form method="POST" action="?/verify" use:enhance={() => {
@@ -363,15 +355,20 @@
 				</div>
 
 				<div>
-					<label for="customInviteMessage" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Message</label>
-					<textarea id="customInviteMessage" rows="4" maxlength="2000" bind:value={customInviteMessage}
+					<label for="customInviteSubject" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Email Subject</label>
+					<input type="text" id="customInviteSubject" name="customInviteSubject" maxlength="200" bind:value={customInviteSubject}
+						data-testid="custom-invite-subject"
+						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
+						placeholder="You're Invited to {partyName || 'your party'}" />
+				</div>
+
+				<div>
+					<label for="customInviteMessage" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Email Body</label>
+					<textarea id="customInviteMessage" name="customInviteMessage" rows="4" maxlength="2000" bind:value={customInviteMessage}
 						data-testid="custom-invite-message"
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none text-sm"
-						placeholder={DEFAULT_INVITE_MESSAGE}></textarea>
-					<p class="text-text-muted text-xs mt-1 ml-1">This message appears in invite emails sent to your guests.</p>
-					{#if customInviteMessage !== DEFAULT_INVITE_MESSAGE}
-						<input type="hidden" name="customInviteMessage" value={customInviteMessage} />
-					{/if}
+						placeholder={"You'll be asked to add " + (songsRequiredToRsvpInput === 1 ? 'a song' : songsRequiredToRsvpInput + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}></textarea>
+					<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
 				</div>
 
 				<div class="pt-2 border-t border-neon-purple/10">

@@ -97,7 +97,7 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
 };
 
 export const actions = {
-	verify: async ({ request, platform, url }) => {
+	verify: async ({ request, platform, url, cookies }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
 
@@ -111,14 +111,23 @@ export const actions = {
 		}
 
 		const token = createSignedToken(email, platform);
-		const verifyUrl = `${url.origin}/create?token=${token}`;
 
+		// Without a mail provider, skip the email and verify immediately
+		if (!platform?.env?.RESEND_API_KEY) {
+			cookies.set(VERIFY_COOKIE, token, {
+				path: '/create',
+				httpOnly: true,
+				sameSite: 'lax'
+			});
+			// Return success — enhance's update() will re-run load which reads the cookie
+			return { verified: true };
+		}
+
+		const verifyUrl = `${url.origin}/create?token=${token}`;
 		await sendEmailVerification(email, verifyUrl, platform);
 		await recordEmailSend(db, email, 'email_verification');
 
-		// In dev (no Resend key), return the link directly so it can be clicked
-		const isDev = !platform?.env?.RESEND_API_KEY;
-		return { emailSent: true, devVerifyUrl: isDev ? verifyUrl : null };
+		return { emailSent: true };
 	},
 
 	create: async ({ request, platform, url, cookies }) => {
@@ -151,6 +160,8 @@ export const actions = {
 			? Math.max(1, Math.min(parseInt(songsRequiredToRsvpRaw, 10) || 1, songsPerGuest))
 			: null;
 
+		const rawCustomSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
+		const customInviteSubject = rawCustomSubject ? rawCustomSubject.slice(0, 200) : null;
 		const rawCustomMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
 		const customInviteMessage = rawCustomMessage ? rawCustomMessage.slice(0, 2000) : null;
 
@@ -208,6 +219,7 @@ export const actions = {
 				maxInvitesPerGuest,
 				songsPerGuest,
 				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null,
+				customInviteSubject,
 				customInviteMessage
 			})
 			.returning();

@@ -76,15 +76,24 @@ export function renderInviteEmail(data: {
 	partyLocation: string | null;
 	partyLocationUrl?: string | null;
 	magicUrl: string;
+	description?: string;
+	songsRequired?: number;
 	customMessage?: string;
 }): string {
+	const descriptionHtml = data.description
+		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${escapeHtml(data.description)}</p>`
+		: '';
+
+	const songCount = data.songsRequired ?? 1;
+	const songWord = songCount === 1 ? 'song' : `${songCount} songs`;
+
 	const messageHtml = data.customMessage
 		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;">${escapeHtml(data.customMessage)}</p>`
 		: `<p style="font-size:14px;color:#a8a4a0;">
-Pick a song to RSVP — your track is your entrance ticket.
+You'll be asked to add ${songWord} to the playlist when you RSVP.
 </p>
 <p style="font-size:13px;color:#706c68;margin-top:12px;">
-Don't bring a guest — invite them so they can contribute to the playlist!
+Feel free to invite your friends! But don't forward this message — you can add them on the invite page.
 </p>`;
 
 	return baseLayout(`
@@ -92,13 +101,13 @@ Don't bring a guest — invite them so they can contribute to the playlist!
 <p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
 <strong>${data.inviterName}</strong> wants you at <strong>${data.partyName}</strong>.
 </p>
+${descriptionHtml}${partyDetails(data.partyDate, data.partyTime, data.partyLocation, data.partyLocationUrl)}
 ${messageHtml}
-${partyDetails(data.partyDate, data.partyTime, data.partyLocation, data.partyLocationUrl)}
 <div style="text-align:center;margin-top:20px;">
-${ctaButton(data.magicUrl, 'Pick Your Song')}
+${ctaButton(data.magicUrl, 'RSVP Now')}
 </div>
 <p style="font-size:12px;color:#706c68;margin-top:16px;">
-This link is just for you — please don't forward it. Want to bring a friend? Use the invite form after you accept!
+This link is just for you — please don't forward it.
 </p>
 `);
 }

@@ -223,6 +223,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			songsPerGuest: party.songsPerGuest ?? 1,
 			songsRequiredToRsvp: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
 			songAttribution: party.songAttribution,
+			customInviteSubject: party.customInviteSubject,
 			customInviteMessage: party.customInviteMessage
 		},
 		attendee: {
@@ -620,20 +621,23 @@ export const actions = {
 		});
 
 		const magicUrl = `${url.origin}/party/${newToken}`;
-		await sendInviteEmail(
-			email,
-			name,
-			attendee.name,
-			party.name,
-			party.date,
-			party.time,
-			party.location,
+		await sendInviteEmail({
+			to: email,
+			inviteeName: name,
+			inviterName: attendee.name,
+			partyName: party.name,
+			partyDate: party.date,
+			partyTime: party.time,
+			partyLocation: party.location,
 			magicUrl,
 			platform,
-			party.locationUrl,
-			party.customInviteMessage,
-			party.creatorEmail
-		);
+			partyLocationUrl: party.locationUrl,
+			description: party.description,
+			songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
+			customSubject: party.customInviteSubject,
+			customMessage: party.customInviteMessage,
+			replyTo: party.creatorEmail
+		});
 		await recordEmailSend(db, email, 'invite');
 
 		return { inviteSent: name, inviteUrl: magicUrl };
@@ -710,20 +714,23 @@ export const actions = {
 			});
 
 			const magicUrl = `${url.origin}/party/${newToken}`;
-			await sendInviteEmail(
-				entry.email,
-				entry.name,
-				attendee.name,
-				party.name,
-				party.date,
-				party.time,
-				party.location,
+			await sendInviteEmail({
+				to: entry.email,
+				inviteeName: entry.name,
+				inviterName: attendee.name,
+				partyName: party.name,
+				partyDate: party.date,
+				partyTime: party.time,
+				partyLocation: party.location,
 				magicUrl,
 				platform,
-				party.locationUrl,
-				party.customInviteMessage,
-				party.creatorEmail
-			);
+				partyLocationUrl: party.locationUrl,
+				description: party.description,
+				songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
+				customSubject: party.customInviteSubject,
+				customMessage: party.customInviteMessage,
+				replyTo: party.creatorEmail
+			});
 			await recordEmailSend(db, entry.email, 'invite');
 
 			batchEmails.add(emailLower);
@@ -964,20 +971,23 @@ export const actions = {
 		if (!party) return fail(404, { error: 'Party not found' });
 
 		const magicUrl = `${url.origin}/party/${params.token}`;
-		await sendInviteEmail(
-			party.creatorEmail,
-			attendee.name,
-			attendee.name,
-			party.name,
-			party.date,
-			party.time,
-			party.location,
+		await sendInviteEmail({
+			to: party.creatorEmail,
+			inviteeName: attendee.name,
+			inviterName: attendee.name,
+			partyName: party.name,
+			partyDate: party.date,
+			partyTime: party.time,
+			partyLocation: party.location,
 			magicUrl,
 			platform,
-			party.locationUrl,
-			party.customInviteMessage,
-			party.creatorEmail
-		);
+			partyLocationUrl: party.locationUrl,
+			description: party.description,
+			songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
+			customSubject: party.customInviteSubject,
+			customMessage: party.customInviteMessage,
+			replyTo: party.creatorEmail
+		});
 
 		return { testEmailSent: true };
 	},
@@ -1030,6 +1040,11 @@ export const actions = {
 		const attribution = data.get('songAttribution')?.toString()?.trim();
 		if (attribution && ['hidden', 'own_tree', 'visible'].includes(attribution)) {
 			updates.songAttribution = attribution;
+		}
+
+		if (data.has('customInviteSubject')) {
+			const raw = data.get('customInviteSubject')?.toString()?.trim() || '';
+			updates.customInviteSubject = raw ? raw.slice(0, 200) : null;
 		}
 
 		if (data.has('customInviteMessage')) {

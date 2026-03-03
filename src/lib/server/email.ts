@@ -75,38 +75,46 @@ export async function sendEmail(
 	}
 }
 
-export async function sendInviteEmail(
-	to: string,
-	inviteeName: string,
-	inviterName: string,
-	partyName: string,
-	partyDate: string,
-	partyTime: string | null,
-	partyLocation: string | null,
-	magicUrl: string,
-	platform?: App.Platform,
-	partyLocationUrl?: string | null,
-	customMessage?: string | null,
-	replyTo?: string
-): Promise<void> {
+export interface InviteEmailOptions {
+	to: string;
+	inviteeName: string;
+	inviterName: string;
+	partyName: string;
+	partyDate: string;
+	partyTime: string | null;
+	partyLocation: string | null;
+	magicUrl: string;
+	platform?: App.Platform;
+	partyLocationUrl?: string | null;
+	description?: string | null;
+	songsRequired?: number;
+	customSubject?: string | null;
+	customMessage?: string | null;
+	replyTo?: string;
+}
+
+export async function sendInviteEmail(opts: InviteEmailOptions): Promise<void> {
 	const { renderInviteEmail } = await import('./email-templates');
 	const html = renderInviteEmail({
-		inviteeName,
-		inviterName,
-		partyName,
-		partyDate,
-		partyTime,
-		partyLocation,
-		partyLocationUrl,
-		magicUrl,
-		customMessage: customMessage || undefined
+		inviteeName: opts.inviteeName,
+		inviterName: opts.inviterName,
+		partyName: opts.partyName,
+		partyDate: opts.partyDate,
+		partyTime: opts.partyTime,
+		partyLocation: opts.partyLocation,
+		partyLocationUrl: opts.partyLocationUrl,
+		magicUrl: opts.magicUrl,
+		description: opts.description || undefined,
+		songsRequired: opts.songsRequired,
+		customMessage: opts.customMessage || undefined
 	});
-	await sendEmail(to, `You're invited to ${partyName}!`, html, 'invite', {
-		inviteeName,
-		inviterName,
-		partyName,
-		magicUrl
-	}, platform, replyTo);
+	const subject = opts.customSubject || `You're Invited to ${opts.partyName}`;
+	await sendEmail(opts.to, subject, html, 'invite', {
+		inviteeName: opts.inviteeName,
+		inviterName: opts.inviterName,
+		partyName: opts.partyName,
+		magicUrl: opts.magicUrl
+	}, opts.platform, opts.replyTo);
 }
 
 export async function sendEmailVerification(

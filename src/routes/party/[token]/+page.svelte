@@ -999,15 +999,26 @@
 						</div>
 
 						<div>
+							<label for="setting-invite-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
+								Invite Email Subject
+							</label>
+							<input type="text" id="setting-invite-subject" name="customInviteSubject" maxlength="200"
+								data-testid="setting-invite-subject"
+								value={(data.party as any).customInviteSubject || ''}
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
+								placeholder="You're Invited to {data.party.name}" />
+						</div>
+
+						<div>
 							<label for="setting-custom-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
-								Invite Email Message
+								Invite Email Body
 							</label>
 							<textarea id="setting-custom-message" name="customInviteMessage" maxlength="2000" rows="4"
 								data-testid="setting-custom-message"
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-								placeholder={"Pick a song to RSVP — your track is your entrance ticket.\n\nDon't bring a guest — invite them so they can contribute to the playlist!"}
+								placeholder={"You'll be asked to add " + ((data.party as any).songsRequiredToRsvp === 1 ? 'a song' : (data.party as any).songsRequiredToRsvp + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}
 							>{data.party.customInviteMessage || ''}</textarea>
-							<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default message.</p>
+							<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
 						</div>
 
 						<button type="submit"
