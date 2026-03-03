@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import PartyHeader from '$lib/components/PartyHeader.svelte';
@@ -11,6 +12,7 @@
 	import { computeSongStartTimes } from '$lib/time';
 	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 	import { parseInviteLines } from '$lib/parse-invites';
+	import { pickRandomTracks } from '$lib/test-tracks';
 
 	let { data, form } = $props();
 
@@ -147,17 +149,64 @@
 		await invalidateAll();
 	}
 
-	let youtubeUrl = $state('');
-	let durationSeconds = $state<number | null>(null);
-	let player: any = null;
+	// ─── Multi-song RSVP state ───
+	const songsRequiredToRsvp = $derived((data.party as any).songsRequiredToRsvp ?? 1);
+
+	type RsvpSong = { youtubeUrl: string; durationSeconds: number | null; comment: string };
+	let rsvpSongs = $state<RsvpSong[]>([]);
+	let rsvpPlayers: Array<{ destroy: () => void } | null> = [];
+
+	// Initialize rsvpSongs array when songsRequiredToRsvp changes
+	$effect(() => {
+		const n = songsRequiredToRsvp;
+		if (rsvpSongs.length !== n) {
+			rsvpSongs = Array.from({ length: n }, () => ({ youtubeUrl: '', durationSeconds: null, comment: '' }));
+		}
+	});
+
+	const rsvpVideoIds = $derived(
+		rsvpSongs.map((s) => (s.youtubeUrl ? extractYouTubeId(s.youtubeUrl) : null))
+	);
+
+	// Duration detection for each RSVP slot
+	$effect(() => {
+		// Clean up old players
+		for (const p of rsvpPlayers) {
+			if (p) p.destroy();
+		}
+		rsvpPlayers = rsvpVideoIds.map((vid, i) => {
+			if (!vid) {
+				rsvpSongs[i].durationSeconds = null;
+				return null;
+			}
+			return createDurationDetector(vid, (dur) => {
+				rsvpSongs[i].durationSeconds = dur;
+			});
+		});
+		return () => {
+			for (const p of rsvpPlayers) {
+				if (p) p.destroy();
+			}
+		};
+	});
 
 	// For add-song form (accepted attendees)
 	let addSongUrl = $state('');
 	let addSongDuration = $state<number | null>(null);
 	let addSongPlayer: any = null;
 
-	const videoId = $derived(youtubeUrl ? extractYouTubeId(youtubeUrl) : null);
 	const addSongVideoId = $derived(addSongUrl ? extractYouTubeId(addSongUrl) : null);
+
+	// ─── Dev tools state ───
+	let devBulkCount = $state(5);
+
+	function randomFillRsvp() {
+		const tracks = pickRandomTracks(songsRequiredToRsvp);
+		for (let i = 0; i < tracks.length && i < rsvpSongs.length; i++) {
+			rsvpSongs[i].youtubeUrl = tracks[i].url;
+			rsvpSongs[i].durationSeconds = tracks[i].durationSeconds;
+		}
+	}
 
 	// ─── Bulk invite state ───
 	let bulkMode = $state(false);
@@ -272,18 +321,6 @@
 		};
 	}
 
-	// Detect duration for accept form
-	$effect(() => {
-		if (!videoId) {
-			durationSeconds = null;
-			if (player) { player.destroy(); player = null; }
-			return;
-		}
-		if (player) { player.destroy(); player = null; }
-		player = createDurationDetector(videoId, (dur) => { durationSeconds = dur; });
-		return () => { if (player) { player.destroy(); player = null; } };
-	});
-
 	// Detect duration for add-song form
 	$effect(() => {
 		if (!addSongVideoId) {
@@ -376,7 +413,7 @@
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8">
 				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">You're Invited!</h2>
 				<p class="text-text-secondary mb-6 font-heading text-sm">
-					Accept your invitation by adding a song to the playlist. Your track is your RSVP!
+					Accept your invitation by adding {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} to the playlist. {songsRequiredToRsvp === 1 ? 'Your track is your RSVP!' : 'Your tracks are your RSVP!'}
 				</p>
 
 				{#if form?.error}
@@ -394,40 +431,56 @@
 							placeholder="What do people call you?" />
 					</div>
 
-					<div>
-						<label for="youtubeUrl" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">
-							Your Song
-							<svg class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-						</label>
-						<input type="url" id="youtubeUrl" name="youtubeUrl" required bind:value={youtubeUrl}
-							data-testid="youtube-url"
-							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="Search YouTube, copy the link, paste it here" />
-						<p class="text-text-muted text-xs mt-1.5 ml-1">
-							Find a song on <a href="https://youtube.com" target="_blank" rel="noopener" class="text-neon-cyan hover:underline">youtube.com</a>, copy its URL, and paste it above
-						</p>
-					</div>
+					{#each rsvpSongs as song, i}
+						<div class="space-y-3 {i > 0 ? 'pt-3 border-t border-neon-purple/10' : ''}">
+							{#if songsRequiredToRsvp > 1}
+								<p class="font-heading text-sm font-semibold text-neon-cyan">Song {i + 1}</p>
+							{/if}
+							<div>
+								<label for="youtubeUrl_{i}" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">
+									{songsRequiredToRsvp > 1 ? '' : 'Your Song'}
+									<svg class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+								</label>
+								<input type="url" id="youtubeUrl_{i}" name="youtubeUrl_{i}" required bind:value={song.youtubeUrl}
+									data-testid={i === 0 ? 'youtube-url' : `youtube-url-${i}`}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
+									placeholder="Search YouTube, copy the link, paste it here" />
+								{#if i === 0}
+									<p class="text-text-muted text-xs mt-1.5 ml-1">
+										Find a song on <a href="https://youtube.com" target="_blank" rel="noopener" class="text-neon-cyan hover:underline">youtube.com</a>, copy its URL, and paste it above
+									</p>
+								{/if}
+							</div>
 
-					{#if durationSeconds}
-						<div class="flex items-center gap-3 p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20" data-testid="duration-display">
-							<span class="font-heading text-sm text-text-secondary">
-								Duration: <span class="text-neon-cyan font-semibold">{formatShortDuration(durationSeconds)}</span>
-							</span>
+							{#if song.durationSeconds}
+								<div class="flex items-center gap-3 p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20" data-testid={i === 0 ? 'duration-display' : `duration-display-${i}`}>
+									<span class="font-heading text-sm text-text-secondary">
+										Duration: <span class="text-neon-cyan font-semibold">{formatShortDuration(song.durationSeconds)}</span>
+									</span>
+								</div>
+							{/if}
+
+							<div>
+								<label for="comment_{i}" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Comment <span class="text-text-muted font-normal">(optional)</span></label>
+								<textarea id="comment_{i}" name="comment_{i}" maxlength={MAX_COMMENT_LENGTH} rows="2" bind:value={song.comment}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+									placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"></textarea>
+							</div>
+
+							<input type="hidden" name="durationSeconds_{i}" value={song.durationSeconds || ''} />
 						</div>
+					{/each}
+
+					{#if dev}
+						<button type="button" onclick={randomFillRsvp}
+							class="w-full font-heading font-bold text-sm py-2.5 rounded-xl bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-all duration-200">
+							[Dev] Random Fill
+						</button>
 					{/if}
-
-					<div>
-						<label for="comment" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Comment <span class="text-text-muted font-normal">(optional)</span></label>
-						<textarea id="comment" name="comment" maxlength={MAX_COMMENT_LENGTH} rows="2"
-							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-							placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"></textarea>
-					</div>
-
-					<input type="hidden" name="durationSeconds" value={durationSeconds || ''} />
 
 					<button type="submit" data-testid="accept-btn"
 						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
-						Accept & Add Song
+						Accept & Add {songsRequiredToRsvp === 1 ? 'Song' : `${songsRequiredToRsvp} Songs`}
 					</button>
 				</form>
 
@@ -720,6 +773,32 @@
 							placeholder="Why this song? (optional)"></textarea>
 						<input type="hidden" name="durationSeconds" value={addSongDuration || ''} />
 					</form>
+
+					{#if dev}
+						<div class="mt-4 pt-4 border-t border-neon-yellow/20">
+							<h4 class="font-heading font-semibold text-xs text-neon-yellow mb-2">[Dev] Bulk Add Random Songs</h4>
+
+							{#if form?.devSongsAdded}
+								<div class="mb-2 p-2 rounded-lg bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-xs font-heading">
+									Added {form.devSongsAdded} random songs!
+								</div>
+							{/if}
+							{#if form?.devError}
+								<div class="mb-2 p-2 rounded-lg bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-xs font-heading">
+									{form.devError}
+								</div>
+							{/if}
+
+							<form method="POST" action="?/devAddRandomSongs" use:enhance class="flex items-center gap-2">
+								<input type="number" name="count" min="1" max="50" bind:value={devBulkCount}
+									class="w-20 bg-surface border border-neon-yellow/30 rounded-lg px-3 py-1.5 text-text-primary text-sm" />
+								<button type="submit"
+									class="font-heading font-semibold text-xs px-4 py-1.5 rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors">
+									Add Songs
+								</button>
+							</form>
+						</div>
+					{/if}
 				</div>
 			{/if}
 
@@ -888,7 +967,7 @@
 							</select>
 						</div>
 
-						<div class="grid grid-cols-2 gap-4">
+						<div class="grid grid-cols-3 gap-4">
 							<div>
 								<label for="setting-songs-per-guest" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
 									Songs Per Guest
@@ -896,6 +975,15 @@
 								<input type="number" id="setting-songs-per-guest" name="songsPerGuest" min="1"
 									data-testid="setting-songs-per-guest"
 									value={data.party.songsPerGuest}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm" />
+							</div>
+							<div>
+								<label for="setting-songs-required" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
+									RSVP Songs
+								</label>
+								<input type="number" id="setting-songs-required" name="songsRequiredToRsvp" min="1"
+									data-testid="setting-songs-required-to-rsvp"
+									value={(data.party as any).songsRequiredToRsvp ?? data.party.songsPerGuest}
 									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm" />
 							</div>
 							<div>

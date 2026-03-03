@@ -1,3 +1,4 @@
+import { dev } from '$app/environment';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
@@ -12,6 +13,7 @@ import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueI
 import type { SongInfo } from '$lib/server/playlist';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { parseInviteLines } from '$lib/parse-invites';
+import { pickRandomTracks } from '$lib/test-tracks';
 import type { PageServerLoad, Actions } from './$types';
 
 function isCreator(attendee: { depth: number; invitedBy: number | null }): boolean {
@@ -219,6 +221,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			maxDepth: party.maxDepth,
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
 			songsPerGuest: party.songsPerGuest ?? 1,
+			songsRequiredToRsvp: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
 			songAttribution: party.songAttribution,
 			customInviteMessage: party.customInviteMessage
 		},
@@ -307,23 +310,7 @@ export const actions = {
 		const data = await request.formData();
 
 		const name = data.get('name')?.toString()?.trim();
-		const youtubeUrl = data.get('youtubeUrl')?.toString()?.trim();
-
 		if (!name) return fail(400, { error: 'Your name is required' });
-		if (!youtubeUrl) return fail(400, { error: 'A YouTube URL is required' });
-
-		const videoId = extractYouTubeId(youtubeUrl);
-		if (!videoId) return fail(400, { error: 'Invalid YouTube URL' });
-
-		const durationStr = data.get('durationSeconds')?.toString()?.trim();
-		let durationSeconds: number | undefined;
-		if (durationStr) {
-			const parsed = parseInt(durationStr, 10);
-			if (!isNaN(parsed) && parsed > 0 && parsed < 7200) {
-				durationSeconds = parsed;
-			}
-		}
-		if (!durationSeconds) return fail(400, { error: 'Song duration is required' });
 
 		const attendee = await db.query.attendees.findFirst({
 			where: eq(attendees.inviteToken, params.token)
@@ -336,27 +323,68 @@ export const actions = {
 		});
 		if (!party) return fail(404, { error: 'Party not found' });
 
-		// Check for duplicate song
-		const existing = await db.query.songs.findFirst({
-			where: and(eq(songs.partyId, party.id), eq(songs.youtubeId, videoId))
-		});
-		if (existing) {
-			return fail(400, { error: 'This song is already on the playlist! Pick something else.' });
+		const songsRequired = party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1;
+
+		// Parse N songs from indexed form fields
+		const parsedSongs: Array<{ videoId: string; durationSeconds: number; comment: string | null }> = [];
+		const seenVideoIds = new Set<string>();
+
+		for (let i = 0; i < songsRequired; i++) {
+			const youtubeUrl = data.get(`youtubeUrl_${i}`)?.toString()?.trim();
+			if (!youtubeUrl) return fail(400, { error: `Song ${i + 1}: A YouTube URL is required` });
+
+			const videoId = extractYouTubeId(youtubeUrl);
+			if (!videoId) return fail(400, { error: `Song ${i + 1}: Invalid YouTube URL` });
+
+			// Check uniqueness among submitted songs
+			if (seenVideoIds.has(videoId)) {
+				return fail(400, { error: `Song ${i + 1}: Duplicate — each song must be different` });
+			}
+			seenVideoIds.add(videoId);
+
+			const durationStr = data.get(`durationSeconds_${i}`)?.toString()?.trim();
+			let durationSeconds: number | undefined;
+			if (durationStr) {
+				const parsed = parseInt(durationStr, 10);
+				if (!isNaN(parsed) && parsed > 0 && parsed < 7200) {
+					durationSeconds = parsed;
+				}
+			}
+			if (!durationSeconds) return fail(400, { error: `Song ${i + 1}: Song duration is required` });
+
+			const commentRaw = data.get(`comment_${i}`)?.toString()?.trim() || null;
+			const comment = commentRaw ? commentRaw.slice(0, MAX_COMMENT_LENGTH) : null;
+
+			parsedSongs.push({ videoId, durationSeconds, comment });
 		}
 
-		const metadata = await fetchYouTubeMetadata(videoId);
-		if (!metadata) {
-			return fail(400, { error: 'Could not find that YouTube video. Is it public?' });
-		}
-
-		// Run overflow algorithm
+		// Check for duplicate songs vs existing playlist
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, party.id)
 		});
+		const existingVideoIds = new Set(allSongs.map((s) => s.youtubeId));
+		for (const s of parsedSongs) {
+			if (existingVideoIds.has(s.videoId)) {
+				return fail(400, { error: 'One of your songs is already on the playlist! Pick something else.' });
+			}
+		}
+
+		// Fetch metadata for all songs
+		const metadataList = await Promise.all(
+			parsedSongs.map((s) => fetchYouTubeMetadata(s.videoId))
+		);
+		for (let i = 0; i < metadataList.length; i++) {
+			if (!metadataList[i]) {
+				return fail(400, { error: `Song ${i + 1}: Could not find that YouTube video. Is it public?` });
+			}
+		}
+
+		// Run overflow check with total new duration
+		const totalNewDuration = parsedSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
 		const targetDuration = computeTargetDuration(party.time, party.endTime);
 		const overflowResult = computeOverflowDrops(
 			allSongs.map(toSongInfo),
-			durationSeconds,
+			totalNewDuration,
 			targetDuration,
 			attendee.id
 		);
@@ -389,27 +417,39 @@ export const actions = {
 			.set({ name, acceptedAt: new Date().toISOString(), declinedAt: null })
 			.where(eq(attendees.id, attendee.id));
 
-		// Get new position
+		// Random insertion: build position array from current songs, insert each new song at a random position
 		const currentSongs = await db.query.songs.findMany({
-			where: eq(songs.partyId, party.id)
+			where: eq(songs.partyId, party.id),
+			orderBy: songs.position
 		});
+		const positionArray = currentSongs.map((s) => s.id);
 
-		// Read optional comment
-		const commentRaw = data.get('comment')?.toString()?.trim() || null;
-		const comment = commentRaw ? commentRaw.slice(0, MAX_COMMENT_LENGTH) : null;
+		const newSongIds: number[] = [];
+		for (let i = 0; i < parsedSongs.length; i++) {
+			const s = parsedSongs[i];
+			const metadata = metadataList[i]!;
+			const insertIdx = Math.floor(Math.random() * (positionArray.length + 1));
 
-		// Add the song
-		await db.insert(songs).values({
-			partyId: party.id,
-			addedBy: attendee.id,
-			youtubeId: videoId,
-			youtubeTitle: metadata.title,
-			youtubeThumbnail: metadata.thumbnail,
-			youtubeChannelName: metadata.channelName,
-			durationSeconds,
-			comment,
-			position: currentSongs.length
-		});
+			const [inserted] = await db.insert(songs).values({
+				partyId: party.id,
+				addedBy: attendee.id,
+				youtubeId: s.videoId,
+				youtubeTitle: metadata.title,
+				youtubeThumbnail: metadata.thumbnail,
+				youtubeChannelName: metadata.channelName,
+				durationSeconds: s.durationSeconds,
+				comment: s.comment,
+				position: 0 // temporary, will be fixed below
+			}).returning();
+
+			positionArray.splice(insertIdx, 0, inserted.id);
+			newSongIds.push(inserted.id);
+		}
+
+		// Update all positions to match the new order
+		for (let i = 0; i < positionArray.length; i++) {
+			await db.update(songs).set({ position: i }).where(eq(songs.id, positionArray[i]));
+		}
 
 		return { accepted: true };
 	},
@@ -976,6 +1016,17 @@ export const actions = {
 			if (!isNaN(parsed) && parsed >= 1) updates.songsPerGuest = parsed;
 		}
 
+		const songsRequiredToRsvpRaw = data.get('songsRequiredToRsvp')?.toString()?.trim();
+		if (songsRequiredToRsvpRaw === '') {
+			updates.songsRequiredToRsvp = null;
+		} else if (songsRequiredToRsvpRaw) {
+			const parsed = parseInt(songsRequiredToRsvpRaw, 10);
+			const spg = (updates.songsPerGuest as number) ?? party.songsPerGuest ?? 1;
+			if (!isNaN(parsed) && parsed >= 1 && parsed <= spg) {
+				updates.songsRequiredToRsvp = parsed;
+			}
+		}
+
 		const attribution = data.get('songAttribution')?.toString()?.trim();
 		if (attribution && ['hidden', 'own_tree', 'visible'].includes(attribution)) {
 			updates.songAttribution = attribution;
@@ -991,5 +1042,61 @@ export const actions = {
 		}
 
 		return { settingsUpdated: true };
+	},
+
+	devAddRandomSongs: async ({ params, request, platform }) => {
+		if (!dev) return fail(403, { songError: 'Dev-only action' });
+
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const count = Math.min(Math.max(parseInt(data.get('count')?.toString() || '1', 10) || 1, 1), 50);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { devError: 'Not found' });
+		if (!attendee.acceptedAt) return fail(400, { devError: 'Must be accepted first' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { devError: 'Party not found' });
+
+		const existingSongs = await db.query.songs.findMany({
+			where: eq(songs.partyId, party.id),
+			orderBy: songs.position
+		});
+		const existingVideoIds = new Set(existingSongs.map((s) => s.youtubeId));
+
+		const tracks = pickRandomTracks(count, existingVideoIds);
+		if (tracks.length === 0) {
+			return fail(400, { devError: 'No more unique tracks available' });
+		}
+
+		const positionArray = existingSongs.map((s) => s.id);
+
+		for (const track of tracks) {
+			const insertIdx = Math.floor(Math.random() * (positionArray.length + 1));
+
+			const [inserted] = await db.insert(songs).values({
+				partyId: party.id,
+				addedBy: attendee.id,
+				youtubeId: track.videoId,
+				youtubeTitle: track.title,
+				youtubeThumbnail: track.thumbnail,
+				youtubeChannelName: track.channelName,
+				durationSeconds: track.durationSeconds,
+				position: 0
+			}).returning();
+
+			positionArray.splice(insertIdx, 0, inserted.id);
+		}
+
+		for (let i = 0; i < positionArray.length; i++) {
+			await db.update(songs).set({ position: i }).where(eq(songs.id, positionArray[i]));
+		}
+
+		return { devSongsAdded: tracks.length };
 	}
 } satisfies Actions;
