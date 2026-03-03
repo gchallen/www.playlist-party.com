@@ -26,20 +26,18 @@ async function sendViaResend(
 	subject: string,
 	html: string,
 	apiKey: string,
-	fromEmail: string
+	fromEmail: string,
+	replyTo?: string
 ): Promise<void> {
+	const body: Record<string, unknown> = { from: fromEmail, to, subject, html };
+	if (replyTo) body.reply_to = replyTo;
 	const res = await fetch('https://api.resend.com/emails', {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify({
-			from: fromEmail,
-			to,
-			subject,
-			html
-		})
+		body: JSON.stringify(body)
 	});
 
 	if (!res.ok) {
@@ -54,14 +52,16 @@ export async function sendEmail(
 	html: string,
 	type: EmailMessage['type'],
 	metadata: Record<string, string> = {},
-	platform?: App.Platform
+	platform?: App.Platform,
+	replyTo?: string
 ): Promise<void> {
 	const apiKey = platform?.env?.RESEND_API_KEY;
 	const fromEmail = platform?.env?.RESEND_FROM_EMAIL || 'noreply@playlist-party.com';
 
 	if (apiKey) {
-		await sendViaResend(to, subject, html, apiKey, fromEmail);
+		await sendViaResend(to, subject, html, apiKey, fromEmail, replyTo);
 	} else {
+		if (replyTo) metadata.replyTo = replyTo;
 		const message: EmailMessage = {
 			id: `email_${++emailCounter}`,
 			to,
@@ -85,7 +85,9 @@ export async function sendInviteEmail(
 	partyLocation: string | null,
 	magicUrl: string,
 	platform?: App.Platform,
-	partyLocationUrl?: string | null
+	partyLocationUrl?: string | null,
+	customMessage?: string | null,
+	replyTo?: string
 ): Promise<void> {
 	const { renderInviteEmail } = await import('./email-templates');
 	const html = renderInviteEmail({
@@ -96,14 +98,15 @@ export async function sendInviteEmail(
 		partyTime,
 		partyLocation,
 		partyLocationUrl,
-		magicUrl
+		magicUrl,
+		customMessage: customMessage || undefined
 	});
 	await sendEmail(to, `You're invited to ${partyName}!`, html, 'invite', {
 		inviteeName,
 		inviterName,
 		partyName,
 		magicUrl
-	}, platform);
+	}, platform, replyTo);
 }
 
 export async function sendEmailVerification(

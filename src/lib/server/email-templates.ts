@@ -1,5 +1,9 @@
 import { formatTime } from '$lib/time';
 
+function escapeHtml(str: string): string {
+	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function baseLayout(content: string): string {
 	return `<!DOCTYPE html>
 <html>
@@ -72,18 +76,23 @@ export function renderInviteEmail(data: {
 	partyLocation: string | null;
 	partyLocationUrl?: string | null;
 	magicUrl: string;
+	customMessage?: string;
 }): string {
+	const messageHtml = data.customMessage
+		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;">${escapeHtml(data.customMessage)}</p>`
+		: `<p style="font-size:14px;color:#a8a4a0;">
+Pick a song to RSVP — your track is your entrance ticket.
+</p>
+<p style="font-size:13px;color:#706c68;margin-top:12px;">
+Don't bring a guest — invite them so they can contribute to the playlist!
+</p>`;
+
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">You're Invited!</h1>
 <p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
 <strong>${data.inviterName}</strong> wants you at <strong>${data.partyName}</strong>.
 </p>
-<p style="font-size:14px;color:#a8a4a0;">
-Pick a song to RSVP — your track is your entrance ticket.
-</p>
-<p style="font-size:13px;color:#706c68;margin-top:12px;">
-Don't bring a guest — invite them so they can contribute to the playlist!
-</p>
+${messageHtml}
 ${partyDetails(data.partyDate, data.partyTime, data.partyLocation, data.partyLocationUrl)}
 <div style="text-align:center;margin-top:20px;">
 ${ctaButton(data.magicUrl, 'Pick Your Song')}

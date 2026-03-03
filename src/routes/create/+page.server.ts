@@ -147,6 +147,9 @@ export const actions = {
 		const maxInvitesPerGuest = maxInvitesRaw ? parseInt(maxInvitesRaw, 10) : null;
 		const songsPerGuest = Math.max(1, parseInt(data.get('songsPerGuest')?.toString() || '1', 10) || 1);
 
+		const rawCustomMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
+		const customInviteMessage = rawCustomMessage ? rawCustomMessage.slice(0, 2000) : null;
+
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
 		if (!createdBy) return fail(400, { error: 'Your name is required' });
@@ -199,7 +202,8 @@ export const actions = {
 				maxDepth,
 				maxAttendees,
 				maxInvitesPerGuest,
-				songsPerGuest
+				songsPerGuest,
+				customInviteMessage
 			})
 			.returning();
 

@@ -157,4 +157,102 @@ test.describe('Party Creation', () => {
 		const val = await page.locator('[data-testid="max-attendees"]').inputValue();
 		expect(val).toBe('50');
 	});
+
+	test('custom invite message appears in invite emails', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('custmsg-host');
+		const customMsg = 'Bring your dancing shoes and your best playlist picks!';
+
+		await page.goto('/create');
+		await verifyCreatorEmail(page, request, creatorEmail);
+
+		await page.locator('#name').fill('Custom Msg Party');
+		await page.locator('#date').fill('2026-07-04');
+		await page.locator('#createdBy').fill('Custom Host');
+		await page.locator('[data-testid="custom-invite-message"]').fill(customMsg);
+		await page.getByRole('button', { name: 'Create Party' }).click();
+		await page.waitForURL(/\/party\//);
+
+		// Send an invite
+		const guestEmail = uniqueEmail('custmsg-guest');
+		await page.locator('[data-testid="invite-name"]').fill('Guest One');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
+		await page.locator('[data-testid="send-invite-btn"]').click();
+		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+
+		// Check the invite email
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails.length).toBe(1);
+		expect(data.emails[0].html).toContain(customMsg);
+		expect(data.emails[0].html).not.toContain('Pick a song to RSVP');
+	});
+
+	test('invite email has reply-to set to creator email', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('replyto-host');
+
+		const partyUrl = await createParty(page, request, { creatorEmail });
+
+		const guestEmail = uniqueEmail('replyto-guest');
+		await page.locator('[data-testid="invite-name"]').fill('Reply Guest');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
+		await page.locator('[data-testid="send-invite-btn"]').click();
+		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails.length).toBe(1);
+		expect(data.emails[0].metadata.replyTo).toBe(creatorEmail);
+	});
+
+	test('default message used when custom message is empty', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('defmsg-host');
+
+		await createParty(page, request, { creatorEmail });
+
+		const guestEmail = uniqueEmail('defmsg-guest');
+		await page.locator('[data-testid="invite-name"]').fill('Default Guest');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
+		await page.locator('[data-testid="send-invite-btn"]').click();
+		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails.length).toBe(1);
+		expect(data.emails[0].html).toContain('Pick a song to RSVP');
+	});
+
+	test('custom message editable in settings', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('editmsg-host');
+		const messageA = 'Original custom message for the party';
+		const messageB = 'Updated message after settings change';
+
+		// Create party with message A
+		await page.goto('/create');
+		await verifyCreatorEmail(page, request, creatorEmail);
+
+		await page.locator('#name').fill('Editable Msg Party');
+		await page.locator('#date').fill('2026-07-04');
+		await page.locator('#createdBy').fill('Edit Host');
+		await page.locator('[data-testid="custom-invite-message"]').fill(messageA);
+		await page.getByRole('button', { name: 'Create Party' }).click();
+		await page.waitForURL(/\/party\//);
+
+		// Update settings with message B
+		await page.locator('[data-testid="setting-custom-message"]').fill(messageB);
+		await page.getByRole('button', { name: 'Save Settings' }).click();
+		await page.locator('text=Settings updated').waitFor();
+
+		// Send an invite
+		const guestEmail = uniqueEmail('editmsg-guest');
+		await page.locator('[data-testid="invite-name"]').fill('Edit Guest');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
+		await page.locator('[data-testid="send-invite-btn"]').click();
+		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails.length).toBe(1);
+		expect(data.emails[0].html).toContain(messageB);
+		expect(data.emails[0].html).not.toContain(messageA);
+	});
 });

@@ -53,6 +53,9 @@
 	let maxDepthInput = $state('');
 	let maxInvitesInput = $state('');
 
+	const DEFAULT_INVITE_MESSAGE = "Pick a song to RSVP — your track is your entrance ticket.\n\nDon't bring a guest — invite them so they can contribute to the playlist!";
+	let customInviteMessage = $state(DEFAULT_INVITE_MESSAGE);
+
 	let avgSongDurationSeconds = $derived(
 		genre === 'custom' ? customMinutes * 60 + customSeconds : (GENRE_DURATIONS[genre] ?? 210)
 	);
@@ -156,6 +159,7 @@
 				if (data.songsPerGuestOverride !== undefined) songsPerGuestOverride = data.songsPerGuestOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
+				if (data.customInviteMessage !== undefined) customInviteMessage = data.customInviteMessage;
 			}
 		} catch {
 			// ignore
@@ -171,7 +175,7 @@
 			locationUrl, createdBy, genre,
 			customMinutes, customSeconds, maxAttendeesInput,
 			manualOverride, songsPerGuestInput, songsPerGuestOverride,
-			maxDepthInput, maxInvitesInput
+			maxDepthInput, maxInvitesInput, customInviteMessage
 		};
 		if (!restored || !verifiedEmail) return;
 		try {
@@ -338,6 +342,18 @@
 						value={verifiedEmail}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary/60 transition-colors cursor-not-allowed" />
 					<p class="text-neon-cyan text-xs font-heading mt-1 px-1">&#10003; Verified</p>
+				</div>
+
+				<div>
+					<label for="customInviteMessage" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Message</label>
+					<textarea id="customInviteMessage" rows="4" maxlength="2000" bind:value={customInviteMessage}
+						data-testid="custom-invite-message"
+						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none text-sm"
+						placeholder={DEFAULT_INVITE_MESSAGE}></textarea>
+					<p class="text-text-muted text-xs mt-1 ml-1">This message appears in invite emails sent to your guests.</p>
+					{#if customInviteMessage !== DEFAULT_INVITE_MESSAGE}
+						<input type="hidden" name="customInviteMessage" value={customInviteMessage} />
+					{/if}
 				</div>
 
 				<div class="pt-2 border-t border-neon-purple/10">

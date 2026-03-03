@@ -910,6 +910,18 @@
 							</div>
 						</div>
 
+						<div>
+							<label for="setting-custom-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
+								Invite Email Message
+							</label>
+							<textarea id="setting-custom-message" name="customInviteMessage" maxlength="2000" rows="4"
+								data-testid="setting-custom-message"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+								placeholder={"Pick a song to RSVP — your track is your entrance ticket.\n\nDon't bring a guest — invite them so they can contribute to the playlist!"}
+							>{data.party.customInviteMessage || ''}</textarea>
+							<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default message.</p>
+						</div>
+
 						<button type="submit"
 							class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
 							Save Settings

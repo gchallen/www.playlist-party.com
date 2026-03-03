@@ -219,7 +219,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			maxDepth: party.maxDepth,
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
 			songsPerGuest: party.songsPerGuest ?? 1,
-			songAttribution: party.songAttribution
+			songAttribution: party.songAttribution,
+			customInviteMessage: party.customInviteMessage
 		},
 		attendee: {
 			name: attendee.name,
@@ -589,7 +590,9 @@ export const actions = {
 			party.location,
 			magicUrl,
 			platform,
-			party.locationUrl
+			party.locationUrl,
+			party.customInviteMessage,
+			party.creatorEmail
 		);
 		await recordEmailSend(db, email, 'invite');
 
@@ -677,7 +680,9 @@ export const actions = {
 				party.location,
 				magicUrl,
 				platform,
-				party.locationUrl
+				party.locationUrl,
+				party.customInviteMessage,
+				party.creatorEmail
 			);
 			await recordEmailSend(db, entry.email, 'invite');
 
@@ -941,6 +946,11 @@ export const actions = {
 		const attribution = data.get('songAttribution')?.toString()?.trim();
 		if (attribution && ['hidden', 'own_tree', 'visible'].includes(attribution)) {
 			updates.songAttribution = attribution;
+		}
+
+		if (data.has('customInviteMessage')) {
+			const raw = data.get('customInviteMessage')?.toString()?.trim() || '';
+			updates.customInviteMessage = raw ? raw.slice(0, 2000) : null;
 		}
 
 		if (Object.keys(updates).length > 0) {

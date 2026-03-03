@@ -16,6 +16,7 @@ export const parties = sqliteTable('parties', {
 	maxInvitesPerGuest: integer('max_invites_per_guest'),
 	songsPerGuest: integer('songs_per_guest').notNull().default(1),
 	songAttribution: text('song_attribution').notNull().default('hidden'),
+	customInviteMessage: text('custom_invite_message'),
 	createdAt: text('created_at')
 		.notNull()
 		.$defaultFn(() => new Date().toISOString())

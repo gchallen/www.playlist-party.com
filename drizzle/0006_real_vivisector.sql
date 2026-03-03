@@ -1,0 +1,1 @@
+ALTER TABLE `parties` ADD `custom_invite_message` text;
