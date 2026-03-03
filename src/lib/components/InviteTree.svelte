@@ -3,6 +3,7 @@
 		name: string | null;
 		depth: number;
 		acceptedAt: string | null;
+		status: string;
 		children: TreeNode[];
 	};
 
@@ -14,14 +15,18 @@
 		<div class="flex items-center gap-2 py-1.5">
 			<div
 				class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-				class:accepted-dot={node.acceptedAt}
-				class:pending-dot={!node.acceptedAt}
+				class:accepted-dot={node.status === 'attending'}
+				class:pending-dot={node.status === 'pending'}
+				class:declined-dot={node.status === 'declined'}
+				class:unavailable-dot={node.status === 'unavailable'}
 			></div>
 
 			<div
 				class="node-card px-3 py-1.5 rounded-lg text-sm font-heading"
-				class:is-accepted={node.acceptedAt}
-				class:is-pending={!node.acceptedAt}
+				class:is-accepted={node.status === 'attending'}
+				class:is-pending={node.status === 'pending'}
+				class:is-declined={node.status === 'declined'}
+				class:is-unavailable={node.status === 'unavailable'}
 			>
 				{node.name || 'Pending...'}
 				{#if node.depth > 0}
@@ -74,6 +79,16 @@
 		animation: pulse-glow 2s ease-in-out infinite;
 	}
 
+	.declined-dot {
+		background: var(--color-neon-pink);
+		box-shadow: 0 0 6px color-mix(in srgb, var(--color-neon-pink) 50%, transparent);
+	}
+
+	.unavailable-dot {
+		background: var(--color-neon-yellow);
+		box-shadow: 0 0 6px color-mix(in srgb, var(--color-neon-yellow) 50%, transparent);
+	}
+
 	.node-card.is-accepted {
 		background: var(--glass-bg);
 		backdrop-filter: blur(8px);
@@ -86,5 +101,19 @@
 		border: 1px dashed color-mix(in srgb, var(--color-text-muted) 25%, transparent);
 		color: var(--color-text-muted);
 		font-style: italic;
+	}
+
+	.node-card.is-declined {
+		background: color-mix(in srgb, var(--glass-bg) 50%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-neon-pink) 15%, transparent);
+		color: var(--color-neon-pink);
+		opacity: 0.7;
+	}
+
+	.node-card.is-unavailable {
+		background: color-mix(in srgb, var(--glass-bg) 50%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-neon-yellow) 15%, transparent);
+		color: var(--color-neon-yellow);
+		opacity: 0.8;
 	}
 </style>

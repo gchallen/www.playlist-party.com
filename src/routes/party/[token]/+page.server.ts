@@ -18,6 +18,15 @@ function isCreator(attendee: { depth: number; invitedBy: number | null }): boole
 	return attendee.depth === 0 && attendee.invitedBy === null;
 }
 
+type AttendeeStatus = 'pending' | 'declined' | 'attending' | 'unavailable';
+
+function getAttendeeStatus(a: { acceptedAt: string | null; declinedAt: string | null }): AttendeeStatus {
+	if (a.acceptedAt && a.declinedAt) return 'unavailable';
+	if (a.acceptedAt) return 'attending';
+	if (a.declinedAt) return 'declined';
+	return 'pending';
+}
+
 function maskEmail(email: string): string {
 	const [local, domain] = email.split('@');
 	const maskedLocal = local[0] + '***' + (local.length > 1 ? local[local.length - 1] : '');
@@ -34,7 +43,7 @@ interface InviteValidationContext {
 	db: Database;
 	party: { id: number; maxAttendees: number; maxDepth: number | null; maxInvitesPerGuest: number | null; time: string | null; endTime: string | null; name: string; date: string; location: string | null; locationUrl: string | null };
 	attendee: { id: number; name: string; depth: number };
-	allAttendees: Array<{ id: number; email: string; invitedBy: number | null }>;
+	allAttendees: Array<{ id: number; email: string; invitedBy: number | null; declinedAt: string | null }>;
 	allSongs: SongInfo[];
 	targetDuration: number | null;
 }
@@ -44,8 +53,9 @@ async function validateInvite(
 	name: string,
 	email: string
 ): Promise<string | null> {
-	// Check max attendees
-	if (ctx.allAttendees.length >= ctx.party.maxAttendees) {
+	// Check max attendees (exclude declined)
+	const activeCount = ctx.allAttendees.filter((a) => !a.declinedAt).length;
+	if (activeCount >= ctx.party.maxAttendees) {
 		return 'Party is full — max attendees reached';
 	}
 
@@ -61,7 +71,7 @@ async function validateInvite(
 	}
 
 	// Check canIssueInvitations (duration gating)
-	if (!canIssueInvitations(ctx.allAttendees.length, ctx.party.maxAttendees, ctx.allSongs, ctx.targetDuration)) {
+	if (!canIssueInvitations(activeCount, ctx.party.maxAttendees, ctx.allSongs, ctx.targetDuration)) {
 		return 'The playlist is full — no room for more guests right now';
 	}
 
@@ -104,6 +114,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const verified = cookies.get(`pv_${params.token}`) === '1';
 	const creator = isCreator(attendee);
 	const isPending = !attendee.acceptedAt;
+	const attendeeStatus = getAttendeeStatus(attendee);
 
 	// Load all songs
 	const allSongs = await db.query.songs.findMany({
@@ -118,7 +129,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const allAttendees = await db.query.attendees.findMany({
 		where: eq(attendees.partyId, party.id)
 	});
-	const acceptedCount = allAttendees.filter((a) => a.acceptedAt).length;
+	const activeAttendees = allAttendees.filter((a) => !a.declinedAt);
+	const acceptedCount = allAttendees.filter((a) => a.acceptedAt && !a.declinedAt).length;
 
 	// My invites
 	const myInvites = allAttendees.filter((a) => a.invitedBy === attendee.id);
@@ -129,7 +141,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const mySongs = allSongs.filter((s) => s.addedBy === attendee.id);
 
 	const canInvite = canIssueInvitations(
-		allAttendees.length,
+		activeAttendees.length,
 		party.maxAttendees,
 		allSongs.map(toSongInfo),
 		targetDuration
@@ -159,6 +171,11 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		}
 	}
 
+	// Build set of unavailable attendee IDs
+	const unavailableIds = new Set(
+		allAttendees.filter((a) => a.declinedAt).map((a) => a.id)
+	);
+
 	// Build song list with conditional attribution
 	const songList = allSongs.map((s) => {
 		let addedByName: string | null = null;
@@ -181,7 +198,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			comment: s.comment,
 			addedByName,
 			isMine: s.addedBy === attendee.id,
-			isHost: s.addedBy === hostId
+			isHost: s.addedBy === hostId,
+			isUnavailable: unavailableIds.has(s.addedBy)
 		};
 	});
 
@@ -210,11 +228,12 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		},
 		isCreator: creator,
 		isPending,
+		attendeeStatus,
 		songs: songList,
 		totalDuration,
 		targetDuration,
 		acceptedCount,
-		totalAttendees: allAttendees.length,
+		totalAttendees: activeAttendees.length,
 		canInvite
 	};
 
@@ -234,7 +253,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		result.myInvites = myInvites.map((i) => ({
 			name: i.name,
 			email: i.email,
-			accepted: !!i.acceptedAt
+			accepted: !!i.acceptedAt,
+			status: getAttendeeStatus(i)
 		}));
 	}
 
@@ -246,7 +266,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			email: a.email,
 			invitedBy: a.invitedBy,
 			depth: a.depth,
-			accepted: !!a.acceptedAt
+			accepted: !!a.acceptedAt,
+			status: getAttendeeStatus(a)
 		}));
 	}
 
@@ -361,10 +382,10 @@ export const actions = {
 			}
 		}
 
-		// Accept the invite
+		// Accept the invite (also clear declinedAt in case of decline → undecline → accept flow)
 		await db
 			.update(attendees)
-			.set({ name, acceptedAt: new Date().toISOString() })
+			.set({ name, acceptedAt: new Date().toISOString(), declinedAt: null })
 			.where(eq(attendees.id, attendee.id));
 
 		// Get new position
@@ -416,6 +437,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { songError: 'Not found' });
+		if (attendee.declinedAt) return fail(400, { songError: 'You have declined this invitation' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -520,6 +542,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { inviteError: 'Not found' });
+		if (attendee.declinedAt) return fail(400, { inviteError: 'You have declined this invitation' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -592,6 +615,7 @@ export const actions = {
 		if (!isCreator(attendee)) {
 			return fail(403, { bulkError: 'Only the party creator can use bulk invite' });
 		}
+		if (attendee.declinedAt) return fail(400, { bulkError: 'You have declined this invitation' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -662,6 +686,105 @@ export const actions = {
 		}
 
 		return { bulkResults };
+	},
+
+	decline: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (attendee.acceptedAt) return fail(400, { error: 'You have already accepted' });
+		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot decline' });
+
+		await db
+			.update(attendees)
+			.set({ declinedAt: new Date().toISOString() })
+			.where(eq(attendees.id, attendee.id));
+
+		return { declined: true };
+	},
+
+	undecline: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (attendee.acceptedAt) return fail(400, { error: 'You have already accepted' });
+		if (!attendee.declinedAt) return fail(400, { error: 'You have not declined' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+
+		// Capacity check
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+		const activeCount = allAttendeesList.filter((a) => !a.declinedAt).length;
+		if (activeCount >= party.maxAttendees) {
+			return fail(400, { error: 'Party is now full — no room to rejoin' });
+		}
+
+		await db
+			.update(attendees)
+			.set({ declinedAt: null })
+			.where(eq(attendees.id, attendee.id));
+
+		return { undeclined: true };
+	},
+
+	cantMakeIt: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!attendee.acceptedAt) return fail(400, { error: 'You have not accepted yet' });
+		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot mark unavailable' });
+
+		await db
+			.update(attendees)
+			.set({ declinedAt: new Date().toISOString() })
+			.where(eq(attendees.id, attendee.id));
+
+		return { cantMakeIt: true };
+	},
+
+	reconfirm: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!attendee.acceptedAt || !attendee.declinedAt) return fail(400, { error: 'Invalid state' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+
+		// Capacity check
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+		const activeCount = allAttendeesList.filter((a) => !a.declinedAt).length;
+		if (activeCount >= party.maxAttendees) {
+			return fail(400, { error: 'Party is now full — no room to rejoin' });
+		}
+
+		await db
+			.update(attendees)
+			.set({ declinedAt: null })
+			.where(eq(attendees.id, attendee.id));
+
+		return { reconfirmed: true };
 	},
 
 	removeSong: async ({ params, request, platform }) => {

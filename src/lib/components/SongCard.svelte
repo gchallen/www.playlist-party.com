@@ -11,6 +11,7 @@
 		isMine = false,
 		isHost = false,
 		isPlaying = false,
+		isUnavailable = false,
 		position,
 		showControls = false,
 		showRemove = false,
@@ -34,6 +35,7 @@
 		isMine?: boolean;
 		isHost?: boolean;
 		isPlaying?: boolean;
+		isUnavailable?: boolean;
 		position: number;
 		showControls?: boolean;
 		showRemove?: boolean;
@@ -67,6 +69,7 @@
 	class="song-card w-full rounded-xl transition-all duration-200 text-left group"
 	class:is-playing={isPlaying}
 	class:cursor-pointer={!!comment && !isDraggable}
+	style={isUnavailable ? 'opacity: 0.55;' : ''}
 	draggable={isDraggable ? 'true' : undefined}
 	{ondragstart}
 	{ondragover}
@@ -115,13 +118,13 @@
 				{/if}
 			</p>
 			{#if isMine}
-				<p class="text-neon-cyan text-xs mt-0.5">You</p>
+				<p class="text-neon-cyan text-xs mt-0.5">You{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
 			{:else if isHost}
 				<p class="text-neon-mint text-xs mt-0.5">Host</p>
 			{:else if revealed && addedBy}
-				<p class="text-neon-mint text-xs mt-0.5">{addedBy}</p>
+				<p class="text-neon-mint text-xs mt-0.5">{addedBy}{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
 			{:else}
-				<p class="text-text-muted text-xs mt-0.5">Guest</p>
+				<p class="text-text-muted text-xs mt-0.5">Guest{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
 			{/if}
 		</div>
 

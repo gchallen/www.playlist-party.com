@@ -34,6 +34,7 @@ export const attendees = sqliteTable(
 		inviteToken: text('invite_token', { length: 21 }).notNull().unique(),
 		depth: integer('depth').notNull().default(0),
 		acceptedAt: text('accepted_at'),
+		declinedAt: text('declined_at'),
 		createdAt: text('created_at')
 			.notNull()
 			.$defaultFn(() => new Date().toISOString())

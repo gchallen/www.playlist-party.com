@@ -195,6 +195,7 @@
 		name: string;
 		depth: number;
 		acceptedAt: string | null;
+		status: string;
 		children: TreeNode[];
 	};
 
@@ -206,6 +207,7 @@
 			invitedBy: number | null;
 			depth: number;
 			accepted: boolean;
+			status: string;
 		}>;
 
 		const nodeMap = new Map<number, TreeNode>();
@@ -217,6 +219,7 @@
 				name: a.name,
 				depth: a.depth,
 				acceptedAt: a.accepted ? 'yes' : null,
+				status: a.status,
 				children: []
 			});
 		}
@@ -346,8 +349,30 @@
 			</div>
 		{:else}
 
+		<!-- ─── DECLINED VIEW ─── -->
+		{#if data.attendeeStatus === 'declined'}
+			<div class="mt-8 glass rounded-2xl p-6 md:p-8 text-center" data-testid="declined-view">
+				<h2 class="font-heading text-2xl font-extrabold text-neon-pink mb-2">Invitation Declined</h2>
+				<p class="text-text-secondary mb-6 font-heading text-sm">
+					You declined this invitation. Changed your mind?
+				</p>
+
+				{#if form?.error}
+					<div class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+						{form.error}
+					</div>
+				{/if}
+
+				<form method="POST" action="?/undecline" use:enhance>
+					<button type="submit" data-testid="undecline-btn"
+						class="cta-btn font-heading font-bold text-lg py-3.5 px-8 rounded-xl bg-neon-cyan text-on-accent transition-all duration-300">
+						I Want to Come!
+					</button>
+				</form>
+			</div>
+
 		<!-- ─── PENDING INVITEE MODE ─── -->
-		{#if data.isPending}
+		{:else if data.isPending}
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8">
 				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">You're Invited!</h2>
 				<p class="text-text-secondary mb-6 font-heading text-sm">
@@ -405,6 +430,17 @@
 						Accept & Add Song
 					</button>
 				</form>
+
+				{#if !data.isCreator}
+					<div class="mt-4 text-center">
+						<form method="POST" action="?/decline" use:enhance>
+							<button type="submit" data-testid="decline-btn"
+								class="font-heading text-sm text-text-muted hover:text-neon-pink transition-colors">
+								Decline this invitation
+							</button>
+						</form>
+					</div>
+				{/if}
 			</div>
 
 		<!-- ─── ACCEPTED ATTENDEE / CREATOR MODE ─── -->
@@ -425,6 +461,25 @@
 			</div>
 			{/if}
 
+			<!-- Unavailable banner -->
+			{#if data.attendeeStatus === 'unavailable'}
+				<div class="mt-4 glass rounded-2xl p-5 border border-neon-yellow/20 bg-neon-yellow/5" data-testid="unavailable-banner">
+					<p class="font-heading font-bold text-neon-yellow mb-2">You've marked yourself unavailable</p>
+					<p class="text-text-secondary text-sm mb-3">Your songs are still on the playlist. Changed your plans?</p>
+					{#if form?.error}
+						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+							{form.error}
+						</div>
+					{/if}
+					<form method="POST" action="?/reconfirm" use:enhance>
+						<button type="submit" data-testid="reconfirm-btn"
+							class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-neon-cyan text-on-accent hover:bg-neon-cyan/90 transition-colors">
+							I Can Make It!
+						</button>
+					</form>
+				</div>
+			{/if}
+
 			<!-- Welcome bar -->
 			<div class="mt-4 glass rounded-2xl p-5">
 				<p class="font-heading font-bold text-text-primary">
@@ -434,7 +489,7 @@
 						Welcome, {data.attendee.name}!
 					{/if}
 				</p>
-				{#if !data.isCreator}
+				{#if !data.isCreator && data.attendeeStatus !== 'unavailable'}
 					<div class="mt-2" data-testid="song-slots">
 						<span class="font-heading text-sm text-text-secondary">
 							Your songs: <span class="text-neon-cyan">{slotsDisplay}</span>
@@ -444,9 +499,20 @@
 						</span>
 					</div>
 				{/if}
+				{#if !data.isCreator && data.attendeeStatus === 'attending'}
+					<div class="mt-2">
+						<form method="POST" action="?/cantMakeIt" use:enhance>
+							<button type="submit" data-testid="cant-make-it-btn"
+								class="font-heading text-xs text-text-muted hover:text-neon-yellow transition-colors">
+								Can't make it anymore?
+							</button>
+						</form>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Invite Friends -->
+			{#if data.attendeeStatus !== 'unavailable'}
 			<section class="mt-6">
 				<h2 class="font-heading text-lg font-bold gradient-text mb-3">Invite Friends</h2>
 
@@ -476,23 +542,27 @@
 							<div class="glass rounded-xl p-3 flex items-center justify-between">
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full flex-shrink-0"
-										class:bg-neon-mint={invite.accepted}
-										class:bg-text-muted={!invite.accepted}
-										style={invite.accepted ? '' : 'opacity: 0.4;'}
+										class:bg-neon-mint={invite.status === 'attending'}
+										class:bg-neon-pink={invite.status === 'declined'}
+										class:bg-neon-yellow={invite.status === 'unavailable'}
+										class:bg-text-muted={invite.status === 'pending'}
+										style={invite.status === 'pending' ? 'opacity: 0.4;' : ''}
 									></div>
 									<div>
 										<span class="font-heading text-sm"
-											class:text-text-primary={invite.accepted}
-											class:text-text-muted={!invite.accepted}>
+											class:text-text-primary={invite.status === 'attending'}
+											class:text-text-muted={invite.status === 'pending' || invite.status === 'declined' || invite.status === 'unavailable'}>
 											{invite.name}
 										</span>
 										<span class="text-xs text-text-muted ml-2">{invite.email}</span>
 									</div>
 								</div>
 								<span class="text-xs font-heading"
-									class:text-neon-mint={invite.accepted}
-									class:text-text-muted={!invite.accepted}>
-									{invite.accepted ? 'Accepted' : 'Pending'}
+									class:text-neon-mint={invite.status === 'attending'}
+									class:text-neon-pink={invite.status === 'declined'}
+									class:text-neon-yellow={invite.status === 'unavailable'}
+									class:text-text-muted={invite.status === 'pending'}>
+									{invite.status === 'attending' ? 'Accepted' : invite.status === 'declined' ? 'Declined' : invite.status === 'unavailable' ? "Can't make it" : 'Pending'}
 								</span>
 							</div>
 						{/each}
@@ -608,9 +678,10 @@
 					</div>
 				{/if}
 			</section>
+			{/if}
 
 			<!-- Add Song Form -->
-			{#if !data.isPending && ((data as any).songsUsed < maxSongs || data.isCreator)}
+			{#if !data.isPending && data.attendeeStatus !== 'unavailable' && ((data as any).songsUsed < maxSongs || data.isCreator)}
 				<div class="mt-4 glass rounded-2xl p-5">
 					<h3 class="font-heading font-semibold text-sm text-text-secondary mb-3">
 						Add a Song
@@ -761,6 +832,7 @@
 								comment={song.comment}
 								startTime={songStartTimes[i]}
 								isDraggable={data.isCreator || song.isMine}
+								isUnavailable={data.isCreator && song.isUnavailable}
 								ondragstart={(e) => handleDragStart(i, song.id, e)}
 								ondragover={(e) => handleDragOver(i, e)}
 								ondragend={handleDragEnd}
