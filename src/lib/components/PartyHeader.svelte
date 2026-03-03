@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { formatTime } from '$lib/time';
+	import { renderMarkdown } from '$lib/markdown';
 
 	let {
 		name,
@@ -69,6 +70,6 @@
 	</div>
 
 	{#if description}
-		<p class="mt-4 text-text-secondary leading-relaxed text-sm md:text-base">{description}</p>
+		<p class="mt-4 text-text-secondary leading-relaxed text-sm md:text-base" style="white-space:pre-line">{@html renderMarkdown(description)}</p>
 	{/if}
 </header>

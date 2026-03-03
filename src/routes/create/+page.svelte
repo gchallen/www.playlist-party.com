@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { parseFlexibleTime, formatTime } from '$lib/time';
+	import { renderMarkdown } from '$lib/markdown';
 
 	let { data, form } = $props();
 
@@ -266,6 +268,19 @@
 			{/if}
 		{:else}
 			<!-- State 2: Full creation form (email verified) -->
+			{#if dev}
+				<button type="button" onclick={() => {
+					try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+					partyName = ''; description = ''; date = ''; startTimeInput = ''; durationHours = null;
+					locationUrl = ''; createdBy = ''; genre = 'pop'; customMinutes = 4; customSeconds = 0;
+					maxAttendeesInput = 50; manualOverride = false; songsPerGuestInput = 1; songsPerGuestOverride = false;
+					songsRequiredToRsvpInput = 1; songsRequiredToRsvpOverride = false;
+					maxDepthInput = ''; maxInvitesInput = ''; customInviteSubject = ''; customInviteMessage = '';
+				}} class="mb-3 px-3 py-1.5 text-xs font-heading font-bold rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors">
+					[Dev] Clear Form
+				</button>
+			{/if}
+
 			{#if form?.error}
 				<div class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
 					{form.error}
@@ -294,6 +309,11 @@
 					<textarea id="description" name="description" rows="3" bind:value={description}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none"
 						placeholder="What's the vibe?"></textarea>
+					{#if description.trim()}
+						<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
+							{@html renderMarkdown(description)}
+						</div>
+					{/if}
 				</div>
 
 				<div class="grid grid-cols-[2fr_1fr_1fr] gap-4">
@@ -368,6 +388,11 @@
 						data-testid="custom-invite-message"
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none text-sm"
 						placeholder={"You'll be asked to add " + (songsRequiredToRsvpInput === 1 ? 'a song' : songsRequiredToRsvpInput + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}></textarea>
+					{#if customInviteMessage.trim()}
+						<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
+							{@html renderMarkdown(customInviteMessage)}
+						</div>
+					{/if}
 					<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
 				</div>
 

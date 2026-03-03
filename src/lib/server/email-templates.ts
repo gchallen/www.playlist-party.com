@@ -1,8 +1,11 @@
 import { formatTime } from '$lib/time';
+import { renderMarkdown } from '$lib/markdown';
 
 function escapeHtml(str: string): string {
 	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+const EMAIL_LINK_STYLE = 'color:#d4a041;text-decoration:underline;';
 
 function baseLayout(content: string): string {
 	return `<!DOCTYPE html>
@@ -81,14 +84,14 @@ export function renderInviteEmail(data: {
 	customMessage?: string;
 }): string {
 	const descriptionHtml = data.description
-		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${escapeHtml(data.description)}</p>`
+		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${renderMarkdown(data.description, { linkStyle: EMAIL_LINK_STYLE })}</p>`
 		: '';
 
 	const songCount = data.songsRequired ?? 1;
 	const songWord = songCount === 1 ? 'song' : `${songCount} songs`;
 
 	const messageHtml = data.customMessage
-		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;">${escapeHtml(data.customMessage)}</p>`
+		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;">${renderMarkdown(data.customMessage, { linkStyle: EMAIL_LINK_STYLE })}</p>`
 		: `<p style="font-size:14px;color:#a8a4a0;">
 You'll be asked to add ${songWord} to the playlist when you RSVP.
 </p>

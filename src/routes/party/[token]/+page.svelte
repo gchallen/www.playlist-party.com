@@ -9,6 +9,7 @@
 	import InviteTree from '$lib/components/InviteTree.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
+	import { renderMarkdown } from '$lib/markdown';
 	import { computeSongStartTimes } from '$lib/time';
 	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 	import { parseInviteLines } from '$lib/parse-invites';
@@ -25,6 +26,9 @@
 	let volume = $state(1);
 	let muted = $state(false);
 	let ytPlayer = $state<YouTubePlayer>();
+
+	// ─── Settings state ───
+	let settingsCustomMessage = $state(data.party.customInviteMessage || '');
 
 	// ─── Drag-and-drop state ───
 	let songOverride = $state<typeof data.songs | null>(null);
@@ -1015,9 +1019,15 @@
 							</label>
 							<textarea id="setting-custom-message" name="customInviteMessage" maxlength="2000" rows="4"
 								data-testid="setting-custom-message"
+								bind:value={settingsCustomMessage}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
 								placeholder={"You'll be asked to add " + ((data.party as any).songsRequiredToRsvp === 1 ? 'a song' : (data.party as any).songsRequiredToRsvp + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}
-							>{data.party.customInviteMessage || ''}</textarea>
+							></textarea>
+							{#if settingsCustomMessage.trim()}
+								<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
+									{@html renderMarkdown(settingsCustomMessage)}
+								</div>
+							{/if}
 							<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
 						</div>
 
