@@ -13,19 +13,10 @@ async function verifyEmail(page: Page, email: string): Promise<void> {
 	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
 }
 
-async function verifyCreatorEmail(page: Page, request: any, email: string): Promise<void> {
+async function verifyCreatorEmail(page: Page, _request: any, email: string): Promise<void> {
 	await page.locator('[data-testid="creator-verify-email"]').fill(email);
 	await page.locator('[data-testid="verify-email-btn"]').click();
-	await page.locator('[data-testid="email-sent-message"]').waitFor();
-
-	// Get the verification link from the email API
-	const res = await request.get(`/api/emails?to=${encodeURIComponent(email)}&type=email_verification`);
-	const data = await res.json();
-	const verifyUrl = data.emails[data.emails.length - 1].metadata.verifyUrl;
-	const url = new URL(verifyUrl);
-	await page.goto(`/create?token=${url.searchParams.get('token')}`);
-
-	// Wait for the creation form to appear
+	// In dev mode, verify action sets cookie and redirects directly to the creation form
 	await page.locator('#name').waitFor();
 }
 
@@ -89,17 +80,15 @@ test.describe('Party Creation', () => {
 		await expect(page.locator('[data-testid="verify-email-btn"]')).toBeVisible();
 	});
 
-	test('email verification sends email and shows check-email message', async ({ page, request }) => {
+	test('email verification bypasses email and shows creation form directly', async ({ page, request }) => {
 		const email = uniqueEmail('verify');
 		await page.goto('/create');
 		await page.locator('[data-testid="creator-verify-email"]').fill(email);
 		await page.locator('[data-testid="verify-email-btn"]').click();
-		await expect(page.locator('[data-testid="email-sent-message"]')).toBeVisible();
 
-		// Verify the email was sent
-		const res = await request.get(`/api/emails?to=${encodeURIComponent(email)}&type=email_verification`);
-		const data = await res.json();
-		expect(data.emails.length).toBe(1);
+		// Without RESEND_API_KEY, verification is immediate — creation form appears
+		await expect(page.locator('#name')).toBeVisible();
+		await expect(page.locator('[data-testid="creator-email"]')).toHaveValue(email);
 	});
 
 	test('clicking verification link shows creation form with email locked', async ({ page, request }) => {
@@ -184,7 +173,7 @@ test.describe('Party Creation', () => {
 		const data = await res.json();
 		expect(data.emails.length).toBe(1);
 		expect(data.emails[0].html).toContain(customMsg);
-		expect(data.emails[0].html).not.toContain('Pick a song to RSVP');
+		expect(data.emails[0].html).not.toContain('to the playlist when you RSVP');
 	});
 
 	test('invite email has reply-to set to creator email', async ({ page, request }) => {
@@ -218,7 +207,7 @@ test.describe('Party Creation', () => {
 		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
 		const data = await res.json();
 		expect(data.emails.length).toBe(1);
-		expect(data.emails[0].html).toContain('Pick a song to RSVP');
+		expect(data.emails[0].html).toContain('to the playlist when you RSVP');
 	});
 
 	test('test email sent to creator inbox', async ({ page, request }) => {

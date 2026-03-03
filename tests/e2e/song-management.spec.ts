@@ -28,16 +28,9 @@ async function verifyEmail(page: Page, email: string): Promise<void> {
 	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
 }
 
-async function verifyCreatorEmail(page: Page, request: any, email: string): Promise<void> {
+async function verifyCreatorEmail(page: Page, _request: any, email: string): Promise<void> {
 	await page.locator('[data-testid="creator-verify-email"]').fill(email);
 	await page.locator('[data-testid="verify-email-btn"]').click();
-	await page.locator('[data-testid="email-sent-message"]').waitFor();
-
-	const res = await request.get(`/api/emails?to=${encodeURIComponent(email)}&type=email_verification`);
-	const data = await res.json();
-	const verifyUrl = data.emails[data.emails.length - 1].metadata.verifyUrl;
-	const url = new URL(verifyUrl);
-	await page.goto(`/create?token=${url.searchParams.get('token')}`);
 	await page.locator('#name').waitFor();
 }
 
