@@ -927,6 +927,16 @@
 							Save Settings
 						</button>
 					</form>
+
+					<form method="POST" action="?/sendTestEmail" use:enhance class="mt-3">
+						<button type="submit" data-testid="send-test-email-btn"
+							class="font-heading text-xs text-neon-cyan hover:text-neon-cyan/80 transition-colors">
+							Send Test Email
+						</button>
+					</form>
+					{#if form?.testEmailSent}
+						<p class="text-neon-mint text-xs font-heading mt-1" data-testid="test-email-success">Test email sent to your inbox!</p>
+					{/if}
 				</section>
 			{/if}
 		{/if}

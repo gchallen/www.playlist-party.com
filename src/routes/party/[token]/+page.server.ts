@@ -909,6 +909,39 @@ export const actions = {
 		return { reordered: true };
 	},
 
+	sendTestEmail: async ({ params, platform, url }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can send test emails' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+
+		const magicUrl = `${url.origin}/party/${params.token}`;
+		await sendInviteEmail(
+			party.creatorEmail,
+			attendee.name,
+			attendee.name,
+			party.name,
+			party.date,
+			party.time,
+			party.location,
+			magicUrl,
+			platform,
+			party.locationUrl,
+			party.customInviteMessage,
+			party.creatorEmail
+		);
+
+		return { testEmailSent: true };
+	},
+
 	updateSettings: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();

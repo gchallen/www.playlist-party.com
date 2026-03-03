@@ -221,6 +221,31 @@ test.describe('Party Creation', () => {
 		expect(data.emails[0].html).toContain('Pick a song to RSVP');
 	});
 
+	test('test email sent to creator inbox', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('testemail-host');
+		const customMsg = 'This is a test invite preview message!';
+
+		await page.goto('/create');
+		await verifyCreatorEmail(page, request, creatorEmail);
+
+		await page.locator('#name').fill('Test Email Party');
+		await page.locator('#date').fill('2026-07-04');
+		await page.locator('#createdBy').fill('Test Host');
+		await page.locator('[data-testid="custom-invite-message"]').fill(customMsg);
+		await page.getByRole('button', { name: 'Create Party' }).click();
+		await page.waitForURL(/\/party\//);
+
+		// Click "Send Test Email"
+		await page.locator('[data-testid="send-test-email-btn"]').click();
+		await page.locator('[data-testid="test-email-success"]').waitFor();
+
+		// Check the email was sent to the creator
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(creatorEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails.length).toBe(1);
+		expect(data.emails[0].html).toContain(customMsg);
+	});
+
 	test('custom message editable in settings', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('editmsg-host');
 		const messageA = 'Original custom message for the party';
