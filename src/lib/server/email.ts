@@ -80,16 +80,10 @@ export interface InviteEmailOptions {
 	inviteeName: string;
 	inviterName: string;
 	partyName: string;
-	partyDate: string;
-	partyTime: string | null;
-	partyLocation: string | null;
 	magicUrl: string;
 	platform?: App.Platform;
-	partyLocationUrl?: string | null;
-	description?: string | null;
-	songsRequired?: number;
 	customSubject?: string | null;
-	customMessage?: string | null;
+	customMessage: string;
 	replyTo?: string;
 }
 
@@ -99,14 +93,8 @@ export async function sendInviteEmail(opts: InviteEmailOptions): Promise<void> {
 		inviteeName: opts.inviteeName,
 		inviterName: opts.inviterName,
 		partyName: opts.partyName,
-		partyDate: opts.partyDate,
-		partyTime: opts.partyTime,
-		partyLocation: opts.partyLocation,
-		partyLocationUrl: opts.partyLocationUrl,
 		magicUrl: opts.magicUrl,
-		description: opts.description || undefined,
-		songsRequired: opts.songsRequired,
-		customMessage: opts.customMessage || undefined
+		customMessage: opts.customMessage
 	});
 	const subject = opts.customSubject || `You're Invited to ${opts.partyName}`;
 	await sendEmail(opts.to, subject, html, 'invite', {

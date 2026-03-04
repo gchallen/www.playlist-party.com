@@ -1,4 +1,3 @@
-import { formatTime } from '$lib/time';
 import { renderMarkdown } from '$lib/markdown';
 
 function escapeHtml(str: string): string {
@@ -6,6 +5,8 @@ function escapeHtml(str: string): string {
 }
 
 const EMAIL_LINK_STYLE = 'color:#d4a041;text-decoration:underline;';
+const EMAIL_LIST_STYLE = 'margin:8px 0;padding-left:20px;color:#a8a4a0;font-size:14px;';
+const EMAIL_LIST_ITEM_STYLE = 'margin:4px 0;';
 
 function baseLayout(content: string): string {
 	return `<!DOCTYPE html>
@@ -31,27 +32,6 @@ function ctaButton(url: string, label: string): string {
 	return `<a href="${url}" style="display:inline-block;background:#e63b2e;color:#ffffff;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:16px;margin-top:16px;">${label}</a>`;
 }
 
-function partyDetails(
-	date: string,
-	time: string | null,
-	location: string | null,
-	locationUrl?: string | null
-): string {
-	const displayTime = time ? formatTime(time) : null;
-	let details = `<p style="font-size:14px;color:#a8a4a0;margin:12px 0 0;">📅 ${date}`;
-	if (displayTime) details += ` at ${displayTime}`;
-	details += `</p>`;
-	if (location || locationUrl) {
-		const locText = location || 'View on Google Maps';
-		if (locationUrl) {
-			details += `<p style="font-size:14px;color:#a8a4a0;margin:4px 0 0;">📍 <a href="${locationUrl}" style="color:#d4a041;text-decoration:underline;">${locText}</a></p>`;
-		} else {
-			details += `<p style="font-size:14px;color:#a8a4a0;margin:4px 0 0;">📍 ${locText}</p>`;
-		}
-	}
-	return details;
-}
-
 export function renderEmailVerification(data: {
 	email: string;
 	verifyUrl: string;
@@ -74,44 +54,24 @@ export function renderInviteEmail(data: {
 	inviteeName: string;
 	inviterName: string;
 	partyName: string;
-	partyDate: string;
-	partyTime: string | null;
-	partyLocation: string | null;
-	partyLocationUrl?: string | null;
 	magicUrl: string;
-	description?: string;
-	songsRequired?: number;
-	customMessage?: string;
+	customMessage: string;
 }): string {
-	const descriptionHtml = data.description
-		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${renderMarkdown(data.description, { linkStyle: EMAIL_LINK_STYLE })}</p>`
-		: '';
-
-	const songCount = data.songsRequired ?? 1;
-	const songWord = songCount === 1 ? 'song' : `${songCount} songs`;
-
-	const messageHtml = data.customMessage
-		? `<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;">${renderMarkdown(data.customMessage, { linkStyle: EMAIL_LINK_STYLE })}</p>`
-		: `<p style="font-size:14px;color:#a8a4a0;">
-You'll be asked to add ${songWord} to the playlist when you RSVP.
-</p>
-<p style="font-size:13px;color:#706c68;margin-top:12px;">
-Feel free to invite your friends! But don't forward this message — you can add them on the invite page.
-</p>`;
+	const messageHtml = renderMarkdown(data.customMessage, {
+		linkStyle: EMAIL_LINK_STYLE,
+		listStyle: EMAIL_LIST_STYLE,
+		listItemStyle: EMAIL_LIST_ITEM_STYLE
+	});
 
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">You're Invited!</h1>
-<p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
-<strong>${data.inviterName}</strong> wants you at <strong>${data.partyName}</strong>.
+<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${messageHtml}</p>
+<p style="font-size:13px;color:#706c68;margin-top:12px;">
+This invite is just for you. Don't forward it!
 </p>
-${descriptionHtml}${partyDetails(data.partyDate, data.partyTime, data.partyLocation, data.partyLocationUrl)}
-${messageHtml}
 <div style="text-align:center;margin-top:20px;">
 ${ctaButton(data.magicUrl, 'RSVP Now')}
 </div>
-<p style="font-size:12px;color:#706c68;margin-top:16px;">
-This link is just for you — please don't forward it.
-</p>
 `);
 }
 
