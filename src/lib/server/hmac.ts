@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 
 const DEV_SECRET = 'dev-hmac-secret-not-for-production';
 
