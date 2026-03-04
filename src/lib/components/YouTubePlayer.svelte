@@ -159,6 +159,7 @@
 		{/if}
 		{#if showEndOverlay}
 			<button
+				aria-label="Replay video"
 				class="absolute inset-0 z-10 flex items-center justify-center bg-void/80 cursor-pointer border-0"
 				onclick={() => { showEndOverlay = false; player?.seekTo(0, true); player?.playVideo(); }}
 			>
