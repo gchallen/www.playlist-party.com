@@ -136,7 +136,7 @@ test.describe('Party Creation', () => {
 		await expect(page.locator('text=Your Party')).toBeVisible();
 		await expect(page.locator('text=Invite Friends')).toBeVisible();
 		await expect(page.locator('text=Party Settings')).toBeVisible();
-		await expect(page.locator('text=Add a Song')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Add a Song' })).toBeVisible();
 	});
 
 	test('max attendees defaults to 50', async ({ page, request }) => {
@@ -151,15 +151,10 @@ test.describe('Party Creation', () => {
 		const creatorEmail = uniqueEmail('custmsg-host');
 		const customMsg = 'Bring your dancing shoes and your best playlist picks!';
 
-		await page.goto('/create');
-		await verifyCreatorEmail(page, request, creatorEmail);
+		await createParty(page, request, { creatorEmail, name: 'Custom Msg Party' });
 
-		await page.locator('#name').fill('Custom Msg Party');
-		await page.locator('#date').fill('2026-07-04');
-		await page.locator('#createdBy').fill('Custom Host');
-		await page.locator('[data-testid="custom-invite-message"]').fill(customMsg);
-		await page.getByRole('button', { name: 'Create Party' }).click();
-		await page.waitForURL(/\/party\//);
+		// Fill custom message on party page
+		await page.locator('[data-testid="invite-email-message"]').fill(customMsg);
 
 		// Send an invite
 		const guestEmail = uniqueEmail('custmsg-guest');
@@ -214,15 +209,10 @@ test.describe('Party Creation', () => {
 		const creatorEmail = uniqueEmail('testemail-host');
 		const customMsg = 'This is a test invite preview message!';
 
-		await page.goto('/create');
-		await verifyCreatorEmail(page, request, creatorEmail);
+		await createParty(page, request, { creatorEmail, name: 'Test Email Party' });
 
-		await page.locator('#name').fill('Test Email Party');
-		await page.locator('#date').fill('2026-07-04');
-		await page.locator('#createdBy').fill('Test Host');
-		await page.locator('[data-testid="custom-invite-message"]').fill(customMsg);
-		await page.getByRole('button', { name: 'Create Party' }).click();
-		await page.waitForURL(/\/party\//);
+		// Fill custom message on party page
+		await page.locator('[data-testid="invite-email-message"]').fill(customMsg);
 
 		// Click "Send Test Email"
 		await page.locator('[data-testid="send-test-email-btn"]').click();
@@ -235,38 +225,41 @@ test.describe('Party Creation', () => {
 		expect(data.emails[0].html).toContain(customMsg);
 	});
 
-	test('custom message editable in settings', async ({ page, request }) => {
+	test('custom message can be changed between invites', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('editmsg-host');
 		const messageA = 'Original custom message for the party';
-		const messageB = 'Updated message after settings change';
+		const messageB = 'Updated message for the second invite';
 
-		// Create party with message A
-		await page.goto('/create');
-		await verifyCreatorEmail(page, request, creatorEmail);
+		await createParty(page, request, { creatorEmail, name: 'Editable Msg Party' });
 
-		await page.locator('#name').fill('Editable Msg Party');
-		await page.locator('#date').fill('2026-07-04');
-		await page.locator('#createdBy').fill('Edit Host');
-		await page.locator('[data-testid="custom-invite-message"]').fill(messageA);
-		await page.getByRole('button', { name: 'Create Party' }).click();
-		await page.waitForURL(/\/party\//);
-
-		// Update settings with message B
-		await page.locator('[data-testid="setting-custom-message"]').fill(messageB);
-		await page.getByRole('button', { name: 'Save Settings' }).click();
-		await page.locator('text=Settings updated').waitFor();
-
-		// Send an invite
-		const guestEmail = uniqueEmail('editmsg-guest');
-		await page.locator('[data-testid="invite-name"]').fill('Edit Guest');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
+		// Set message A and send first invite
+		await page.locator('[data-testid="invite-email-message"]').fill(messageA);
+		const guestEmailA = uniqueEmail('editmsg-guestA');
+		await page.locator('[data-testid="invite-name"]').fill('Guest A');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmailA);
 		await page.locator('[data-testid="send-invite-btn"]').click();
 		await page.locator('[data-testid="invite-sent-success"]').waitFor();
 
-		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
-		const data = await res.json();
-		expect(data.emails.length).toBe(1);
-		expect(data.emails[0].html).toContain(messageB);
-		expect(data.emails[0].html).not.toContain(messageA);
+		// Change to message B and send second invite
+		await page.locator('[data-testid="invite-email-message"]').fill(messageB);
+		const guestEmailB = uniqueEmail('editmsg-guestB');
+		await page.locator('[data-testid="invite-name"]').fill('Guest B');
+		await page.locator('[data-testid="invite-email"]').fill(guestEmailB);
+		await page.locator('[data-testid="send-invite-btn"]').click();
+		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+
+		// Verify first invite got message A
+		const resA = await request.get(`/api/emails?to=${encodeURIComponent(guestEmailA)}&type=invite`);
+		const dataA = await resA.json();
+		expect(dataA.emails.length).toBe(1);
+		expect(dataA.emails[0].html).toContain(messageA);
+		expect(dataA.emails[0].html).not.toContain(messageB);
+
+		// Verify second invite got message B
+		const resB = await request.get(`/api/emails?to=${encodeURIComponent(guestEmailB)}&type=invite`);
+		const dataB = await resB.json();
+		expect(dataB.emails.length).toBe(1);
+		expect(dataB.emails[0].html).toContain(messageB);
+		expect(dataB.emails[0].html).not.toContain(messageA);
 	});
 });

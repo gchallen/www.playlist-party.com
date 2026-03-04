@@ -147,7 +147,7 @@ test.describe('Song Slots', () => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('unlim-host') });
 		// Creator should see "Your Party" and the add song form
 		await expect(page.locator('text=Your Party')).toBeVisible();
-		await expect(page.locator('text=Add a Song')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Add a Song' })).toBeVisible();
 	});
 });
 
