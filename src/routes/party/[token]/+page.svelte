@@ -27,46 +27,45 @@
 	let muted = $state(false);
 	let ytPlayer = $state<YouTubePlayer>();
 
-	// ─── Invite email state ───
-	function buildDefaultInviteMessage(): string {
+	// ─── Invite email state (snapshot initial values to avoid Svelte reactivity warnings) ───
+	const initInvite = (() => {
+		const { party, attendee } = data;
 		const lines: string[] = [];
-		lines.push(`**${data.attendee.name}** is throwing a playlist party!`);
+		lines.push(`**${attendee.name}** is throwing a playlist party!`);
 		lines.push('');
-		lines.push(`* **Who:** ${data.attendee.name}`);
-		lines.push(`* **What:** ${data.party.name}`);
-		const dateObj = new Date(data.party.date + 'T00:00:00');
+		lines.push(`* **Who:** ${attendee.name}`);
+		lines.push(`* **What:** ${party.name}`);
+		const dateObj = new Date(party.date + 'T00:00:00');
 		const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-		const month = dateObj.getMonth() + 1;
-		const day = dateObj.getDate();
-		const year = dateObj.getFullYear();
-		const dateStr = `${dayName} ${month}/${day}/${year}`;
-		if (data.party.time) {
-			const timeStr = formatTime(data.party.time);
-			lines.push(`* **When:** ${dateStr} at ${timeStr}`);
+		const dateStr = `${dayName} ${dateObj.getMonth() + 1}/${dateObj.getDate()}/${dateObj.getFullYear()}`;
+		if (party.time) {
+			lines.push(`* **When:** ${dateStr} at ${formatTime(party.time)}`);
 		} else {
 			lines.push(`* **When:** ${dateStr}`);
 		}
-		if (data.party.location || data.party.locationUrl) {
-			const locText = data.party.location || 'View location';
-			if (data.party.locationUrl) {
-				lines.push(`* **Where:** [${locText}](${data.party.locationUrl})`);
+		if (party.location || party.locationUrl) {
+			const locText = party.location || 'View location';
+			if (party.locationUrl) {
+				lines.push(`* **Where:** [${locText}](${party.locationUrl})`);
 			} else {
 				lines.push(`* **Where:** ${locText}`);
 			}
 		}
-		if (data.party.description) {
+		if (party.description) {
 			lines.push('');
-			lines.push(data.party.description);
+			lines.push(party.description);
 		}
-		const songCount = (data.party as any).songsRequiredToRsvp ?? 1;
+		const songCount = (party as any).songsRequiredToRsvp ?? 1;
 		const songWord = songCount === 1 ? 'a song' : `${songCount} songs`;
 		lines.push('');
 		lines.push(`You'll be asked to add ${songWord} to the playlist when you RSVP.`);
-		return lines.join('\n');
-	}
-
-	let inviteSubject = $state(data.party.customInviteSubject || `You're Invited to ${data.party.name}`);
-	let inviteMessage = $state(data.party.customInviteMessage || buildDefaultInviteMessage());
+		return {
+			subject: party.customInviteSubject || `You're Invited to ${party.name}`,
+			message: party.customInviteMessage || lines.join('\n')
+		};
+	})();
+	let inviteSubject = $state(initInvite.subject);
+	let inviteMessage = $state(initInvite.message);
 
 	// ─── Drag-and-drop state ───
 	let songOverride = $state<typeof data.songs | null>(null);
