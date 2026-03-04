@@ -20,7 +20,6 @@
 	} = $props();
 
 	let playerReady = $state(false);
-	let showEndOverlay = $state(false);
 	let player: any = null;
 	let playerCreated = false;
 	let lastLoadedVideoId = '';
@@ -73,14 +72,12 @@
 				},
 				onStateChange: (e: any) => {
 					if (e.data === 1) {
-						showEndOverlay = false;
 						onplaystatechange?.(true);
 						startProgressTracking();
 					} else if (e.data === 2) {
 						onplaystatechange?.(false);
 						stopProgressTracking();
 					} else if (e.data === 0) {
-						showEndOverlay = true;
 						onplaystatechange?.(false);
 						const dur = player.getDuration();
 						onprogress?.(dur, dur);
@@ -102,7 +99,6 @@
 			createPlayer(videoId);
 		} else if (player && playerReady && videoId !== lastLoadedVideoId) {
 			lastLoadedVideoId = videoId;
-			showEndOverlay = false;
 			onprogress?.(0, 0);
 			player.loadVideoById(videoId);
 		}
@@ -156,17 +152,6 @@
 			<div class="absolute inset-0 flex items-center justify-center bg-void/80">
 				<div class="w-8 h-8 border-2 border-neon-purple/30 border-t-neon-purple rounded-full animate-spin"></div>
 			</div>
-		{/if}
-		{#if showEndOverlay}
-			<button
-				aria-label="Replay video"
-				class="absolute inset-0 z-10 flex items-center justify-center bg-void/80 cursor-pointer border-0"
-				onclick={() => { showEndOverlay = false; player?.seekTo(0, true); player?.playVideo(); }}
-			>
-				<svg class="w-16 h-16 text-white/70 hover:text-white transition-colors" viewBox="0 0 24 24" fill="currentColor">
-					<path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
-				</svg>
-			</button>
 		{/if}
 	</div>
 </div>
