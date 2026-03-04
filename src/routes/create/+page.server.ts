@@ -160,11 +160,6 @@ export const actions = {
 			? Math.max(1, Math.min(parseInt(songsRequiredToRsvpRaw, 10) || 1, songsPerGuest))
 			: null;
 
-		const rawCustomSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
-		const customInviteSubject = rawCustomSubject ? rawCustomSubject.slice(0, 200) : null;
-		const rawCustomMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
-		const customInviteMessage = rawCustomMessage ? rawCustomMessage.slice(0, 2000) : null;
-
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
 		if (!createdBy) return fail(400, { error: 'Your name is required' });
@@ -218,9 +213,7 @@ export const actions = {
 				maxAttendees,
 				maxInvitesPerGuest,
 				songsPerGuest,
-				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null,
-				customInviteSubject,
-				customInviteMessage
+				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null
 			})
 			.returning();
 

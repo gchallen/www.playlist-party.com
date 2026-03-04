@@ -10,7 +10,7 @@
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
 	import { renderMarkdown } from '$lib/markdown';
-	import { computeSongStartTimes } from '$lib/time';
+	import { computeSongStartTimes, formatTime } from '$lib/time';
 	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 	import { parseInviteLines } from '$lib/parse-invites';
 	import { pickRandomTracks } from '$lib/test-tracks';
@@ -27,8 +27,46 @@
 	let muted = $state(false);
 	let ytPlayer = $state<YouTubePlayer>();
 
-	// ─── Settings state ───
-	let settingsCustomMessage = $state(data.party.customInviteMessage || '');
+	// ─── Invite email state ───
+	function buildDefaultInviteMessage(): string {
+		const lines: string[] = [];
+		lines.push(`**${data.attendee.name}** is throwing a playlist party!`);
+		lines.push('');
+		lines.push(`* **Who:** ${data.attendee.name}`);
+		lines.push(`* **What:** ${data.party.name}`);
+		const dateObj = new Date(data.party.date + 'T00:00:00');
+		const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+		const month = dateObj.getMonth() + 1;
+		const day = dateObj.getDate();
+		const year = dateObj.getFullYear();
+		const dateStr = `${dayName} ${month}/${day}/${year}`;
+		if (data.party.time) {
+			const timeStr = formatTime(data.party.time);
+			lines.push(`* **When:** ${dateStr} at ${timeStr}`);
+		} else {
+			lines.push(`* **When:** ${dateStr}`);
+		}
+		if (data.party.location || data.party.locationUrl) {
+			const locText = data.party.location || 'View location';
+			if (data.party.locationUrl) {
+				lines.push(`* **Where:** [${locText}](${data.party.locationUrl})`);
+			} else {
+				lines.push(`* **Where:** ${locText}`);
+			}
+		}
+		if (data.party.description) {
+			lines.push('');
+			lines.push(data.party.description);
+		}
+		const songCount = (data.party as any).songsRequiredToRsvp ?? 1;
+		const songWord = songCount === 1 ? 'a song' : `${songCount} songs`;
+		lines.push('');
+		lines.push(`You'll be asked to add ${songWord} to the playlist when you RSVP.`);
+		return lines.join('\n');
+	}
+
+	let inviteSubject = $state(data.party.customInviteSubject || `You're Invited to ${data.party.name}`);
+	let inviteMessage = $state(data.party.customInviteMessage || buildDefaultInviteMessage());
 
 	// ─── Drag-and-drop state ───
 	let songOverride = $state<typeof data.songs | null>(null);
@@ -626,9 +664,73 @@
 					</div>
 				{/if}
 
+				{#if data.isCreator}
+					<div class="glass rounded-2xl p-5 mb-4">
+						<h3 class="font-heading font-semibold text-xs text-text-secondary mb-3 uppercase tracking-wider">Invite Email</h3>
+						<div class="space-y-3">
+							<div>
+								<label for="invite-email-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
+								<input type="text" id="invite-email-subject" maxlength="200" bind:value={inviteSubject}
+									data-testid="invite-email-subject"
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
+									placeholder="You're Invited to {data.party.name}" />
+							</div>
+							<div>
+								<label for="invite-email-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Body</label>
+								<textarea id="invite-email-message" maxlength="2000" rows="8" bind:value={inviteMessage}
+									data-testid="invite-email-message"
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+								></textarea>
+							</div>
+						</div>
+
+						<!-- Live email preview -->
+						<div class="mt-4 rounded-2xl overflow-hidden border border-white/5" style="background:#111111;">
+							<div class="px-4 py-3" style="max-width:480px;margin:0 auto;">
+								<div class="text-center mb-4">
+									<span class="text-xs font-bold tracking-widest" style="color:#e63b2e;letter-spacing:3px;">PLAYLIST PARTY</span>
+								</div>
+								<div class="rounded-2xl p-5" style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.08);">
+									<h4 class="text-lg font-semibold mb-2" style="color:#e8e4e0;">You're Invited!</h4>
+									<div class="text-sm leading-relaxed" style="color:#a8a4a0;white-space:pre-line;">
+										{@html renderMarkdown(inviteMessage)}
+									</div>
+									<p class="text-xs mt-3" style="color:#706c68;">
+										This invite is just for you. Don't forward it!
+									</p>
+									<div class="text-center mt-4">
+										<span class="inline-block font-bold text-sm px-8 py-3 rounded-xl" style="background:#e63b2e;color:#ffffff;">
+											RSVP Now
+										</span>
+									</div>
+								</div>
+								<p class="text-center text-xs mt-4" style="color:#706c68;">
+									Made for parties worth remembering.
+								</p>
+							</div>
+						</div>
+
+						<form method="POST" action="?/sendTestEmail" use:enhance class="mt-3">
+							<input type="hidden" name="customInviteSubject" value={inviteSubject} />
+							<input type="hidden" name="customInviteMessage" value={inviteMessage} />
+							<button type="submit" data-testid="send-test-email-btn"
+								class="font-heading text-xs text-neon-cyan hover:text-neon-cyan/80 transition-colors">
+								Send Test Email
+							</button>
+						</form>
+						{#if form?.testEmailSent}
+							<p class="text-neon-mint text-xs font-heading mt-1" data-testid="test-email-success">Test email sent to your inbox!</p>
+						{/if}
+					</div>
+				{/if}
+
 				{#if data.canInvite}
 					{#if !bulkMode}
 					<form method="POST" action="?/sendInvite" use:enhance class="glass rounded-2xl p-5" data-testid="invite-form">
+						{#if data.isCreator}
+							<input type="hidden" name="customInviteSubject" value={inviteSubject} />
+							<input type="hidden" name="customInviteMessage" value={inviteMessage} />
+						{/if}
 						<div class="flex flex-col sm:flex-row gap-3 mb-3">
 							<div class="flex-1">
 								<label for="invite-name" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Friend's Name</label>
@@ -692,6 +794,8 @@
 							{/if}
 
 							<form method="POST" action="?/bulkInvite" use:enhance class="mt-3 glass rounded-2xl p-5" data-testid="bulk-invite-form">
+								<input type="hidden" name="customInviteSubject" value={inviteSubject} />
+								<input type="hidden" name="customInviteMessage" value={inviteMessage} />
 								<label for="bulk-text" class="block font-heading text-xs font-semibold text-text-secondary mb-1.5">
 									Paste names and emails, one per line
 								</label>
@@ -1002,50 +1106,11 @@
 							</div>
 						</div>
 
-						<div>
-							<label for="setting-invite-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
-								Invite Email Subject
-							</label>
-							<input type="text" id="setting-invite-subject" name="customInviteSubject" maxlength="200"
-								data-testid="setting-invite-subject"
-								value={(data.party as any).customInviteSubject || ''}
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-								placeholder="You're Invited to {data.party.name}" />
-						</div>
-
-						<div>
-							<label for="setting-custom-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
-								Invite Email Body
-							</label>
-							<textarea id="setting-custom-message" name="customInviteMessage" maxlength="2000" rows="4"
-								data-testid="setting-custom-message"
-								bind:value={settingsCustomMessage}
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-								placeholder={"You'll be asked to add " + ((data.party as any).songsRequiredToRsvp === 1 ? 'a song' : (data.party as any).songsRequiredToRsvp + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}
-							></textarea>
-							{#if settingsCustomMessage.trim()}
-								<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
-									{@html renderMarkdown(settingsCustomMessage)}
-								</div>
-							{/if}
-							<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
-						</div>
-
 						<button type="submit"
 							class="font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
 							Save Settings
 						</button>
 					</form>
-
-					<form method="POST" action="?/sendTestEmail" use:enhance class="mt-3">
-						<button type="submit" data-testid="send-test-email-btn"
-							class="font-heading text-xs text-neon-cyan hover:text-neon-cyan/80 transition-colors">
-							Send Test Email
-						</button>
-					</form>
-					{#if form?.testEmailSent}
-						<p class="text-neon-mint text-xs font-heading mt-1" data-testid="test-email-success">Test email sent to your inbox!</p>
-					{/if}
 				</section>
 			{/if}
 		{/if}

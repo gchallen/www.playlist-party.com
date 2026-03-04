@@ -57,9 +57,6 @@
 	let maxDepthInput = $state('');
 	let maxInvitesInput = $state('');
 
-	let customInviteSubject = $state('');
-	let customInviteMessage = $state('');
-
 	let avgSongDurationSeconds = $derived(
 		genre === 'custom' ? customMinutes * 60 + customSeconds : (GENRE_DURATIONS[genre] ?? 210)
 	);
@@ -178,8 +175,6 @@
 				if (data.songsRequiredToRsvpOverride !== undefined) songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
-				if (data.customInviteSubject !== undefined) customInviteSubject = data.customInviteSubject;
-				if (data.customInviteMessage !== undefined) customInviteMessage = data.customInviteMessage;
 			}
 		} catch {
 			// ignore
@@ -196,7 +191,7 @@
 			customMinutes, customSeconds, maxAttendeesInput,
 			manualOverride, songsPerGuestInput, songsPerGuestOverride,
 			songsRequiredToRsvpInput, songsRequiredToRsvpOverride,
-			maxDepthInput, maxInvitesInput, customInviteSubject, customInviteMessage
+			maxDepthInput, maxInvitesInput
 		};
 		if (!restored || !verifiedEmail) return;
 		try {
@@ -275,7 +270,7 @@
 					locationUrl = ''; createdBy = ''; genre = 'pop'; customMinutes = 4; customSeconds = 0;
 					maxAttendeesInput = 50; manualOverride = false; songsPerGuestInput = 1; songsPerGuestOverride = false;
 					songsRequiredToRsvpInput = 1; songsRequiredToRsvpOverride = false;
-					maxDepthInput = ''; maxInvitesInput = ''; customInviteSubject = ''; customInviteMessage = '';
+					maxDepthInput = ''; maxInvitesInput = '';
 				}} class="mb-3 px-3 py-1.5 text-xs font-heading font-bold rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors">
 					[Dev] Clear Form
 				</button>
@@ -372,28 +367,6 @@
 						value={verifiedEmail}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary/60 transition-colors cursor-not-allowed" />
 					<p class="text-neon-cyan text-xs font-heading mt-1 px-1">&#10003; Verified</p>
-				</div>
-
-				<div>
-					<label for="customInviteSubject" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Email Subject</label>
-					<input type="text" id="customInviteSubject" name="customInviteSubject" maxlength="200" bind:value={customInviteSubject}
-						data-testid="custom-invite-subject"
-						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-						placeholder="You're Invited to {partyName || 'your party'}" />
-				</div>
-
-				<div>
-					<label for="customInviteMessage" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invite Email Body</label>
-					<textarea id="customInviteMessage" name="customInviteMessage" rows="4" maxlength="2000" bind:value={customInviteMessage}
-						data-testid="custom-invite-message"
-						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none text-sm"
-						placeholder={"You'll be asked to add " + (songsRequiredToRsvpInput === 1 ? 'a song' : songsRequiredToRsvpInput + ' songs') + " to the playlist when you RSVP.\n\nFeel free to invite your friends! But don't forward this message — you can add them on the invite page."}></textarea>
-					{#if customInviteMessage.trim()}
-						<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
-							{@html renderMarkdown(customInviteMessage)}
-						</div>
-					{/if}
-					<p class="text-text-muted text-xs mt-1 ml-1">Leave empty for the default. The party description is always included above this.</p>
 				</div>
 
 				<div class="pt-2 border-t border-neon-purple/10">

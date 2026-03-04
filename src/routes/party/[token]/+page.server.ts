@@ -609,6 +609,9 @@ export const actions = {
 			return fail(400, { inviteError: validationError });
 		}
 
+		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
+		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
+
 		const newToken = generateInviteToken();
 
 		await db.insert(attendees).values({
@@ -620,25 +623,32 @@ export const actions = {
 			depth: attendee.depth + 1
 		});
 
+		const effectiveSubject = customSubject ?? party.customInviteSubject;
+		const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
+
 		const magicUrl = `${url.origin}/party/${newToken}`;
 		await sendInviteEmail({
 			to: email,
 			inviteeName: name,
 			inviterName: attendee.name,
 			partyName: party.name,
-			partyDate: party.date,
-			partyTime: party.time,
-			partyLocation: party.location,
 			magicUrl,
 			platform,
-			partyLocationUrl: party.locationUrl,
-			description: party.description,
-			songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
-			customSubject: party.customInviteSubject,
-			customMessage: party.customInviteMessage,
+			customSubject: effectiveSubject,
+			customMessage: effectiveMessage,
 			replyTo: party.creatorEmail
 		});
 		await recordEmailSend(db, email, 'invite');
+
+		// Auto-save invite email fields if sender is creator
+		if (isCreator(attendee)) {
+			const updates: Record<string, unknown> = {};
+			if (customSubject !== null) updates.customInviteSubject = customSubject.slice(0, 200) || null;
+			if (customMessage !== null) updates.customInviteMessage = customMessage.slice(0, 2000) || null;
+			if (Object.keys(updates).length > 0) {
+				await db.update(parties).set(updates).where(eq(parties.id, party.id));
+			}
+		}
 
 		return { inviteSent: name, inviteUrl: magicUrl };
 	},
@@ -649,6 +659,8 @@ export const actions = {
 
 		const text = data.get('bulkText')?.toString() || '';
 		const parsed = parseInviteLines(text);
+		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
+		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
 
 		if (parsed.length === 0) {
 			return fail(400, { bulkError: 'No valid entries found. Each line needs a name and email.' });
@@ -713,28 +725,33 @@ export const actions = {
 				depth: attendee.depth + 1
 			});
 
+			const effectiveSubject = customSubject ?? party.customInviteSubject;
+			const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
+
 			const magicUrl = `${url.origin}/party/${newToken}`;
 			await sendInviteEmail({
 				to: entry.email,
 				inviteeName: entry.name,
 				inviterName: attendee.name,
 				partyName: party.name,
-				partyDate: party.date,
-				partyTime: party.time,
-				partyLocation: party.location,
 				magicUrl,
 				platform,
-				partyLocationUrl: party.locationUrl,
-				description: party.description,
-				songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
-				customSubject: party.customInviteSubject,
-				customMessage: party.customInviteMessage,
+				customSubject: effectiveSubject,
+				customMessage: effectiveMessage,
 				replyTo: party.creatorEmail
 			});
 			await recordEmailSend(db, entry.email, 'invite');
 
 			batchEmails.add(emailLower);
 			bulkResults.push({ name: entry.name, email: entry.email, success: true, inviteUrl: magicUrl });
+		}
+
+		// Auto-save invite email fields to party
+		const saveUpdates: Record<string, unknown> = {};
+		if (customSubject !== null) saveUpdates.customInviteSubject = customSubject.slice(0, 200) || null;
+		if (customMessage !== null) saveUpdates.customInviteMessage = customMessage.slice(0, 2000) || null;
+		if (Object.keys(saveUpdates).length > 0) {
+			await db.update(parties).set(saveUpdates).where(eq(parties.id, party.id));
 		}
 
 		return { bulkResults };
@@ -956,8 +973,9 @@ export const actions = {
 		return { reordered: true };
 	},
 
-	sendTestEmail: async ({ params, platform, url }) => {
+	sendTestEmail: async ({ params, request, platform, url }) => {
 		const db = await getDb(platform);
+		const data = await request.formData();
 
 		const attendee = await db.query.attendees.findFirst({
 			where: eq(attendees.inviteToken, params.token)
@@ -970,24 +988,31 @@ export const actions = {
 		});
 		if (!party) return fail(404, { error: 'Party not found' });
 
+		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
+		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
+		const effectiveSubject = customSubject ?? party.customInviteSubject;
+		const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
+
 		const magicUrl = `${url.origin}/party/${params.token}`;
 		await sendInviteEmail({
 			to: party.creatorEmail,
 			inviteeName: attendee.name,
 			inviterName: attendee.name,
 			partyName: party.name,
-			partyDate: party.date,
-			partyTime: party.time,
-			partyLocation: party.location,
 			magicUrl,
 			platform,
-			partyLocationUrl: party.locationUrl,
-			description: party.description,
-			songsRequired: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
-			customSubject: party.customInviteSubject,
-			customMessage: party.customInviteMessage,
+			customSubject: effectiveSubject,
+			customMessage: effectiveMessage,
 			replyTo: party.creatorEmail
 		});
+
+		// Auto-save invite email fields to party
+		const updates: Record<string, unknown> = {};
+		if (customSubject !== null) updates.customInviteSubject = customSubject.slice(0, 200) || null;
+		if (customMessage !== null) updates.customInviteMessage = customMessage.slice(0, 2000) || null;
+		if (Object.keys(updates).length > 0) {
+			await db.update(parties).set(updates).where(eq(parties.id, party.id));
+		}
 
 		return { testEmailSent: true };
 	},
@@ -1040,16 +1065,6 @@ export const actions = {
 		const attribution = data.get('songAttribution')?.toString()?.trim();
 		if (attribution && ['hidden', 'own_tree', 'visible'].includes(attribution)) {
 			updates.songAttribution = attribution;
-		}
-
-		if (data.has('customInviteSubject')) {
-			const raw = data.get('customInviteSubject')?.toString()?.trim() || '';
-			updates.customInviteSubject = raw ? raw.slice(0, 200) : null;
-		}
-
-		if (data.has('customInviteMessage')) {
-			const raw = data.get('customInviteMessage')?.toString()?.trim() || '';
-			updates.customInviteMessage = raw ? raw.slice(0, 2000) : null;
 		}
 
 		if (Object.keys(updates).length > 0) {
