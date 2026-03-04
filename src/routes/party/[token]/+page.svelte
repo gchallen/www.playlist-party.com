@@ -535,6 +535,29 @@
 						</form>
 					</div>
 				{/if}
+
+				{#if localSongs.length > 0}
+					<section class="mt-6">
+						<h2 class="font-heading text-lg font-bold gradient-text mb-1">Current Playlist</h2>
+						<p class="text-text-muted text-xs mb-3 font-heading">
+							{localSongs.length} {localSongs.length === 1 ? 'song' : 'songs'} so far — pick something that fits the vibe!
+						</p>
+						<div class="glass rounded-2xl p-2 space-y-0.5">
+							{#each localSongs as song, i (song.id)}
+								<SongCard
+									youtubeId={song.youtubeId}
+									title={song.youtubeTitle}
+									channelName={song.youtubeChannelName || ''}
+									position={i + 1}
+									addedBy={song.addedByName}
+									revealed={!!song.addedByName}
+									isHost={song.isHost}
+									comment={song.comment}
+								/>
+							{/each}
+						</div>
+					</section>
+				{/if}
 			</div>
 
 		<!-- ─── ACCEPTED ATTENDEE / CREATOR MODE ─── -->
