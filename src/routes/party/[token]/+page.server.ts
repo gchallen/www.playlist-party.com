@@ -259,7 +259,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			name: i.name,
 			email: i.email,
 			accepted: !!i.acceptedAt,
-			status: getAttendeeStatus(i)
+			status: getAttendeeStatus(i),
+			inviteToken: i.inviteToken
 		}));
 	}
 

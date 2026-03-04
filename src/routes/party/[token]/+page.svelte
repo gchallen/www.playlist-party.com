@@ -674,13 +674,26 @@
 										<span class="text-xs text-text-muted ml-2">{invite.email}</span>
 									</div>
 								</div>
-								<span class="text-xs font-heading"
-									class:text-neon-mint={invite.status === 'attending'}
-									class:text-neon-pink={invite.status === 'declined'}
-									class:text-neon-yellow={invite.status === 'unavailable'}
-									class:text-text-muted={invite.status === 'pending'}>
-									{invite.status === 'attending' ? 'Accepted' : invite.status === 'declined' ? 'Declined' : invite.status === 'unavailable' ? "Can't make it" : 'Pending'}
-								</span>
+								<div class="flex items-center gap-2">
+									<button type="button" title="Copy invite link"
+										class="text-text-muted hover:text-neon-cyan transition-colors p-1"
+										onclick={async (e) => {
+											const url = `${window.location.origin}/party/${invite.inviteToken}`;
+											await navigator.clipboard.writeText(url);
+											const btn = e.currentTarget;
+											btn.textContent = '✓';
+											setTimeout(() => { btn.innerHTML = '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'; }, 1500);
+										}}>
+										<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+									</button>
+									<span class="text-xs font-heading"
+										class:text-neon-mint={invite.status === 'attending'}
+										class:text-neon-pink={invite.status === 'declined'}
+										class:text-neon-yellow={invite.status === 'unavailable'}
+										class:text-text-muted={invite.status === 'pending'}>
+										{invite.status === 'attending' ? 'Accepted' : invite.status === 'declined' ? 'Declined' : invite.status === 'unavailable' ? "Can't make it" : 'Pending'}
+									</span>
+								</div>
 							</div>
 						{/each}
 					</div>
