@@ -28,6 +28,9 @@ run() {
   fi
 }
 
+# --- 0. Warm up OAuth token (first wrangler call after expiry fails; this forces a refresh) ---
+wrangler whoami > /dev/null 2>&1 || true
+
 # --- 1. Dirty tree guard ---
 step "Checking working tree"
 if ! $FORCE && [ -n "$(git status --porcelain)" ]; then
