@@ -6,7 +6,7 @@ import { parties, attendees, songs } from '$lib/server/db/schema';
 import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
-import { sendInviteEmail } from '$lib/server/email';
+import { sendInviteEmail, sendAnnouncementEmail } from '$lib/server/email';
 import { recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
 import { validateInvite, toSongInfo } from '$lib/server/invite-validation';
@@ -1056,6 +1056,68 @@ export const actions = {
 		await db.delete(attendees).where(eq(attendees.id, target.id));
 
 		return { inviteRemoved: target.name };
+	},
+
+	sendAnnouncement: async ({ params, request, platform, url }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { announcementError: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { announcementError: 'Only the creator can send announcements' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { announcementError: 'Party not found' });
+
+		const subject = data.get('announcementSubject')?.toString()?.trim();
+		const message = data.get('announcementMessage')?.toString()?.trim();
+		const audience = data.get('announcementAudience')?.toString()?.trim();
+
+		if (!subject) return fail(400, { announcementError: 'Subject is required' });
+		if (!message) return fail(400, { announcementError: 'Message is required' });
+		if (audience !== 'accepted' && audience !== 'all') {
+			return fail(400, { announcementError: 'Invalid audience selection' });
+		}
+
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+
+		// Filter recipients: exclude the creator themselves
+		const recipients = allAttendeesList.filter((a) => {
+			if (isCreator(a)) return false;
+			if (audience === 'accepted') {
+				return a.acceptedAt && !a.declinedAt;
+			}
+			// 'all' = accepted + pending (exclude declined/unavailable)
+			return !a.declinedAt;
+		});
+
+		if (recipients.length === 0) {
+			return fail(400, { announcementError: 'No recipients match the selected group' });
+		}
+
+		let sentCount = 0;
+		for (const recipient of recipients) {
+			const partyUrl = `${url.origin}/party/${recipient.inviteToken}`;
+			await sendAnnouncementEmail({
+				to: recipient.email,
+				recipientName: recipient.name,
+				partyName: party.name,
+				partyUrl,
+				subject,
+				message,
+				platform,
+				replyTo: party.creatorEmail
+			});
+			sentCount++;
+		}
+
+		return { announcementSent: sentCount };
 	},
 
 	devAddRandomSongs: async ({ params, request, platform }) => {

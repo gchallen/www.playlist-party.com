@@ -4,7 +4,7 @@ export interface EmailMessage {
 	subject: string;
 	html: string;
 	sentAt: string;
-	type: 'invite' | 'creator_welcome' | 'email_verification';
+	type: 'invite' | 'creator_welcome' | 'email_verification' | 'announcement';
 	metadata: Record<string, string>;
 }
 
@@ -115,6 +115,31 @@ export async function sendEmailVerification(
 	await sendEmail(to, 'Verify your email - Playlist Party', html, 'email_verification', {
 		verifyUrl
 	}, platform);
+}
+
+export interface AnnouncementEmailOptions {
+	to: string;
+	recipientName: string;
+	partyName: string;
+	partyUrl: string;
+	subject: string;
+	message: string;
+	platform?: App.Platform;
+	replyTo?: string;
+}
+
+export async function sendAnnouncementEmail(opts: AnnouncementEmailOptions): Promise<void> {
+	const { renderAnnouncementEmail } = await import('./email-templates');
+	const html = renderAnnouncementEmail({
+		recipientName: opts.recipientName,
+		partyName: opts.partyName,
+		partyUrl: opts.partyUrl,
+		message: opts.message
+	});
+	await sendEmail(opts.to, opts.subject, html, 'announcement', {
+		recipientName: opts.recipientName,
+		partyName: opts.partyName
+	}, opts.platform, opts.replyTo);
 }
 
 export async function sendCreatorWelcomeEmail(

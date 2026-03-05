@@ -1127,6 +1127,58 @@
 				</section>
 			{/if}
 
+			<!-- Creator: Send Announcement -->
+			{#if data.isCreator}
+				<section class="mt-8">
+					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Send Announcement</h2>
+
+					{#if form?.announcementError}
+						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+							{form.announcementError}
+						</div>
+					{/if}
+
+					{#if form?.announcementSent}
+						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="announcement-sent-success">
+							Announcement sent to {form.announcementSent} {form.announcementSent === 1 ? 'guest' : 'guests'}!
+						</div>
+					{/if}
+
+					<form method="POST" action="?/sendAnnouncement" use:enhance class="glass rounded-2xl p-5 space-y-3" data-testid="announcement-form">
+						<div>
+							<label for="announcement-audience" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Send To</label>
+							<select id="announcement-audience" name="announcementAudience" data-testid="announcement-audience"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm">
+								<option value="accepted">Accepted guests only</option>
+								<option value="all">Accepted + pending guests</option>
+							</select>
+						</div>
+						<div>
+							<label for="announcement-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
+							<input type="text" id="announcement-subject" name="announcementSubject" required maxlength="200"
+								data-testid="announcement-subject"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
+								placeholder="Party update!" />
+						</div>
+						<div>
+							<label for="announcement-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Message</label>
+							<textarea id="announcement-message" name="announcementMessage" required maxlength="2000" rows="4"
+								data-testid="announcement-message"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+								placeholder="Write your message here... (Markdown supported)"
+							></textarea>
+						</div>
+						<button type="submit" data-testid="send-announcement-btn"
+							class="inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
+							<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+								<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
+							</svg>
+							Send Announcement
+						</button>
+					</form>
+				</section>
+			{/if}
+
 			<!-- Creator: Settings -->
 			{#if data.isCreator}
 				<section class="mt-8 mb-8">
