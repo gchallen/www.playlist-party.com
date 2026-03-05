@@ -44,6 +44,8 @@ async function createParty(
 		maxAttendees?: number;
 		maxDepth?: number;
 		maxInvitesPerGuest?: number;
+		startTime?: string;
+		durationHours?: number;
 	} = {}
 ): Promise<string> {
 	const creatorEmail = options.creatorEmail || uniqueEmail('host');
@@ -61,6 +63,12 @@ async function createParty(
 	}
 	if (options.maxInvitesPerGuest !== undefined) {
 		await page.locator('#maxInvitesPerGuest').fill(String(options.maxInvitesPerGuest));
+	}
+	if (options.startTime) {
+		await page.locator('#startTimeInput').fill(options.startTime);
+	}
+	if (options.durationHours !== undefined) {
+		await page.locator('[data-testid="duration-hours"]').fill(String(options.durationHours));
 	}
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
@@ -148,6 +156,45 @@ test.describe('Song Slots', () => {
 		// Creator should see "Your Party" and the add song form
 		await expect(page.locator('text=Your Party')).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'Add a Song' })).toBeVisible();
+	});
+
+	test('creator cannot add song when playlist is full — must remove first', async ({ page, request }) => {
+		// Create party with short duration so we can fill it with a few songs
+		const partyUrl = await createParty(page, request, {
+			creatorEmail: uniqueEmail('full-host'),
+			startTime: '7pm',
+			durationHours: 0.5 // 30 min = 1800 seconds
+		});
+
+		const testUrls = [
+			'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+			'https://www.youtube.com/watch?v=9bZkp7q19f0',
+			'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+			'https://www.youtube.com/watch?v=RgKAFK5djSk',
+			'https://www.youtube.com/watch?v=OPf0YbXqDm0',
+			'https://www.youtube.com/watch?v=JGwWNGJdvx8',
+			'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+			'https://www.youtube.com/watch?v=60ItHLz5WEA'
+		];
+
+		// Add songs one by one, reloading between to avoid form state issues
+		for (const url of testUrls) {
+			await page.goto(partyUrl);
+			await page.locator('input[name="youtubeUrl"]').fill(url);
+			await page.evaluate(() => {
+				const el = document.querySelector('input[name="durationSeconds"]') as HTMLInputElement;
+				if (el) el.value = '350';
+			});
+			await page.locator('form[action="?/addSong"] button[type="submit"]').click();
+			// Wait for either outcome
+			await expect(page.locator('text=Song added!').or(page.locator('text=Playlist is full'))).toBeVisible();
+			if (await page.locator('text=Playlist is full').isVisible()) {
+				return; // Test passes — creator was blocked
+			}
+		}
+
+		// Should have been rejected before exhausting URLs
+		expect(false).toBe(true);
 	});
 });
 

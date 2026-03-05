@@ -467,34 +467,45 @@ export const actions = {
 			return fail(400, { songError: 'Could not find that YouTube video. Is it public?' });
 		}
 
-		// Run overflow
+		// Run overflow check
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, party.id)
 		});
 		const targetDuration = computeTargetDuration(party.time, party.endTime);
-		const overflowResult = computeOverflowDrops(
-			allSongs.map(toSongInfo),
-			durationSeconds,
-			targetDuration,
-			attendee.id
-		);
 
-		if (overflowResult === null) {
-			return fail(400, { songError: 'The playlist is full and no songs can be dropped to make room.' });
-		}
+		if (creator) {
+			// Creator must remove songs manually to make space — no auto-drops
+			if (targetDuration !== null) {
+				const currentDuration = allSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
+				if (currentDuration + durationSeconds > targetDuration) {
+					return fail(400, { songError: 'Playlist is full — remove songs to make space.' });
+				}
+			}
+		} else {
+			const overflowResult = computeOverflowDrops(
+				allSongs.map(toSongInfo),
+				durationSeconds,
+				targetDuration,
+				attendee.id
+			);
 
-		for (const dropId of overflowResult.drops) {
-			await db.delete(songs).where(eq(songs.id, dropId));
-		}
+			if (overflowResult === null) {
+				return fail(400, { songError: 'The playlist is full and no songs can be dropped to make room.' });
+			}
 
-		if (overflowResult.drops.length > 0) {
-			const remainingSongs = await db.query.songs.findMany({
-				where: eq(songs.partyId, party.id),
-				orderBy: songs.position
-			});
-			for (let i = 0; i < remainingSongs.length; i++) {
-				if (remainingSongs[i].position !== i) {
-					await db.update(songs).set({ position: i }).where(eq(songs.id, remainingSongs[i].id));
+			for (const dropId of overflowResult.drops) {
+				await db.delete(songs).where(eq(songs.id, dropId));
+			}
+
+			if (overflowResult.drops.length > 0) {
+				const remainingSongs = await db.query.songs.findMany({
+					where: eq(songs.partyId, party.id),
+					orderBy: songs.position
+				});
+				for (let i = 0; i < remainingSongs.length; i++) {
+					if (remainingSongs[i].position !== i) {
+						await db.update(songs).set({ position: i }).where(eq(songs.id, remainingSongs[i].id));
+					}
 				}
 			}
 		}
