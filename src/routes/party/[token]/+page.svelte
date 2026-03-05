@@ -254,6 +254,10 @@
 	let bulkText = $state('');
 	const bulkParsed = $derived(bulkText ? parseInviteLines(bulkText) : []);
 
+	// ─── Change email state ───
+	let editingEmailToken = $state<string | null>(null);
+	let editingEmailValue = $state('');
+
 	function formatDuration(totalSeconds: number): string {
 		const hours = Math.floor(totalSeconds / 3600);
 		const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -658,11 +662,18 @@
 					</div>
 				{/if}
 
+				{#if form?.emailChanged}
+					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="email-changed-success">
+						Email updated for {form.emailChanged} — new invite sent!
+					</div>
+				{/if}
+
 				<!-- Invite list -->
 				{#if (data as any).myInvites?.length > 0}
 					<div class="space-y-2 mb-4">
 						{#each (data as any).myInvites as invite}
-							<div class="glass rounded-xl p-3 flex items-center justify-between" data-testid="invite-row">
+							<div class="glass rounded-xl p-3" data-testid="invite-row">
+								<div class="flex items-center justify-between">
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full flex-shrink-0"
 										class:bg-neon-mint={invite.status === 'attending'}
@@ -682,6 +693,20 @@
 								</div>
 								<div class="flex items-center gap-2">
 									{#if invite.status === 'pending'}
+										<button type="button" title="Change email"
+											data-testid="change-email-btn"
+											class="text-text-muted hover:text-neon-cyan transition-colors p-1"
+											onclick={() => {
+												if (editingEmailToken === invite.inviteToken) {
+													editingEmailToken = null;
+													editingEmailValue = '';
+												} else {
+													editingEmailToken = invite.inviteToken;
+													editingEmailValue = invite.email;
+												}
+											}}>
+											<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+										</button>
 										<form method="POST" action="?/removeInvite" use:enhance>
 											<input type="hidden" name="inviteToken" value={invite.inviteToken} />
 											<button type="submit" title="Remove invite"
@@ -710,6 +735,31 @@
 										{invite.status === 'attending' ? 'Accepted' : invite.status === 'declined' ? 'Declined' : invite.status === 'unavailable' ? "Can't make it" : 'Pending'}
 									</span>
 								</div>
+								</div>
+								{#if editingEmailToken === invite.inviteToken}
+									<form method="POST" action="?/changeInviteEmail" use:enhance={() => {
+										return async ({ update }) => {
+											editingEmailToken = null;
+											editingEmailValue = '';
+											await update();
+										};
+									}} class="mt-2 flex gap-2" data-testid="change-email-form">
+										<input type="hidden" name="inviteToken" value={invite.inviteToken} />
+										<input type="email" name="newEmail" required bind:value={editingEmailValue}
+											data-testid="change-email-input"
+											class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-3 py-1.5 text-text-primary text-sm"
+											placeholder="new@email.com" />
+										<button type="submit" data-testid="change-email-submit"
+											class="font-heading font-semibold text-xs px-3 py-1.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
+											Update & Resend
+										</button>
+										<button type="button"
+											class="font-heading text-xs text-text-muted hover:text-text-secondary transition-colors px-2"
+											onclick={() => { editingEmailToken = null; editingEmailValue = ''; }}>
+											Cancel
+										</button>
+									</form>
+								{/if}
 							</div>
 						{/each}
 					</div>

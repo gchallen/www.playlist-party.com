@@ -1058,6 +1058,85 @@ export const actions = {
 		return { inviteRemoved: target.name };
 	},
 
+	changeInviteEmail: async ({ params, request, platform, url }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const inviteToken = data.get('inviteToken')?.toString()?.trim();
+		const newEmail = data.get('newEmail')?.toString()?.trim();
+
+		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
+		if (!newEmail) return fail(400, { inviteError: 'New email is required' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { inviteError: 'Not found' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { inviteError: 'Invite not found' });
+
+		if (target.invitedBy !== attendee.id) {
+			return fail(403, { inviteError: 'You can only change your own invites' });
+		}
+
+		if (target.acceptedAt || target.declinedAt) {
+			return fail(400, { inviteError: 'Can only change email for pending invites' });
+		}
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { inviteError: 'Party not found' });
+
+		// Check that the new email isn't already invited (exclude the target being replaced)
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+		const duplicate = allAttendeesList.find(
+			(a) => a.id !== target.id && a.email.toLowerCase() === newEmail.toLowerCase()
+		);
+		if (duplicate) {
+			return fail(400, { inviteError: 'That email is already invited to this party' });
+		}
+
+		// Delete old invite
+		await db.delete(attendees).where(eq(attendees.id, target.id));
+
+		// Create new invite with same name, new email, fresh token
+		const newToken = generateInviteToken();
+		await db.insert(attendees).values({
+			partyId: party.id,
+			name: target.name,
+			email: newEmail,
+			invitedBy: attendee.id,
+			inviteToken: newToken,
+			shareToken: generateShareToken(),
+			depth: target.depth
+		});
+
+		// Send invite email
+		const effectiveSubject = party.customInviteSubject;
+		const effectiveMessage = party.customInviteMessage ?? '';
+		const magicUrl = `${url.origin}/party/${newToken}`;
+		await sendInviteEmail({
+			to: newEmail,
+			inviteeName: target.name,
+			inviterName: attendee.name,
+			partyName: party.name,
+			magicUrl,
+			platform,
+			customSubject: effectiveSubject,
+			customMessage: effectiveMessage,
+			replyTo: party.creatorEmail
+		});
+		await recordEmailSend(db, newEmail, 'invite');
+
+		return { emailChanged: target.name };
+	},
+
 	sendAnnouncement: async ({ params, request, platform, url }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();

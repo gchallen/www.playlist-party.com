@@ -258,6 +258,80 @@ test.describe('Remove Pending Invite', () => {
 	});
 });
 
+test.describe('Change Invite Email', () => {
+	test('can change email for a pending invite', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ce-host') });
+		const oldEmail = uniqueEmail('ce-old');
+		await sendInviteAndGetPath(page, request, 'ChangeMe', oldEmail);
+
+		// Click edit button
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'ChangeMe' });
+		await row.locator('[data-testid="change-email-btn"]').click();
+
+		// Fill new email and submit
+		const newEmail = uniqueEmail('ce-new');
+		await row.locator('[data-testid="change-email-input"]').fill(newEmail);
+		await row.locator('[data-testid="change-email-submit"]').click();
+
+		// Verify success
+		await expect(page.locator('[data-testid="email-changed-success"]')).toContainText('ChangeMe');
+
+		// New invite email was sent
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(newEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails).toHaveLength(1);
+	});
+
+	test('cannot change email for an accepted invite (no edit button)', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ce-acc-host') });
+		const inviteeEmail = uniqueEmail('ce-acc');
+		const path = await sendInviteAndGetPath(page, request, 'Accepted', inviteeEmail);
+
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, inviteeEmail, 'Accepted');
+		await page2.close();
+
+		await page.reload();
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'Accepted' });
+		await expect(row).toBeVisible();
+		await expect(row.locator('[data-testid="change-email-btn"]')).not.toBeVisible();
+	});
+
+	test('cannot change to an already-invited email', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ce-dup-host') });
+		const email1 = uniqueEmail('ce-dup1');
+		const email2 = uniqueEmail('ce-dup2');
+		await sendInviteAndGetPath(page, request, 'First', email1);
+		await sendInviteAndGetPath(page, request, 'Second', email2);
+
+		// Try to change First's email to Second's
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'First' });
+		await row.locator('[data-testid="change-email-btn"]').click();
+		await row.locator('[data-testid="change-email-input"]').fill(email2);
+		await row.locator('[data-testid="change-email-submit"]').click();
+
+		await expect(page.locator('text=already invited')).toBeVisible();
+	});
+
+	test('old invite link stops working after email change', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ce-old-host') });
+		const oldEmail = uniqueEmail('ce-oldlink');
+		const oldPath = await sendInviteAndGetPath(page, request, 'OldLink', oldEmail);
+
+		// Change email
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'OldLink' });
+		await row.locator('[data-testid="change-email-btn"]').click();
+		const newEmail = uniqueEmail('ce-newlink');
+		await row.locator('[data-testid="change-email-input"]').fill(newEmail);
+		await row.locator('[data-testid="change-email-submit"]').click();
+		await expect(page.locator('[data-testid="email-changed-success"]')).toBeVisible();
+
+		// Old link should 404
+		const res = await page.goto(oldPath);
+		expect(res?.status()).toBe(404);
+	});
+});
+
 test.describe('Invite Chains', () => {
 	test('multi-depth chains work (host → A → B)', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('chain-host') });
