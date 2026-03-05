@@ -203,6 +203,61 @@ test.describe('Invite and Accept', () => {
 	});
 });
 
+test.describe('Remove Pending Invite', () => {
+	test('can remove a pending invite', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('rm-host') });
+		const inviteeEmail = uniqueEmail('rm-invitee');
+		await sendInviteAndGetPath(page, request, 'RemoveMe', inviteeEmail);
+
+		// Verify invite row exists
+		await expect(page.locator('[data-testid="invite-row"]').filter({ hasText: 'RemoveMe' })).toBeVisible();
+
+		// Click remove button
+		await page.locator('[data-testid="invite-row"]').filter({ hasText: 'RemoveMe' }).locator('[data-testid="remove-invite-btn"]').click();
+
+		// Verify success message and invite disappears
+		await expect(page.locator('[data-testid="invite-removed-success"]')).toBeVisible();
+		await expect(page.locator('[data-testid="invite-row"]').filter({ hasText: 'RemoveMe' })).not.toBeVisible();
+	});
+
+	test('cannot remove an accepted invite (no remove button shown)', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('rm-acc-host') });
+		const inviteeEmail = uniqueEmail('rm-acc');
+		const path = await sendInviteAndGetPath(page, request, 'Keeper', inviteeEmail);
+
+		// Accept the invite
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, inviteeEmail, 'Keeper');
+		await page2.close();
+
+		// Reload creator page
+		await page.reload();
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'Keeper' });
+		await expect(row).toBeVisible();
+		await expect(row.locator('[data-testid="remove-invite-btn"]')).not.toBeVisible();
+	});
+
+	test('removed invite frees quota', async ({ page, request }) => {
+		await createParty(page, request, {
+			creatorEmail: uniqueEmail('rm-quota-host'),
+			maxInvitesPerGuest: 1
+		});
+
+		// Send invite (uses the 1 allowed slot)
+		const email1 = uniqueEmail('rm-q1');
+		await sendInviteAndGetPath(page, request, 'First', email1);
+
+		// Remove it
+		await page.locator('[data-testid="invite-row"]').filter({ hasText: 'First' }).locator('[data-testid="remove-invite-btn"]').click();
+		await expect(page.locator('[data-testid="invite-removed-success"]')).toBeVisible();
+
+		// Send a new invite — should succeed since slot was freed
+		const email2 = uniqueEmail('rm-q2');
+		await sendInviteAndGetPath(page, request, 'Second', email2);
+		await expect(page.locator('[data-testid="invite-row"]').filter({ hasText: 'Second' })).toBeVisible();
+	});
+});
+
 test.describe('Invite Chains', () => {
 	test('multi-depth chains work (host → A → B)', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('chain-host') });

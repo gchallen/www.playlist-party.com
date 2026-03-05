@@ -1028,6 +1028,36 @@ export const actions = {
 		return { settingsUpdated: true };
 	},
 
+	removeInvite: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const inviteToken = data.get('inviteToken')?.toString()?.trim();
+		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { inviteError: 'Not found' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { inviteError: 'Invite not found' });
+
+		if (target.invitedBy !== attendee.id) {
+			return fail(403, { inviteError: 'You can only remove your own invites' });
+		}
+
+		if (target.acceptedAt || target.declinedAt) {
+			return fail(400, { inviteError: 'Can only remove pending invites' });
+		}
+
+		await db.delete(attendees).where(eq(attendees.id, target.id));
+
+		return { inviteRemoved: target.name };
+	},
+
 	devAddRandomSongs: async ({ params, request, platform }) => {
 		if (!dev) return fail(403, { songError: 'Dev-only action' });
 

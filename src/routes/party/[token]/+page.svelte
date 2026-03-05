@@ -652,11 +652,17 @@
 					</div>
 				{/if}
 
+				{#if form?.inviteRemoved}
+					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="invite-removed-success">
+						Invite for {form.inviteRemoved} has been removed.
+					</div>
+				{/if}
+
 				<!-- Invite list -->
 				{#if (data as any).myInvites?.length > 0}
 					<div class="space-y-2 mb-4">
 						{#each (data as any).myInvites as invite}
-							<div class="glass rounded-xl p-3 flex items-center justify-between">
+							<div class="glass rounded-xl p-3 flex items-center justify-between" data-testid="invite-row">
 								<div class="flex items-center gap-2">
 									<div class="w-2 h-2 rounded-full flex-shrink-0"
 										class:bg-neon-mint={invite.status === 'attending'}
@@ -675,6 +681,16 @@
 									</div>
 								</div>
 								<div class="flex items-center gap-2">
+									{#if invite.status === 'pending'}
+										<form method="POST" action="?/removeInvite" use:enhance>
+											<input type="hidden" name="inviteToken" value={invite.inviteToken} />
+											<button type="submit" title="Remove invite"
+												data-testid="remove-invite-btn"
+												class="text-text-muted hover:text-neon-pink transition-colors p-1">
+												<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+											</button>
+										</form>
+									{/if}
 									<button type="button" title="Copy invite link"
 										class="text-text-muted hover:text-neon-cyan transition-colors p-1"
 										onclick={async (e) => {
