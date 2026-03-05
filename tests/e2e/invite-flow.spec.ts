@@ -282,9 +282,9 @@ test.describe('Change Invite Email', () => {
 		expect(data.emails).toHaveLength(1);
 	});
 
-	test('cannot change email for an accepted invite (no edit button)', async ({ page, request }) => {
-		await createParty(page, request, { creatorEmail: uniqueEmail('ce-acc-host') });
-		const inviteeEmail = uniqueEmail('ce-acc');
+	test('can update email for an accepted guest (no new email sent, same token)', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ue-acc-host') });
+		const inviteeEmail = uniqueEmail('ue-acc');
 		const path = await sendInviteAndGetPath(page, request, 'Accepted', inviteeEmail);
 
 		const page2 = await page.context().newPage();
@@ -294,7 +294,78 @@ test.describe('Change Invite Email', () => {
 		await page.reload();
 		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'Accepted' });
 		await expect(row).toBeVisible();
-		await expect(row.locator('[data-testid="change-email-btn"]')).not.toBeVisible();
+		await expect(row.locator('[data-testid="change-email-btn"]')).toBeVisible();
+
+		// Click edit and update email
+		await row.locator('[data-testid="change-email-btn"]').click();
+		const newEmail = uniqueEmail('ue-acc-new');
+		await row.locator('[data-testid="change-email-input"]').fill(newEmail);
+		await row.locator('[data-testid="change-email-submit"]').click();
+
+		// Verify success message (no "invite sent")
+		await expect(page.locator('[data-testid="guest-email-updated-success"]')).toContainText('Accepted');
+
+		// No new email was sent to the new address
+		const res = await request.get(`/api/emails?to=${encodeURIComponent(newEmail)}&type=invite`);
+		const data = await res.json();
+		expect(data.emails).toHaveLength(0);
+
+		// The invite link still works (same token)
+		const page3 = await page.context().newPage();
+		const resp = await page3.goto(path);
+		expect(resp?.status()).toBe(200);
+		await page3.close();
+	});
+
+	test('updated email is shown on verify gate (masked)', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ue-mask-host') });
+		const inviteeEmail = uniqueEmail('ue-mask');
+		const path = await sendInviteAndGetPath(page, request, 'MaskTest', inviteeEmail);
+
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, inviteeEmail, 'MaskTest');
+		await page2.close();
+
+		// Update email on creator's page
+		await page.reload();
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'MaskTest' });
+		await row.locator('[data-testid="change-email-btn"]').click();
+		const newEmail = 'updated-verify@example.com';
+		await row.locator('[data-testid="change-email-input"]').fill(newEmail);
+		await row.locator('[data-testid="change-email-submit"]').click();
+		await expect(page.locator('[data-testid="guest-email-updated-success"]')).toBeVisible();
+
+		// Visit the invite link in a fresh context (no cookies)
+		const browser = page.context().browser()!;
+		const freshContext = await browser.newContext();
+		const page3 = await freshContext.newPage();
+		await page3.goto(path);
+		// The verify gate should show the masked new email
+		const gateText = await page3.locator('[data-testid="verify-gate"]').textContent();
+		expect(gateText).toContain('u***y');
+		expect(gateText).toContain('e***.com');
+		await freshContext.close();
+	});
+
+	test('cannot update to an already-invited email for accepted guest', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('ue-dup-host') });
+		const email1 = uniqueEmail('ue-dup1');
+		const email2 = uniqueEmail('ue-dup2');
+		const path1 = await sendInviteAndGetPath(page, request, 'First', email1);
+		await sendInviteAndGetPath(page, request, 'Second', email2);
+
+		// Accept First's invite
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path1, email1, 'First');
+		await page2.close();
+
+		await page.reload();
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'First' });
+		await row.locator('[data-testid="change-email-btn"]').click();
+		await row.locator('[data-testid="change-email-input"]').fill(email2);
+		await row.locator('[data-testid="change-email-submit"]').click();
+
+		await expect(page.locator('text=already invited')).toBeVisible();
 	});
 
 	test('cannot change to an already-invited email', async ({ page, request }) => {

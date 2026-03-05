@@ -1148,6 +1148,55 @@ export const actions = {
 		return { emailChanged: target.name };
 	},
 
+	updateGuestEmail: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const inviteToken = data.get('inviteToken')?.toString()?.trim();
+		const newEmail = data.get('newEmail')?.toString()?.trim();
+
+		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
+		if (!newEmail) return fail(400, { inviteError: 'New email is required' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { inviteError: 'Not found' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { inviteError: 'Invite not found' });
+
+		// Must be the inviter or the creator
+		if (target.invitedBy !== attendee.id && !isCreator(attendee)) {
+			return fail(403, { inviteError: 'You can only change your own invites' });
+		}
+
+		// Only for non-pending guests (pending uses changeInviteEmail)
+		if (!target.acceptedAt && !target.declinedAt) {
+			return fail(400, { inviteError: 'Use change invite email for pending invites' });
+		}
+
+		// Check for duplicate emails
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, attendee.partyId)
+		});
+		const duplicate = allAttendeesList.find(
+			(a) => a.id !== target.id && a.email.toLowerCase() === newEmail.toLowerCase()
+		);
+		if (duplicate) {
+			return fail(400, { inviteError: 'That email is already invited to this party' });
+		}
+
+		await db
+			.update(attendees)
+			.set({ email: newEmail })
+			.where(eq(attendees.id, target.id));
+
+		return { guestEmailUpdated: target.name };
+	},
+
 	sendAnnouncement: async ({ params, request, platform, url }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
