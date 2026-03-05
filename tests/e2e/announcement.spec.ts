@@ -163,6 +163,32 @@ test.describe('Announcements', () => {
 		expect(pendingEmails).toHaveLength(0);
 	});
 
+	test('announcement to "pending" skips accepted guests', async ({ page, request }) => {
+		const creatorEmail = uniqueEmail('pend-host');
+		const creatorUrl = await createParty(page, request, { creatorEmail, maxAttendees: 20 });
+
+		const acceptedEmail = uniqueEmail('pend-acc');
+		const pendingEmail = uniqueEmail('pend-pend');
+		const acceptedPath = await sendInviteAndGetPath(page, request, 'AccGuest', acceptedEmail);
+		await sendInviteAndGetPath(page, request, 'PendGuest', pendingEmail);
+
+		await acceptInvite(page, acceptedPath, acceptedEmail);
+
+		// Send announcement to pending only
+		await page.goto(creatorUrl);
+		await page.locator('[data-testid="announcement-audience"]').selectOption('pending');
+		await page.locator('[data-testid="announcement-subject"]').fill('Pending Only');
+		await page.locator('[data-testid="announcement-message"]').fill('Only for pending');
+		await page.locator('[data-testid="send-announcement-btn"]').click();
+
+		await expect(page.locator('[data-testid="announcement-sent-success"]')).toContainText('1 guest');
+
+		const acceptedEmails = await getAnnouncementEmails(request, acceptedEmail);
+		const pendingEmails = await getAnnouncementEmails(request, pendingEmail);
+		expect(acceptedEmails).toHaveLength(0);
+		expect(pendingEmails).toHaveLength(1);
+	});
+
 	test('announcement to "all" includes pending guests', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('all-host');
 		const creatorUrl = await createParty(page, request, { creatorEmail, maxAttendees: 20 });

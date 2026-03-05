@@ -1200,6 +1200,7 @@
 							<select id="announcement-audience" name="announcementAudience" data-testid="announcement-audience"
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm">
 								<option value="accepted">Accepted guests only</option>
+								<option value="pending">Pending guests only</option>
 								<option value="all">Accepted + pending guests</option>
 							</select>
 						</div>

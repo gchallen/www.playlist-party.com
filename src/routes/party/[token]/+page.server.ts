@@ -1169,7 +1169,7 @@ export const actions = {
 
 		if (!subject) return fail(400, { announcementError: 'Subject is required' });
 		if (!message) return fail(400, { announcementError: 'Message is required' });
-		if (audience !== 'accepted' && audience !== 'all') {
+		if (audience !== 'accepted' && audience !== 'pending' && audience !== 'all') {
 			return fail(400, { announcementError: 'Invalid audience selection' });
 		}
 
@@ -1182,6 +1182,9 @@ export const actions = {
 			if (isCreator(a)) return false;
 			if (audience === 'accepted') {
 				return a.acceptedAt && !a.declinedAt;
+			}
+			if (audience === 'pending') {
+				return !a.acceptedAt && !a.declinedAt;
 			}
 			// 'all' = accepted + pending (exclude declined/unavailable)
 			return !a.declinedAt;
