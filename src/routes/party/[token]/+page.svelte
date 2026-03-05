@@ -760,6 +760,31 @@
 				{/if}
 
 				{#if data.canInvite}
+					<!-- Share Invite Link -->
+					{#if data.attendee.shareToken}
+						<div class="glass rounded-2xl p-5 mb-4" data-testid="share-link-section">
+							<h3 class="font-heading font-semibold text-xs text-text-secondary mb-2 uppercase tracking-wider">Share Invite Link</h3>
+							<p class="text-text-muted text-xs mb-2">Anyone with this link can request an invite — credited to you</p>
+							<div class="flex gap-2">
+								<input type="text" readonly
+									value={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${data.attendee.shareToken}`}
+									data-testid="share-link-input"
+									class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary text-sm select-all" />
+								<button type="button" data-testid="copy-share-link"
+									class="font-heading font-semibold text-sm px-4 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200 flex-shrink-0"
+									onclick={async (e) => {
+										const url = `${window.location.origin}/share/${data.attendee.shareToken}`;
+										await navigator.clipboard.writeText(url);
+										const btn = e.currentTarget;
+										btn.textContent = 'Copied!';
+										setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+									}}>
+									Copy
+								</button>
+							</div>
+						</div>
+					{/if}
+
 					{#if !bulkMode}
 					<form method="POST" action="?/sendInvite" use:enhance class="glass rounded-2xl p-5" data-testid="invite-form">
 						{#if data.isCreator}

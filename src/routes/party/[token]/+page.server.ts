@@ -2,15 +2,14 @@ import { dev } from '$app/environment';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
-import type { Database } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
-import { generateInviteToken } from '$lib/server/tokens';
+import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
 import { sendInviteEmail } from '$lib/server/email';
-import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
+import { recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
-import type { SongInfo } from '$lib/server/playlist';
+import { validateInvite, toSongInfo } from '$lib/server/invite-validation';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { parseInviteLines } from '$lib/parse-invites';
 import { pickRandomTracks } from '$lib/test-tracks';
@@ -37,72 +36,23 @@ function maskEmail(email: string): string {
 	return maskedLocal + '@' + maskedDomain;
 }
 
-function toSongInfo(s: { id: number; addedBy: number; durationSeconds: number; addedAt: string }): SongInfo {
-	return { id: s.id, addedBy: s.addedBy, durationSeconds: s.durationSeconds, addedAt: s.addedAt };
-}
-
-interface InviteValidationContext {
-	db: Database;
-	party: { id: number; maxAttendees: number; maxDepth: number | null; maxInvitesPerGuest: number | null; time: string | null; endTime: string | null; name: string; date: string; location: string | null; locationUrl: string | null };
-	attendee: { id: number; name: string; depth: number };
-	allAttendees: Array<{ id: number; email: string; invitedBy: number | null; declinedAt: string | null }>;
-	allSongs: SongInfo[];
-	targetDuration: number | null;
-}
-
-async function validateInvite(
-	ctx: InviteValidationContext,
-	name: string,
-	email: string
-): Promise<string | null> {
-	// Check max attendees (exclude declined)
-	const activeCount = ctx.allAttendees.filter((a) => !a.declinedAt).length;
-	if (activeCount >= ctx.party.maxAttendees) {
-		return 'Party is full — max attendees reached';
-	}
-
-	// Check max depth
-	if (ctx.party.maxDepth !== null && ctx.attendee.depth + 1 > ctx.party.maxDepth) {
-		return 'Maximum invite depth reached';
-	}
-
-	// Check maxInvitesPerGuest
-	const myInvites = ctx.allAttendees.filter((a) => a.invitedBy === ctx.attendee.id);
-	if (ctx.party.maxInvitesPerGuest !== null && myInvites.length >= ctx.party.maxInvitesPerGuest) {
-		return `You can only send ${ctx.party.maxInvitesPerGuest} invites`;
-	}
-
-	// Check canIssueInvitations (duration gating)
-	if (!canIssueInvitations(activeCount, ctx.party.maxAttendees, ctx.allSongs, ctx.targetDuration)) {
-		return 'The playlist is full — no room for more guests right now';
-	}
-
-	// Check duplicate email
-	const existingAttendee = ctx.allAttendees.find(
-		(a) => a.email.toLowerCase() === email.toLowerCase()
-	);
-	if (existingAttendee) {
-		return 'This person has already been invited!';
-	}
-
-	// Rate limit check
-	const rateLimit = await checkEmailRateLimit(ctx.db, email);
-	if (!rateLimit.allowed) {
-		return rateLimit.retryAfterMessage || 'Too many emails sent to this address';
-	}
-
-	return null;
-}
 
 export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 	const db = await getDb(platform);
 
-	const attendee = await db.query.attendees.findFirst({
+	let attendee = await db.query.attendees.findFirst({
 		where: eq(attendees.inviteToken, params.token)
 	});
 
 	if (!attendee) {
 		error(404, 'Not found');
+	}
+
+	// Lazy-generate shareToken for existing attendees that don't have one
+	if (!attendee.shareToken) {
+		const newShareToken = generateShareToken();
+		await db.update(attendees).set({ shareToken: newShareToken }).where(eq(attendees.id, attendee.id));
+		attendee = { ...attendee, shareToken: newShareToken };
 	}
 
 	const party = await db.query.parties.findFirst({
@@ -229,7 +179,8 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		attendee: {
 			name: attendee.name,
 			depth: attendee.depth,
-			inviteToken: attendee.inviteToken
+			inviteToken: attendee.inviteToken,
+			shareToken: attendee.shareToken
 		},
 		isCreator: creator,
 		isPending,
@@ -621,6 +572,7 @@ export const actions = {
 			email,
 			invitedBy: attendee.id,
 			inviteToken: newToken,
+			shareToken: generateShareToken(),
 			depth: attendee.depth + 1
 		});
 
@@ -723,6 +675,7 @@ export const actions = {
 				email: entry.email,
 				invitedBy: attendee.id,
 				inviteToken: newToken,
+				shareToken: generateShareToken(),
 				depth: attendee.depth + 1
 			});
 

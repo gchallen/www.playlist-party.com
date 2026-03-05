@@ -64,6 +64,13 @@
       "when": 1772550302334,
       "tag": "0008_military_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1772662212782,
+      "tag": "0009_thin_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

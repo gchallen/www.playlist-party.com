@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { parties, attendees } from '$lib/server/db/schema';
-import { generateInviteToken } from '$lib/server/tokens';
+import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { sendCreatorWelcomeEmail, sendEmailVerification } from '$lib/server/email';
 import { createSignedToken, verifySignedToken } from '$lib/server/hmac';
 import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
@@ -222,6 +222,7 @@ export const actions = {
 			name: createdBy,
 			email: creatorEmail,
 			inviteToken,
+			shareToken: generateShareToken(),
 			depth: 0,
 			acceptedAt: new Date().toISOString()
 		});

@@ -35,6 +35,7 @@ export const attendees = sqliteTable(
 		email: text('email').notNull(),
 		invitedBy: integer('invited_by'),
 		inviteToken: text('invite_token', { length: 21 }).notNull().unique(),
+		shareToken: text('share_token', { length: 21 }),
 		depth: integer('depth').notNull().default(0),
 		acceptedAt: text('accepted_at'),
 		declinedAt: text('declined_at'),
@@ -44,6 +45,7 @@ export const attendees = sqliteTable(
 	},
 	(table) => [
 		uniqueIndex('attendees_invite_token_idx').on(table.inviteToken),
+		uniqueIndex('attendees_share_token_idx').on(table.shareToken),
 		uniqueIndex('attendees_party_email_idx').on(table.partyId, table.email)
 	]
 );
