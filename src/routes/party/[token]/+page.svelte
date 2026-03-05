@@ -667,6 +667,11 @@
 						Email updated for {form.emailChanged} — new invite sent!
 					</div>
 				{/if}
+				{#if form?.declinedOnBehalf}
+					<div class="mb-3 p-3 rounded-xl bg-neon-yellow/10 border border-neon-yellow/20 text-neon-yellow text-sm font-heading" data-testid="declined-on-behalf-success">
+						{form.declinedOnBehalf} marked as can't make it.
+					</div>
+				{/if}
 				{#if form?.guestEmailUpdated}
 					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="guest-email-updated-success">
 						Email updated for {form.guestEmailUpdated}.
@@ -711,6 +716,16 @@
 										}}>
 										<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 									</button>
+									{#if data.isCreator && (invite.status === 'pending' || invite.status === 'attending')}
+										<form method="POST" action="?/declineOnBehalf" use:enhance>
+											<input type="hidden" name="inviteToken" value={invite.inviteToken} />
+											<button type="submit" title="Mark as can't make it"
+												data-testid="decline-on-behalf-btn"
+												class="text-text-muted hover:text-neon-yellow transition-colors p-1">
+												<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+											</button>
+										</form>
+									{/if}
 									{#if invite.status === 'pending'}
 										<form method="POST" action="?/removeInvite" use:enhance>
 											<input type="hidden" name="inviteToken" value={invite.inviteToken} />

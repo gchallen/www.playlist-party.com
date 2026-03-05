@@ -1148,6 +1148,35 @@ export const actions = {
 		return { emailChanged: target.name };
 	},
 
+	declineOnBehalf: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const inviteToken = data.get('inviteToken')?.toString()?.trim();
+		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { inviteError: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { inviteError: 'Only the creator can decline on behalf of guests' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { inviteError: 'Guest not found' });
+
+		if (isCreator(target)) return fail(400, { inviteError: 'The creator cannot be declined' });
+		if (target.declinedAt) return fail(400, { inviteError: 'This guest has already declined' });
+
+		await db
+			.update(attendees)
+			.set({ declinedAt: new Date().toISOString() })
+			.where(eq(attendees.id, target.id));
+
+		return { declinedOnBehalf: target.name };
+	},
+
 	updateGuestEmail: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();

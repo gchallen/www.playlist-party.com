@@ -403,6 +403,57 @@ test.describe('Change Invite Email', () => {
 	});
 });
 
+test.describe('Decline on Behalf', () => {
+	test('creator can decline a pending invite on behalf of guest', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('dob-pend-host') });
+		const inviteeEmail = uniqueEmail('dob-pend');
+		await sendInviteAndGetPath(page, request, 'PendingGuest', inviteeEmail);
+
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'PendingGuest' });
+		await expect(row.locator('[data-testid="decline-on-behalf-btn"]')).toBeVisible();
+		await row.locator('[data-testid="decline-on-behalf-btn"]').click();
+
+		await expect(page.locator('[data-testid="declined-on-behalf-success"]')).toContainText('PendingGuest');
+		// Status should now show Declined
+		await expect(row.locator('text=Declined')).toBeVisible();
+		// Decline button should no longer be visible
+		await expect(row.locator('[data-testid="decline-on-behalf-btn"]')).not.toBeVisible();
+	});
+
+	test('creator can decline an accepted guest on behalf', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('dob-acc-host') });
+		const inviteeEmail = uniqueEmail('dob-acc');
+		const path = await sendInviteAndGetPath(page, request, 'AcceptedGuest', inviteeEmail);
+
+		const page2 = await page.context().newPage();
+		await acceptInvite(page2, path, inviteeEmail, 'AcceptedGuest');
+		await page2.close();
+
+		await page.reload();
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'AcceptedGuest' });
+		await expect(row.locator('[data-testid="decline-on-behalf-btn"]')).toBeVisible();
+		await row.locator('[data-testid="decline-on-behalf-btn"]').click();
+
+		await expect(page.locator('[data-testid="declined-on-behalf-success"]')).toContainText('AcceptedGuest');
+		// Status should now show "Can't make it"
+		await expect(row.locator("text=Can't make it")).toBeVisible();
+	});
+
+	test('decline button not shown for already-declined guest', async ({ page, request }) => {
+		await createParty(page, request, { creatorEmail: uniqueEmail('dob-noshow-host') });
+		const inviteeEmail = uniqueEmail('dob-noshow');
+		await sendInviteAndGetPath(page, request, 'WillDecline', inviteeEmail);
+
+		// Decline on behalf first
+		const row = page.locator('[data-testid="invite-row"]').filter({ hasText: 'WillDecline' });
+		await row.locator('[data-testid="decline-on-behalf-btn"]').click();
+		await expect(page.locator('[data-testid="declined-on-behalf-success"]')).toBeVisible();
+
+		// Button should be gone
+		await expect(row.locator('[data-testid="decline-on-behalf-btn"]')).not.toBeVisible();
+	});
+});
+
 test.describe('Invite Chains', () => {
 	test('multi-depth chains work (host → A → B)', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('chain-host') });
