@@ -16,6 +16,7 @@ Music-centered party invitation website. See full plan: `~/.claude/plans/encapsu
 - Token-based auth only (no login/OAuth) — invite tokens + admin tokens
 - YouTube metadata via oEmbed API (no API key needed)
 - **Database migrations only** — use `bunx drizzle-kit generate` then apply migrations. NEVER use `drizzle-kit push`.
+- **Pin all package versions** — use exact versions (e.g. `"5.1.6"`) not ranges (`"^5.1.6"`). Use `bun ncu` to check for updates, `bun ncu:apply` to upgrade.
 
 ## File Ownership (Agent Team)
 - **Tester**: `tests/**`, `playwright.config.ts`
@@ -30,6 +31,8 @@ Music-centered party invitation website. See full plan: `~/.claude/plans/encapsu
 - `bun run deploy` — full deploy: tests → Cloudflare build → D1 migrations → Pages deploy
 - `bunx playwright test` — run E2E tests
 - `bunx drizzle-kit generate` — generate migrations (NEVER use `drizzle-kit push`)
+- `bun ncu` — check for outdated dependencies
+- `bun ncu:apply` — upgrade all dependencies to latest and reinstall
 
 ## Production Debugging
 
