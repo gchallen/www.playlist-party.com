@@ -23,16 +23,17 @@ export async function enqueueEmails(
 	emails: EnqueueOptions[]
 ): Promise<number> {
 	if (emails.length === 0) return 0;
-	await db.insert(emailQueue).values(
-		emails.map((e) => ({
+	// Insert one at a time — bulk inserts with large HTML bodies exceed D1's query size limit
+	for (const e of emails) {
+		await db.insert(emailQueue).values({
 			to: e.to,
 			subject: e.subject,
 			html: e.html,
 			type: e.type,
 			replyTo: e.replyTo,
 			metadata: e.metadata ? JSON.stringify(e.metadata) : null
-		}))
-	);
+		});
+	}
 	return emails.length;
 }
 
