@@ -69,6 +69,8 @@
 	let inviteMessage = $state(initInvite.message);
 
 	// ─── Drag-and-drop state ───
+	let announcementSubject = $state(`${data.party.name} Update`);
+	let announcementMessage = $state('');
 	let songOverride = $state<typeof data.songs | null>(null);
 	const localSongs = $derived(songOverride ?? data.songs);
 	let dragIdx = $state<number | null>(null);
@@ -1100,7 +1102,7 @@
 			<!-- Now Playing Card (visible when party mode is active) -->
 			{#if !data.isPending}
 				<div class="mt-6">
-					<NowPlayingCard token={data.attendee.inviteToken} isAccepted={data.attendeeStatus === 'attending'} />
+					<NowPlayingCard token={data.attendee.inviteToken} isAccepted={data.attendeeStatus === 'attending'} isCreator={data.isCreator} />
 				</div>
 			{/if}
 
@@ -1265,7 +1267,7 @@
 							<label for="announcement-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
 							<input type="text" id="announcement-subject" name="announcementSubject" required maxlength="200"
 								data-testid="announcement-subject"
-								value="{data.party.name} Update"
+								bind:value={announcementSubject}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
 								placeholder="Party update!" />
 						</div>
@@ -1273,13 +1275,40 @@
 							<label for="announcement-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Message</label>
 							<textarea id="announcement-message" name="announcementMessage" required maxlength="2000" rows="4"
 								data-testid="announcement-message"
+								bind:value={announcementMessage}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
 								placeholder="Write your message here... (Markdown supported)"
-							>RSVP here: {'{{rsvp_link}}'}</textarea>
+							></textarea>
 							<p class="text-text-muted text-xs mt-1 ml-1">
-								<code class="text-neon-cyan">{'{{rsvp_link}}'}</code> will be replaced with each guest's personal invite link
+								Each guest's personal invite link is always included at the bottom of the email.
 							</p>
 						</div>
+
+						<!-- Preview -->
+						{#if announcementSubject || announcementMessage}
+							<details class="group/preview" open>
+								<summary class="text-xs font-heading font-semibold text-text-muted cursor-pointer select-none flex items-center gap-1">
+									<svg class="w-3 h-3 transition-transform group-open/preview:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+									Preview
+								</summary>
+								<div class="mt-2 rounded-xl overflow-hidden border border-neon-purple/15" data-testid="announcement-preview">
+									<div class="bg-[#111] p-4 text-center">
+										<span class="text-xs tracking-[3px] text-neon-pink font-bold">PLAYLIST PARTY</span>
+									</div>
+									<div class="bg-[#1e1e1e] p-4 text-sm" style="color: #a8a4a0;">
+										<p class="text-base font-bold mb-2" style="color: #e8e4e0;">Update from {data.party.name}</p>
+										<p class="mb-1">Hey Guest Name,</p>
+										{#if announcementMessage}
+											<div class="whitespace-pre-line mb-3">{@html renderMarkdown(announcementMessage)}</div>
+										{/if}
+										<div class="text-center mt-4">
+											<span class="inline-block bg-neon-pink text-white font-bold text-sm px-6 py-2.5 rounded-xl">Go to Party</span>
+										</div>
+									</div>
+								</div>
+							</details>
+						{/if}
+
 						<button type="submit" data-testid="send-announcement-btn"
 							class="inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
 							<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
