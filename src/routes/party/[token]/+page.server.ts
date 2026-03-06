@@ -1275,13 +1275,14 @@ export const actions = {
 		let sentCount = 0;
 		for (const recipient of recipients) {
 			const partyUrl = `${url.origin}/party/${recipient.inviteToken}`;
+			const personalizedMessage = message.replace(/\{\{rsvp_link\}\}/g, partyUrl);
 			await sendAnnouncementEmail({
 				to: recipient.email,
 				recipientName: recipient.name,
 				partyName: party.name,
 				partyUrl,
 				subject,
-				message,
+				message: personalizedMessage,
 				platform,
 				replyTo: party.creatorEmail
 			});
