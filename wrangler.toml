@@ -9,10 +9,6 @@ database_name = "playlist-party-db"
 database_id = "87dfa629-0d0e-435f-9ff1-5a0335f30d7e"
 migrations_dir = "drizzle"
 
-[observability]
-enabled = true
-head_sampling_rate = 1
-
 # Secrets (set via `wrangler secret put`):
 # RESEND_API_KEY — Resend API key for sending emails
 # RESEND_FROM_EMAIL — sender address (e.g. noreply@playlist-party.com)
