@@ -183,6 +183,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			shareToken: attendee.shareToken
 		},
 		isCreator: creator,
+		partyModeActive: !!party.nowPlayingSongId,
 		isPending,
 		attendeeStatus,
 		songs: songList,

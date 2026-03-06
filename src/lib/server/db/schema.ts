@@ -19,6 +19,7 @@ export const parties = sqliteTable('parties', {
 	songAttribution: text('song_attribution').notNull().default('hidden'),
 	customInviteSubject: text('custom_invite_subject'),
 	customInviteMessage: text('custom_invite_message'),
+	nowPlayingSongId: integer('now_playing_song_id'),
 	createdAt: text('created_at')
 		.notNull()
 		.$defaultFn(() => new Date().toISOString())
@@ -72,6 +73,23 @@ export const songs = sqliteTable(
 			.$defaultFn(() => new Date().toISOString())
 	},
 	(table) => [uniqueIndex('songs_party_youtube_idx').on(table.partyId, table.youtubeId)]
+);
+
+export const songLikes = sqliteTable(
+	'song_likes',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		songId: integer('song_id')
+			.notNull()
+			.references(() => songs.id),
+		attendeeId: integer('attendee_id')
+			.notNull()
+			.references(() => attendees.id),
+		createdAt: text('created_at')
+			.notNull()
+			.$defaultFn(() => new Date().toISOString())
+	},
+	(table) => [uniqueIndex('song_likes_song_attendee_idx').on(table.songId, table.attendeeId)]
 );
 
 export const emailSends = sqliteTable(

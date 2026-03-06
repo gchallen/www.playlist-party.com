@@ -7,6 +7,7 @@
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 	import PlayerControls from '$lib/components/PlayerControls.svelte';
 	import InviteTree from '$lib/components/InviteTree.svelte';
+	import NowPlayingCard from '$lib/components/NowPlayingCard.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
 	import { renderMarkdown } from '$lib/markdown';
@@ -568,7 +569,7 @@
 		{:else}
 			<!-- Stats bar (host only) -->
 			{#if data.isCreator}
-			<div class="mt-3 flex flex-wrap gap-3 text-sm font-heading">
+			<div class="mt-3 flex flex-wrap items-center gap-3 text-sm font-heading">
 				<span class="text-text-secondary">
 					{data.acceptedCount} / {data.party.maxAttendees} attendees
 				</span>
@@ -579,6 +580,25 @@
 						/ {formatDuration(data.targetDuration)}
 					{/if}
 				</span>
+				<span class="text-text-muted">|</span>
+				{#if data.partyModeActive}
+					<a href="/party/{data.attendee.inviteToken}/live" class="inline-flex items-center gap-1.5 text-neon-pink font-semibold">
+						<span class="relative flex h-2 w-2">
+							<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-pink opacity-75"></span>
+							<span class="relative inline-flex rounded-full h-2 w-2 bg-neon-pink"></span>
+						</span>
+						Party Mode Live!
+					</a>
+				{:else}
+					<a
+						href="/party/{data.attendee.inviteToken}/live"
+						data-testid="start-party-mode"
+						class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-neon-pink/10 text-neon-pink font-semibold hover:bg-neon-pink/20 transition-colors"
+					>
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+						Start Party Mode
+					</a>
+				{/if}
 			</div>
 			{/if}
 
@@ -1075,6 +1095,13 @@
 						{/each}
 					</div>
 				</section>
+			{/if}
+
+			<!-- Now Playing Card (visible when party mode is active) -->
+			{#if !data.isPending}
+				<div class="mt-6">
+					<NowPlayingCard token={data.attendee.inviteToken} isAccepted={data.attendeeStatus === 'attending'} />
+				</div>
 			{/if}
 
 			<!-- Playlist Progress -->
