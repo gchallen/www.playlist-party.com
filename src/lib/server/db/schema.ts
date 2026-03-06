@@ -104,6 +104,7 @@ export const emailQueue = sqliteTable(
 		attempts: integer('attempts').notNull().default(0),
 		lastError: text('last_error'),
 		replyTo: text('reply_to'),
+		metadata: text('metadata'),
 		createdAt: text('created_at')
 			.notNull()
 			.$defaultFn(() => new Date().toISOString()),

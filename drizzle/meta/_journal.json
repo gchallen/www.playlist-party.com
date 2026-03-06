@@ -85,6 +85,13 @@
       "when": 1772808882648,
       "tag": "0011_stale_thena",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1772810071914,
+      "tag": "0012_salty_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

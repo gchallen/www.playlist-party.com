@@ -2,9 +2,12 @@ import { eq } from 'drizzle-orm';
 import { emailQueue } from './db/schema';
 import type { Database } from './db';
 import { getDb } from './db';
-import { pushToDevStore } from './email';
+import { pushToDevStore } from './email-dev-store';
+import type { EmailMessage } from './email-dev-store';
 
 const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [1000, 3000, 9000]; // exponential backoff per attempt
+const INTER_EMAIL_DELAY_MS = 550; // Resend allows 2 req/s — 550ms keeps us under
 
 interface EnqueueOptions {
 	to: string;
@@ -12,6 +15,7 @@ interface EnqueueOptions {
 	html: string;
 	type: string;
 	replyTo?: string;
+	metadata?: Record<string, string>;
 }
 
 export async function enqueueEmails(
@@ -25,10 +29,29 @@ export async function enqueueEmails(
 			subject: e.subject,
 			html: e.html,
 			type: e.type,
-			replyTo: e.replyTo
+			replyTo: e.replyTo,
+			metadata: e.metadata ? JSON.stringify(e.metadata) : null
 		}))
 	);
 	return emails.length;
+}
+
+/**
+ * Enqueue a single email and kick off processing.
+ * Returns immediately — processing happens via waitUntil or inline fallback.
+ */
+export async function enqueueAndProcess(
+	platform: App.Platform | undefined,
+	email: EnqueueOptions
+): Promise<void> {
+	const db = await getDb(platform);
+	await enqueueEmails(db, [email]);
+	const processingPromise = processEmailQueue(platform);
+	if (platform?.context?.waitUntil) {
+		platform.context.waitUntil(processingPromise);
+	} else {
+		await processingPromise;
+	}
 }
 
 export async function processEmailQueue(platform?: App.Platform): Promise<{ sent: number; failed: number }> {
@@ -45,33 +68,18 @@ export async function processEmailQueue(platform?: App.Platform): Promise<{ sent
 	let sent = 0;
 	let failed = 0;
 
-	for (const row of pending) {
+	for (let i = 0; i < pending.length; i++) {
+		const row = pending[i];
 		try {
 			if (apiKey) {
-				const body: Record<string, unknown> = {
-					from: fromEmail,
-					to: row.to,
-					subject: row.subject,
-					html: row.html
-				};
-				if (row.replyTo) body.reply_to = row.replyTo;
-
-				const res = await fetch('https://api.resend.com/emails', {
-					method: 'POST',
-					headers: {
-						Authorization: `Bearer ${apiKey}`,
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(body)
-				});
-
-				if (!res.ok) {
-					const text = await res.text();
-					throw new Error(`Resend ${res.status}: ${text}`);
+				await sendViaResend(apiKey, fromEmail, row);
+				if (i < pending.length - 1) {
+					await sleep(INTER_EMAIL_DELAY_MS);
 				}
-			}
-			if (!apiKey) {
-				pushToDevStore(row.to, row.subject, row.html, row.type as 'announcement');
+			} else {
+				const meta = row.metadata ? JSON.parse(row.metadata) : {};
+				if (row.replyTo) meta.replyTo = row.replyTo;
+				pushToDevStore(row.to, row.subject, row.html, row.type as EmailMessage['type'], meta);
 			}
 
 			await db
@@ -95,4 +103,43 @@ export async function processEmailQueue(platform?: App.Platform): Promise<{ sent
 	}
 
 	return { sent, failed };
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function sendViaResend(
+	apiKey: string,
+	fromEmail: string,
+	row: { to: string; subject: string; html: string; replyTo: string | null; attempts: number }
+): Promise<void> {
+	const body: Record<string, unknown> = {
+		from: fromEmail,
+		to: row.to,
+		subject: row.subject,
+		html: row.html
+	};
+	if (row.replyTo) body.reply_to = row.replyTo;
+
+	const maxRetries = MAX_ATTEMPTS - row.attempts;
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		const res = await fetch('https://api.resend.com/emails', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(body)
+		});
+
+		if (res.ok) return;
+
+		const text = await res.text();
+		const isRetryable = res.status === 429 || res.status >= 500;
+		if (!isRetryable || attempt === maxRetries - 1) {
+			throw new Error(`Resend ${res.status}: ${text}`);
+		}
+		await sleep(RETRY_DELAYS_MS[attempt] ?? 9000);
+	}
 }
