@@ -61,6 +61,7 @@
 		lines.push('');
 		lines.push(`You'll be asked to add ${songWord} to the playlist when you RSVP.`);
 		return {
+			partyName: party.name,
 			subject: party.customInviteSubject || `You're Invited to ${party.name}`,
 			message: party.customInviteMessage || lines.join('\n')
 		};
@@ -69,7 +70,7 @@
 	let inviteMessage = $state(initInvite.message);
 
 	// ─── Drag-and-drop state ───
-	let announcementSubject = $state(`${data.party.name} Update`);
+	let announcementSubject = $state(`${initInvite.partyName} Update`);
 	let announcementMessage = $state('');
 	let songOverride = $state<typeof data.songs | null>(null);
 	const localSongs = $derived(songOverride ?? data.songs);
