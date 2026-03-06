@@ -113,6 +113,18 @@ export const emailQueue = sqliteTable(
 	(table) => [index('idx_email_queue_status').on(table.status)]
 );
 
+export const errorLog = sqliteTable('error_log', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	errorId: text('error_id').notNull(),
+	status: integer('status').notNull(),
+	method: text('method').notNull(),
+	path: text('path').notNull(),
+	detail: text('detail').notNull(),
+	createdAt: text('created_at')
+		.notNull()
+		.$defaultFn(() => new Date().toISOString())
+});
+
 export const emailSends = sqliteTable(
 	'email_sends',
 	{
