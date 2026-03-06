@@ -1229,6 +1229,58 @@ export const actions = {
 		return { guestEmailUpdated: target.name };
 	},
 
+	distributeSongs: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { songError: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { songError: 'Only the creator can distribute songs' });
+
+		const allSongs = await db.query.songs.findMany({
+			where: eq(songs.partyId, attendee.partyId),
+			orderBy: songs.position
+		});
+
+		if (allSongs.length < 2) return { distributed: true };
+
+		// Group songs by who added them
+		const byAdder = new Map<number, typeof allSongs>();
+		for (const song of allSongs) {
+			const list = byAdder.get(song.addedBy) ?? [];
+			list.push(song);
+			byAdder.set(song.addedBy, list);
+		}
+
+		// For each adder's songs, assign evenly-spaced target positions
+		const total = allSongs.length;
+		const positioned: { song: (typeof allSongs)[0]; target: number }[] = [];
+		for (const [, adderSongs] of byAdder) {
+			const count = adderSongs.length;
+			for (let i = 0; i < count; i++) {
+				// Space evenly: (i + 0.5) * total / count
+				// Add small random jitter to break ties between different adders
+				positioned.push({
+					song: adderSongs[i],
+					target: ((i + 0.5) * total) / count + (Math.random() - 0.5) * 0.1
+				});
+			}
+		}
+
+		// Sort by target position
+		positioned.sort((a, b) => a.target - b.target);
+
+		// Update positions in DB
+		for (let i = 0; i < positioned.length; i++) {
+			if (positioned[i].song.position !== i) {
+				await db.update(songs).set({ position: i }).where(eq(songs.id, positioned[i].song.id));
+			}
+		}
+
+		return { distributed: true };
+	},
+
 	sendAnnouncement: async ({ params, request, platform, url }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();

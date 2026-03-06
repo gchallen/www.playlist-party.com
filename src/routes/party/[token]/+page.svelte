@@ -1171,6 +1171,21 @@
 
 			<!-- Song List -->
 			<section class="mt-4">
+				{#if data.isCreator && localSongs.length >= 2}
+					<div class="flex items-center justify-between mb-2">
+						<form method="POST" action="?/distributeSongs" use:enhance>
+							<button type="submit" data-testid="distribute-songs-btn"
+								class="inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:text-text-primary transition-all duration-200"
+								title="Evenly space each guest's songs throughout the playlist">
+								<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>
+								Distribute by Guest
+							</button>
+						</form>
+						{#if form?.distributed}
+							<span class="text-xs text-neon-mint font-heading animate-pulse">Songs distributed!</span>
+						{/if}
+					</div>
+				{/if}
 				{#if localSongs.length === 0}
 					<div class="glass rounded-2xl p-6 text-center">
 						<p class="text-text-muted text-sm">No songs yet. Be the first to add one!</p>
