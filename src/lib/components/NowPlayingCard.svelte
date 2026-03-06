@@ -1,10 +1,12 @@
 <script lang="ts">
 	let {
 		token,
-		isAccepted
+		isAccepted,
+		isCreator = false
 	}: {
 		token: string;
 		isAccepted: boolean;
+		isCreator?: boolean;
 	} = $props();
 
 	type NowPlayingData = {
@@ -23,6 +25,14 @@
 
 	let nowPlaying = $state<NowPlayingData>({ active: false });
 	let likeLoading = $state(false);
+	let controlLoading = $state(false);
+
+	const hasNext = $derived(
+		nowPlaying.active && nowPlaying.position != null && nowPlaying.totalSongs != null && nowPlaying.position < nowPlaying.totalSongs
+	);
+	const hasPrev = $derived(
+		nowPlaying.active && nowPlaying.position != null && nowPlaying.position > 1
+	);
 
 	async function fetchNowPlaying() {
 		try {
@@ -39,7 +49,6 @@
 		if (!nowPlaying.active || !nowPlaying.songId || !isAccepted || likeLoading) return;
 		likeLoading = true;
 
-		// Optimistic update
 		const wasLiked = nowPlaying.liked;
 		nowPlaying.liked = !wasLiked;
 		nowPlaying.likeCount = (nowPlaying.likeCount ?? 0) + (wasLiked ? -1 : 1);
@@ -55,7 +64,6 @@
 				nowPlaying.liked = data.liked;
 				nowPlaying.likeCount = data.likeCount;
 			} else {
-				// Revert on error
 				nowPlaying.liked = wasLiked;
 				nowPlaying.likeCount = (nowPlaying.likeCount ?? 0) + (wasLiked ? 1 : -1);
 			}
@@ -64,6 +72,23 @@
 			nowPlaying.likeCount = (nowPlaying.likeCount ?? 0) + (wasLiked ? 1 : -1);
 		} finally {
 			likeLoading = false;
+		}
+	}
+
+	async function controlAction(action: 'next' | 'prev' | 'stop') {
+		if (controlLoading) return;
+		controlLoading = true;
+		try {
+			await fetch(`/api/party/${token}/now-playing`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(action === 'stop' ? { songId: null } : { action })
+			});
+			await fetchNowPlaying();
+		} catch {
+			// Ignore
+		} finally {
+			controlLoading = false;
 		}
 	}
 
@@ -83,6 +108,9 @@
 				<span class="eq-bar w-[3px] rounded-sm bg-neon-pink origin-bottom h-full animate-eq-3"></span>
 			</div>
 			<span class="text-xs font-heading font-semibold text-neon-pink uppercase tracking-wider">Now Playing</span>
+			{#if nowPlaying.position && nowPlaying.totalSongs}
+				<span class="text-xs text-text-muted ml-auto">{nowPlaying.position} / {nowPlaying.totalSongs}</span>
+			{/if}
 		</div>
 
 		<div class="flex gap-3">
@@ -115,9 +143,46 @@
 			</div>
 		</div>
 
-		{#if nowPlaying.position && nowPlaying.totalSongs}
-			<div class="mt-2 text-xs text-text-muted text-right">
-				{nowPlaying.position} / {nowPlaying.totalSongs}
+		<!-- Creator playback controls -->
+		{#if isCreator}
+			<div class="mt-3 flex items-center gap-2 pt-3 border-t border-neon-purple/10">
+				<button
+					onclick={() => controlAction('prev')}
+					disabled={!hasPrev || controlLoading}
+					class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors disabled:opacity-30"
+					title="Previous song"
+				>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+				</button>
+
+				<button
+					onclick={() => controlAction('next')}
+					disabled={!hasNext || controlLoading}
+					class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors disabled:opacity-30"
+					title="Next song"
+				>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+				</button>
+
+				<div class="flex-1"></div>
+
+				<a
+					href="/party/{token}/live?display"
+					target="_blank"
+					class="text-xs font-heading text-text-muted hover:text-neon-cyan transition-colors"
+					title="Open display screen"
+				>
+					+ Display
+				</a>
+
+				<button
+					onclick={() => controlAction('stop')}
+					disabled={controlLoading}
+					class="px-2.5 py-1 rounded-lg text-xs font-heading font-semibold text-neon-pink hover:bg-neon-pink/10 transition-colors"
+					title="End party mode"
+				>
+					End
+				</button>
 			</div>
 		{/if}
 	</div>

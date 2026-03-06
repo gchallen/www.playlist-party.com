@@ -1,11 +1,14 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { enhance } from '$app/forms';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
-	import { loadYouTubeIframeApi } from '$lib/youtube-api';
 
 	let { data } = $props();
 
 	type DisplayMode = 'overlay' | 'split';
+
+	// Display-only mode: polls for song changes, no auto-advance
+	const isDisplay = $derived($page.url.searchParams.has('display'));
 
 	let displayMode = $state<DisplayMode>('split');
 	let currentIndex = $state(0);
@@ -19,10 +22,10 @@
 	const hasNext = $derived(currentIndex < data.songs.length - 1);
 	const hasPrev = $derived(currentIndex > 0);
 
-	// Set now playing on mount and request wake lock
+	// On mount: set now playing (primary only) and request wake lock
 	$effect(() => {
-		if (data.songs.length > 0) {
-			postNowPlaying(data.songs[0].id);
+		if (!isDisplay && data.songs.length > 0) {
+			postNowPlaying({ songId: data.songs[0].id });
 		}
 		requestWakeLock();
 		return () => {
@@ -30,9 +33,9 @@
 		};
 	});
 
-	// Poll for like count
+	// Poll for like count + detect external song changes
 	$effect(() => {
-		const interval = setInterval(pollLikeCount, 5000);
+		const interval = setInterval(pollState, 5000);
 		return () => clearInterval(interval);
 	});
 
@@ -54,8 +57,9 @@
 		return () => window.removeEventListener('keydown', handleKeydown);
 	});
 
-	// beforeunload warning
+	// beforeunload warning (primary only)
 	$effect(() => {
+		if (isDisplay) return;
 		function handleBeforeUnload(e: BeforeUnloadEvent) {
 			e.preventDefault();
 		}
@@ -73,24 +77,32 @@
 		}
 	}
 
-	async function postNowPlaying(songId: number | null) {
+	async function postNowPlaying(body: { songId: number | null } | { action: 'next' | 'prev' }) {
 		try {
 			await fetch(`/api/party/${data.token}/now-playing`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ songId })
+				body: JSON.stringify(body)
 			});
 		} catch {
 			// Ignore errors
 		}
 	}
 
-	async function pollLikeCount() {
+	async function pollState() {
 		try {
 			const res = await fetch(`/api/party/${data.token}/now-playing`);
-			if (res.ok) {
-				const d = await res.json();
-				if (d.active) likeCount = d.likeCount ?? 0;
+			if (!res.ok) return;
+			const d = await res.json();
+			if (d.active) {
+				likeCount = d.likeCount ?? 0;
+				// Detect external song change (from another device/tab)
+				if (d.songId && currentSong && d.songId !== currentSong.id) {
+					const newIdx = data.songs.findIndex((s) => s.id === d.songId);
+					if (newIdx !== -1) {
+						currentIndex = newIdx;
+					}
+				}
 			}
 		} catch {
 			// Ignore
@@ -100,17 +112,26 @@
 	function skipNext() {
 		if (!hasNext) return;
 		currentIndex++;
-		postNowPlaying(currentSong.id);
+		if (isDisplay) {
+			postNowPlaying({ action: 'next' });
+		} else {
+			postNowPlaying({ songId: currentSong.id });
+		}
 	}
 
 	function skipPrev() {
 		if (!hasPrev) return;
 		currentIndex--;
-		postNowPlaying(currentSong.id);
+		if (isDisplay) {
+			postNowPlaying({ action: 'prev' });
+		} else {
+			postNowPlaying({ songId: currentSong.id });
+		}
 	}
 
 	function onSongEnded() {
-		if (hasNext) {
+		// Only auto-advance on the primary controller
+		if (!isDisplay && hasNext) {
 			skipNext();
 		}
 	}
@@ -123,7 +144,7 @@
 </script>
 
 <svelte:head>
-	<title>DJ Live — {data.party.name}</title>
+	<title>{isDisplay ? 'Display' : 'DJ Live'} — {data.party.name}</title>
 </svelte:head>
 
 {#if data.songs.length === 0}
@@ -166,7 +187,6 @@
 						</div>
 
 						<div class="flex items-center gap-3 flex-shrink-0">
-							<!-- Like count -->
 							<div class="flex items-center gap-1.5 text-neon-pink">
 								<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
 									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -176,7 +196,6 @@
 						</div>
 					</div>
 
-					<!-- Up next strip -->
 					{#if nextSongs.length > 0}
 						<div class="mt-4 flex gap-2">
 							<span class="text-xs text-white/40 uppercase tracking-wider self-center mr-1">Up next</span>
@@ -234,7 +253,6 @@
 					</div>
 				</div>
 
-				<!-- Up next -->
 				{#if nextSongs.length > 0}
 					<div class="mt-auto">
 						<span class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Up next</span>
@@ -254,8 +272,12 @@
 			</div>
 		{/if}
 
-		<!-- Controls bar (always visible) -->
+		<!-- Controls bar -->
 		<div class="controls-bar absolute top-4 right-4 flex items-center gap-2 z-50 opacity-0 hover:opacity-100 transition-opacity duration-300">
+			{#if isDisplay}
+				<span class="px-2 py-1 rounded-full bg-neon-cyan/20 text-neon-cyan text-xs font-heading font-semibold mr-1">DISPLAY</span>
+			{/if}
+
 			<button
 				onclick={() => { if (hasPrev) skipPrev(); }}
 				disabled={!hasPrev}

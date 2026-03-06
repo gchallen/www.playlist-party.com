@@ -49,7 +49,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			nowPlayingSongId: party.nowPlayingSongId
 		},
 		songs: songList,
-		token: params.token
+		token: params.token,
+		isDisplay: false // overridden client-side from URL search params
 	};
 };
 

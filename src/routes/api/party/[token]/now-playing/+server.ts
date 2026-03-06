@@ -83,6 +83,26 @@ export const POST: RequestHandler = async ({ params, platform, request }) => {
 	if (!party) error(404, 'Party not found');
 
 	const body = await request.json();
+	const action = body.action as string | undefined;
+
+	if (action === 'next' || action === 'prev') {
+		const allSongs = await db.query.songs.findMany({
+			where: eq(songs.partyId, party.id),
+			orderBy: songs.position
+		});
+
+		const currentIdx = allSongs.findIndex((s) => s.id === party.nowPlayingSongId);
+		const targetIdx = action === 'next' ? currentIdx + 1 : currentIdx - 1;
+		const targetSong = allSongs[targetIdx];
+
+		if (!targetSong) {
+			return json({ ok: false, reason: 'no_song' });
+		}
+
+		await db.update(parties).set({ nowPlayingSongId: targetSong.id }).where(eq(parties.id, party.id));
+		return json({ ok: true, songId: targetSong.id });
+	}
+
 	const songId = body.songId as number | null;
 
 	if (songId !== null) {
