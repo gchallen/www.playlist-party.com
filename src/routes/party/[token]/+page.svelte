@@ -634,8 +634,11 @@
 
 			<!-- Invite Friends -->
 			{#if data.attendeeStatus !== 'unavailable'}
-			<section class="mt-6">
-				<h2 class="font-heading text-lg font-bold gradient-text mb-3">Invite Friends</h2>
+			<details class="mt-6 group" open>
+				<summary class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none">
+					<svg class="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+					Invite Friends
+				</summary>
 
 				{#if form?.inviteError}
 					<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
@@ -984,7 +987,7 @@
 						</p>
 					</div>
 				{/if}
-			</section>
+			</details>
 			{/if}
 
 			<!-- Add Song Form -->
@@ -1192,15 +1195,22 @@
 
 			<!-- Creator: Invite Tree -->
 			{#if data.isCreator && inviteTree}
-				<section class="mt-8">
+				<details class="mt-8 group" open>
+					<summary class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none">
+						<svg class="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+						Guest Tree
+					</summary>
 					<InviteTree tree={inviteTree} />
-				</section>
+				</details>
 			{/if}
 
 			<!-- Creator: Send Announcement -->
 			{#if data.isCreator}
-				<section class="mt-8">
-					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Send Announcement</h2>
+				<details class="mt-8 group" open>
+					<summary class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none">
+						<svg class="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+						Send Announcement
+					</summary>
 
 					{#if form?.announcementError}
 						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
@@ -1228,6 +1238,7 @@
 							<label for="announcement-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
 							<input type="text" id="announcement-subject" name="announcementSubject" required maxlength="200"
 								data-testid="announcement-subject"
+								value="{data.party.name} Update"
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
 								placeholder="Party update!" />
 						</div>
@@ -1237,7 +1248,10 @@
 								data-testid="announcement-message"
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
 								placeholder="Write your message here... (Markdown supported)"
-							></textarea>
+							>RSVP here: {'{{rsvp_link}}'}</textarea>
+							<p class="text-text-muted text-xs mt-1 ml-1">
+								<code class="text-neon-cyan">{'{{rsvp_link}}'}</code> will be replaced with each guest's personal invite link
+							</p>
 						</div>
 						<button type="submit" data-testid="send-announcement-btn"
 							class="inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
@@ -1247,13 +1261,16 @@
 							Send Announcement
 						</button>
 					</form>
-				</section>
+				</details>
 			{/if}
 
 			<!-- Creator: Settings -->
 			{#if data.isCreator}
-				<section class="mt-8 mb-8">
-					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Party Settings</h2>
+				<details class="mt-8 mb-8 group" open>
+					<summary class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none">
+						<svg class="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+						Party Settings
+					</summary>
 
 					{#if form?.settingsUpdated}
 						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading">
@@ -1310,7 +1327,7 @@
 							Save Settings
 						</button>
 					</form>
-				</section>
+				</details>
 			{/if}
 		{/if}
 		{/if}
@@ -1319,6 +1336,10 @@
 </div>
 
 <style>
+	summary::-webkit-details-marker {
+		display: none;
+	}
+
 	.cta-btn {
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 	}
