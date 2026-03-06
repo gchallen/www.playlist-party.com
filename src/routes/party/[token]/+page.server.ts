@@ -6,7 +6,9 @@ import { parties, attendees, songs } from '$lib/server/db/schema';
 import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
-import { sendInviteEmail, sendAnnouncementEmail } from '$lib/server/email';
+import { sendInviteEmail } from '$lib/server/email';
+import { renderAnnouncementEmail } from '$lib/server/email-templates';
+import { enqueueEmails, processEmailQueue } from '$lib/server/email-queue';
 import { recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
 import { validateInvite, toSongInfo } from '$lib/server/invite-validation';
@@ -1273,23 +1275,34 @@ export const actions = {
 			return fail(400, { announcementError: 'No recipients match the selected group' });
 		}
 
-		let sentCount = 0;
-		for (const recipient of recipients) {
+		const emails = recipients.map((recipient) => {
 			const partyUrl = `${url.origin}/party/${recipient.inviteToken}`;
-			await sendAnnouncementEmail({
-				to: recipient.email,
+			const html = renderAnnouncementEmail({
 				recipientName: recipient.name,
 				partyName: party.name,
 				partyUrl,
-				subject,
-				message,
-				platform,
-				replyTo: party.creatorEmail
+				message
 			});
-			sentCount++;
+			return {
+				to: recipient.email,
+				subject,
+				html,
+				type: 'announcement',
+				replyTo: party.creatorEmail
+			};
+		});
+
+		const enqueued = await enqueueEmails(db, emails);
+
+		// Process queue immediately via waitUntil (non-blocking) or inline fallback
+		const processingPromise = processEmailQueue(platform);
+		if (platform?.context?.waitUntil) {
+			platform.context.waitUntil(processingPromise);
+		} else {
+			await processingPromise;
 		}
 
-		return { announcementSent: sentCount };
+		return { announcementSent: enqueued };
 	},
 
 	devAddRandomSongs: async ({ params, request, platform }) => {

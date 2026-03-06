@@ -16,6 +16,10 @@ declare global {
 				RESEND_API_KEY?: string;
 				RESEND_FROM_EMAIL?: string;
 				HMAC_SECRET?: string;
+				CRON_SECRET?: string;
+			};
+			context?: {
+				waitUntil(promise: Promise<unknown>): void;
 			};
 		}
 	}

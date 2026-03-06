@@ -1249,7 +1249,7 @@
 
 					{#if form?.announcementSent}
 						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="announcement-sent-success">
-							Announcement sent to {form.announcementSent} {form.announcementSent === 1 ? 'guest' : 'guests'}!
+							Announcement sending to {form.announcementSent} {form.announcementSent === 1 ? 'guest' : 'guests'}!
 						</div>
 					{/if}
 

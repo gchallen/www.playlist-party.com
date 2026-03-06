@@ -21,6 +21,18 @@ export function clearSentEmails(): void {
 	emailCounter = 0;
 }
 
+export function pushToDevStore(to: string, subject: string, html: string, type: EmailMessage['type'], metadata: Record<string, string> = {}): void {
+	sentEmails.push({
+		id: `email_${++emailCounter}`,
+		to,
+		subject,
+		html,
+		sentAt: new Date().toISOString(),
+		type,
+		metadata
+	});
+}
+
 async function sendViaResend(
 	to: string,
 	subject: string,
@@ -42,7 +54,7 @@ async function sendViaResend(
 
 	if (!res.ok) {
 		const body = await res.text();
-		console.error(`Resend API error (${res.status}): ${body}`);
+		throw new Error(`Resend API error (${res.status}): ${body}`);
 	}
 }
 
@@ -115,31 +127,6 @@ export async function sendEmailVerification(
 	await sendEmail(to, 'Verify your email - Playlist Party', html, 'email_verification', {
 		verifyUrl
 	}, platform);
-}
-
-export interface AnnouncementEmailOptions {
-	to: string;
-	recipientName: string;
-	partyName: string;
-	partyUrl: string;
-	subject: string;
-	message: string;
-	platform?: App.Platform;
-	replyTo?: string;
-}
-
-export async function sendAnnouncementEmail(opts: AnnouncementEmailOptions): Promise<void> {
-	const { renderAnnouncementEmail } = await import('./email-templates');
-	const html = renderAnnouncementEmail({
-		recipientName: opts.recipientName,
-		partyName: opts.partyName,
-		partyUrl: opts.partyUrl,
-		message: opts.message
-	});
-	await sendEmail(opts.to, opts.subject, html, 'announcement', {
-		recipientName: opts.recipientName,
-		partyName: opts.partyName
-	}, opts.platform, opts.replyTo);
 }
 
 export async function sendCreatorWelcomeEmail(

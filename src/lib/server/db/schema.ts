@@ -92,6 +92,26 @@ export const songLikes = sqliteTable(
 	(table) => [uniqueIndex('song_likes_song_attendee_idx').on(table.songId, table.attendeeId)]
 );
 
+export const emailQueue = sqliteTable(
+	'email_queue',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		to: text('to').notNull(),
+		subject: text('subject').notNull(),
+		html: text('html').notNull(),
+		type: text('type').notNull(),
+		status: text('status').notNull().default('pending'),
+		attempts: integer('attempts').notNull().default(0),
+		lastError: text('last_error'),
+		replyTo: text('reply_to'),
+		createdAt: text('created_at')
+			.notNull()
+			.$defaultFn(() => new Date().toISOString()),
+		sentAt: text('sent_at')
+	},
+	(table) => [index('idx_email_queue_status').on(table.status)]
+);
+
 export const emailSends = sqliteTable(
 	'email_sends',
 	{
