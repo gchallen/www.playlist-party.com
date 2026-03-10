@@ -1010,7 +1010,7 @@ export const actions = {
 			updates.maxInvitesPerGuest = null;
 		} else if (maxInvitesRaw) {
 			const parsed = parseInt(maxInvitesRaw, 10);
-			if (!isNaN(parsed) && parsed >= 0) updates.maxInvitesPerGuest = parsed;
+			if (!isNaN(parsed) && parsed >= 1) updates.maxInvitesPerGuest = parsed;
 		}
 
 		const songsPerGuestRaw = data.get('songsPerGuest')?.toString()?.trim();

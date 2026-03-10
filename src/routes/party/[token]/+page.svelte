@@ -1386,7 +1386,7 @@
 								<label for="setting-max-invites" class="block font-heading text-xs font-semibold text-text-secondary mb-1">
 									Max Invites Per Guest
 								</label>
-								<input type="number" id="setting-max-invites" name="maxInvitesPerGuest" min="0"
+								<input type="number" id="setting-max-invites" name="maxInvitesPerGuest" min="1"
 									data-testid="max-invites-per-guest"
 									value={data.party.maxInvitesPerGuest ?? ''}
 									placeholder="Unlimited"
