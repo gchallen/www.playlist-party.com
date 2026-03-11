@@ -125,7 +125,7 @@ test.describe('Invite and Accept', () => {
 		const path = await inviteViaShareLink(page, request, 'Bob', inviteeEmail);
 
 		await page.goto(path);
-		await expect(page.locator('text=You\'re Invited!')).toBeVisible();
+		await expect(page.locator("text=You're Invited!")).toBeVisible();
 		await expect(page.locator('[data-testid="name-input"]')).toHaveValue('Bob');
 	});
 
@@ -191,7 +191,11 @@ test.describe('Remove Pending Invite', () => {
 		await expect(page.locator('[data-testid="invite-row"]').filter({ hasText: 'RemoveMe' })).toBeVisible();
 
 		// Click remove button
-		await page.locator('[data-testid="invite-row"]').filter({ hasText: 'RemoveMe' }).locator('[data-testid="remove-invite-btn"]').click();
+		await page
+			.locator('[data-testid="invite-row"]')
+			.filter({ hasText: 'RemoveMe' })
+			.locator('[data-testid="remove-invite-btn"]')
+			.click();
 
 		// Verify success message and invite disappears
 		await expect(page.locator('[data-testid="invite-removed-success"]')).toBeVisible();
@@ -229,7 +233,11 @@ test.describe('Remove Pending Invite', () => {
 		await page.reload();
 
 		// Remove it
-		await page.locator('[data-testid="invite-row"]').filter({ hasText: 'First' }).locator('[data-testid="remove-invite-btn"]').click();
+		await page
+			.locator('[data-testid="invite-row"]')
+			.filter({ hasText: 'First' })
+			.locator('[data-testid="remove-invite-btn"]')
+			.click();
 		await expect(page.locator('[data-testid="invite-removed-success"]')).toBeVisible();
 
 		// Send a new invite — should succeed since slot was freed

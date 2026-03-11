@@ -23,10 +23,11 @@
 			class="absolute inset-x-0 bottom-0 top-1/3 flex items-end justify-center gap-[3px] overflow-hidden"
 			aria-hidden="true"
 		>
-			{#each eqBars as bar}
+			{#each eqBars as bar, i (i)}
 				<div
 					class="w-[3px] md:w-[4px] rounded-t-full origin-bottom"
-					style="height: {bar.height}px; animation: eq-{bar.animIndex} {0.6 + bar.delay}s ease-in-out infinite; animation-delay: {bar.delay}s; opacity: {bar.opacity}; background: var(--eq-bar-gradient);"
+					style="height: {bar.height}px; animation: eq-{bar.animIndex} {0.6 +
+						bar.delay}s ease-in-out infinite; animation-delay: {bar.delay}s; opacity: {bar.opacity}; background: var(--eq-bar-gradient);"
 				></div>
 			{/each}
 		</div>
@@ -52,17 +53,20 @@
 
 		<!-- Hero content -->
 		<div class="relative z-10 text-center max-w-3xl mx-auto">
-			<h1 class="hero-title font-display text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-neon-pink leading-tight tracking-wider mb-2">
+			<h1
+				class="hero-title font-display text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-neon-pink leading-tight tracking-wider mb-2"
+			>
 				PLAYLIST<br />PARTY
 			</h1>
 
-			<p
-				class="font-heading text-xl sm:text-2xl md:text-3xl text-text-secondary font-medium mt-6 mb-10 tracking-wide"
-			>
+			<p class="font-heading text-xl sm:text-2xl md:text-3xl text-text-secondary font-medium mt-6 mb-10 tracking-wide">
 				Your Songs. Your Squad. Your&nbsp;Vibe.
 			</p>
 
-			<a href="/create" class="cta-btn inline-block font-heading font-bold text-xl px-10 py-4 rounded-full bg-neon-pink text-on-accent tracking-wide transition-all duration-300">
+			<a
+				href="/create"
+				class="cta-btn inline-block font-heading font-bold text-xl px-10 py-4 rounded-full bg-neon-pink text-on-accent tracking-wide transition-all duration-300"
+			>
 				Start a Party
 			</a>
 		</div>
@@ -86,7 +90,8 @@
 				<div>
 					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Send the link.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
-						Share it however you want — text, group chat, carrier pigeon. Friends RSVP and add their tracks. They can share the link too.
+						Share it however you want — text, group chat, carrier pigeon. Friends RSVP and add their tracks. They can
+						share the link too.
 					</p>
 				</div>
 			</div>
@@ -96,7 +101,8 @@
 				<div>
 					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Hit play.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
-						The night arrives, and it's time to find out who brought the bangers! Track who's coming and enjoy the playlist together.
+						The night arrives, and it's time to find out who brought the bangers! Track who's coming and enjoy the
+						playlist together.
 					</p>
 				</div>
 			</div>
@@ -122,11 +128,11 @@
 		transform: translateY(-2px);
 	}
 
-	:global(:root[data-theme="dark"]) .cta-btn {
+	:global(:root[data-theme='dark']) .cta-btn {
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
-	:global(:root[data-theme="dark"]) .cta-btn:hover {
+	:global(:root[data-theme='dark']) .cta-btn:hover {
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-2px);
 	}

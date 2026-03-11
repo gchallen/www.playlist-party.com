@@ -44,11 +44,11 @@ export function renderMarkdown(raw: string, options?: MarkdownOptions): string {
 		const line = lines[i];
 
 		// Unordered list: * item or - item
-		const ulMatch = line.match(/^[*\-] (.+)/);
+		const ulMatch = line.match(/^[*-] (.+)/);
 		if (ulMatch) {
 			const items: string[] = [];
 			while (i < lines.length) {
-				const m = lines[i].match(/^[*\-] (.+)/);
+				const m = lines[i].match(/^[*-] (.+)/);
 				if (!m) break;
 				items.push(m[1]);
 				i++;

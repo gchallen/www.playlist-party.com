@@ -26,11 +26,7 @@ export async function checkEmailRateLimit(
 	return { allowed: true };
 }
 
-export async function recordEmailSend(
-	db: Database,
-	email: string,
-	type: string
-): Promise<void> {
+export async function recordEmailSend(db: Database, email: string, type: string): Promise<void> {
 	await db.insert(emailSends).values({
 		recipientEmail: email.toLowerCase(),
 		emailType: type,

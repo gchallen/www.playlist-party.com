@@ -83,7 +83,7 @@
 
 	{#if showConfetti}
 		<div class="absolute inset-0 pointer-events-none overflow-visible">
-			{#each confetti as piece}
+			{#each confetti as piece (piece.cx)}
 				<span
 					class="confetti-piece absolute top-1/2 left-1/2 w-1.5 h-1.5 rounded-full"
 					style="background: {piece.bg}; --cx: {piece.cx}; --cy: {piece.cy}; --cr: {piece.cr};"
@@ -100,7 +100,7 @@
 		border: 1px solid rgba(0, 0, 0, 0.1);
 	}
 
-	:global(:root[data-theme="dark"]) .copy-btn {
+	:global(:root[data-theme='dark']) .copy-btn {
 		border-color: rgba(255, 255, 255, 0.1);
 	}
 
@@ -109,7 +109,7 @@
 		background: var(--color-surface-hover);
 	}
 
-	:global(:root[data-theme="dark"]) .copy-btn:hover:not(.is-copied) {
+	:global(:root[data-theme='dark']) .copy-btn:hover:not(.is-copied) {
 		border-color: rgba(255, 255, 255, 0.2);
 	}
 

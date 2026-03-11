@@ -107,8 +107,7 @@ export function computeOverflowDrops(
 	const drops: number[] = [];
 
 	// Simulate adding the new song
-	const simulatedTotal = () =>
-		remaining.reduce((sum, s) => sum + s.durationSeconds, 0) + newSongDuration;
+	const simulatedTotal = () => remaining.reduce((sum, s) => sum + s.durationSeconds, 0) + newSongDuration;
 
 	while (simulatedTotal() > targetDuration) {
 		// Build footprint map including the new song's contributor
@@ -127,7 +126,8 @@ export function computeOverflowDrops(
 			const count = attendeeId === newSongAddedBy ? effectiveCount : attendeeSongs.length;
 			if (count <= 1) continue; // can't drop if they'd have 0 songs
 
-			const footprint = attendeeSongs.reduce((sum, s) => sum + s.durationSeconds, 0) +
+			const footprint =
+				attendeeSongs.reduce((sum, s) => sum + s.durationSeconds, 0) +
 				(attendeeId === newSongAddedBy ? newSongDuration : 0);
 
 			if (footprint > bestFootprint) {
@@ -143,9 +143,7 @@ export function computeOverflowDrops(
 
 		const targetSongs = songsByAttendee.get(bestAttendeeId)!;
 		// Drop the most recently added song from this attendee
-		const sorted = [...targetSongs].sort(
-			(a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
-		);
+		const sorted = [...targetSongs].sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
 
 		// If this is the new song's adder, they need to keep at least 1 existing song
 		// (the new song will be their other one)

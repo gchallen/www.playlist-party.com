@@ -163,8 +163,7 @@ export const actions = {
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
 		if (!createdBy) return fail(400, { error: 'Your name is required' });
-		if (isNaN(maxAttendees) || maxAttendees < 2)
-			return fail(400, { error: 'Max attendees must be at least 2' });
+		if (isNaN(maxAttendees) || maxAttendees < 2) return fail(400, { error: 'Max attendees must be at least 2' });
 
 		// Parse start time (safety net — client already sends HH:MM)
 		const time = rawTime ? (parseFlexibleTime(rawTime) ?? null) : null;

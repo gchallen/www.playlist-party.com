@@ -28,11 +28,12 @@
 	let controlLoading = $state(false);
 
 	const hasNext = $derived(
-		nowPlaying.active && nowPlaying.position != null && nowPlaying.totalSongs != null && nowPlaying.position < nowPlaying.totalSongs
+		nowPlaying.active &&
+			nowPlaying.position != null &&
+			nowPlaying.totalSongs != null &&
+			nowPlaying.position < nowPlaying.totalSongs
 	);
-	const hasPrev = $derived(
-		nowPlaying.active && nowPlaying.position != null && nowPlaying.position > 1
-	);
+	const hasPrev = $derived(nowPlaying.active && nowPlaying.position != null && nowPlaying.position > 1);
 
 	async function fetchNowPlaying() {
 		try {
@@ -135,8 +136,16 @@
 					class:opacity-40={!isAccepted}
 					title={isAccepted ? (nowPlaying.liked ? 'Unlike' : 'Like') : 'Accept invite to like songs'}
 				>
-					<svg class="w-6 h-6" viewBox="0 0 24 24" fill={nowPlaying.liked ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2">
-						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+					<svg
+						class="w-6 h-6"
+						viewBox="0 0 24 24"
+						fill={nowPlaying.liked ? 'currentColor' : 'none'}
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+						/>
 					</svg>
 				</button>
 				<span class="text-xs font-heading text-text-muted mt-0.5">{nowPlaying.likeCount ?? 0}</span>
@@ -152,7 +161,7 @@
 					class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors disabled:opacity-30"
 					title="Previous song"
 				>
-					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
 				</button>
 
 				<button
@@ -161,7 +170,9 @@
 					class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors disabled:opacity-30"
 					title="Next song"
 				>
-					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"
+						><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg
+					>
 				</button>
 
 				<div class="flex-1"></div>

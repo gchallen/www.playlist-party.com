@@ -20,6 +20,7 @@
 	} = $props();
 
 	let playerReady = $state(false);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let player: any = null;
 	let playerCreated = false;
 	let lastLoadedVideoId = '';
@@ -70,7 +71,7 @@
 					playerReady = true;
 					onready?.();
 				},
-				onStateChange: (e: any) => {
+				onStateChange: (e: { data: number }) => {
 					if (e.data === 1) {
 						onplaystatechange?.(true);
 						startProgressTracking();
@@ -85,7 +86,7 @@
 						onended?.();
 					}
 				},
-				onError: (e: any) => {
+				onError: (e: { data: number }) => {
 					onerror?.(e.data);
 				}
 			}

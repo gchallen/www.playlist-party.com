@@ -1,12 +1,14 @@
-<script lang="ts">
-	type TreeNode = {
+<script lang="ts" module>
+	export type TreeNode = {
 		name: string | null;
 		depth: number;
 		acceptedAt: string | null;
 		status: string;
 		children: TreeNode[];
 	};
+</script>
 
+<script lang="ts">
 	let { tree }: { tree: TreeNode } = $props();
 </script>
 
@@ -37,7 +39,7 @@
 
 		{#if node.children.length > 0}
 			<div class="ml-5 pl-4 border-l border-neon-purple/20">
-				{#each node.children as child}
+				{#each node.children as child (child.name)}
 					{@render treeNode(child)}
 				{/each}
 			</div>
@@ -46,9 +48,7 @@
 {/snippet}
 
 <div class="glass rounded-2xl p-4 md:p-6">
-	<h3
-		class="font-heading font-bold text-sm uppercase tracking-wider text-text-muted mb-4 flex items-center gap-2"
-	>
+	<h3 class="font-heading font-bold text-sm uppercase tracking-wider text-text-muted mb-4 flex items-center gap-2">
 		<svg
 			class="w-4 h-4 text-neon-purple"
 			viewBox="0 0 24 24"

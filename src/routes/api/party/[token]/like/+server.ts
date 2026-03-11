@@ -32,9 +32,7 @@ export const POST: RequestHandler = async ({ params, platform, request }) => {
 	});
 
 	if (existing) {
-		await db
-			.delete(songLikes)
-			.where(and(eq(songLikes.songId, songId), eq(songLikes.attendeeId, attendee.id)));
+		await db.delete(songLikes).where(and(eq(songLikes.songId, songId), eq(songLikes.attendeeId, attendee.id)));
 	} else {
 		await db.insert(songLikes).values({ songId, attendeeId: attendee.id });
 	}

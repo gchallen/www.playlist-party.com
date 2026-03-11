@@ -18,10 +18,7 @@ interface EnqueueOptions {
 	metadata?: Record<string, string>;
 }
 
-export async function enqueueEmails(
-	db: Database,
-	emails: EnqueueOptions[]
-): Promise<number> {
+export async function enqueueEmails(db: Database, emails: EnqueueOptions[]): Promise<number> {
 	if (emails.length === 0) return 0;
 	// Insert one at a time — bulk inserts with large HTML bodies exceed D1's query size limit
 	for (const e of emails) {
@@ -41,10 +38,7 @@ export async function enqueueEmails(
  * Enqueue a single email and kick off processing.
  * Returns immediately — processing happens via waitUntil or inline fallback.
  */
-export async function enqueueAndProcess(
-	platform: App.Platform | undefined,
-	email: EnqueueOptions
-): Promise<void> {
+export async function enqueueAndProcess(platform: App.Platform | undefined, email: EnqueueOptions): Promise<void> {
 	const db = await getDb(platform);
 	await enqueueEmails(db, [email]);
 	const processingPromise = processEmailQueue(platform);
@@ -60,11 +54,7 @@ export async function processEmailQueue(platform?: App.Platform): Promise<{ sent
 	const apiKey = platform?.env?.RESEND_API_KEY;
 	const fromEmail = platform?.env?.RESEND_FROM_EMAIL || 'noreply@playlist-party.com';
 
-	const pending = await db
-		.select()
-		.from(emailQueue)
-		.where(eq(emailQueue.status, 'pending'))
-		.limit(50);
+	const pending = await db.select().from(emailQueue).where(eq(emailQueue.status, 'pending')).limit(50);
 
 	let sent = 0;
 	let failed = 0;

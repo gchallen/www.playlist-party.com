@@ -80,10 +80,7 @@ export function formatDuration(seconds: number): string {
  * Compute estimated start times for each song based on party start + cumulative durations.
  * Returns formatted 12h times (e.g., "8:15 PM").
  */
-export function computeSongStartTimes(
-	partyStartHHMM: string | null | undefined,
-	durations: number[]
-): string[] {
+export function computeSongStartTimes(partyStartHHMM: string | null | undefined, durations: number[]): string[] {
 	if (!partyStartHHMM) return durations.map(() => '');
 
 	const parts = partyStartHHMM.split(':');

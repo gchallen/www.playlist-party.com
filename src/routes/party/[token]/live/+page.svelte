@@ -157,7 +157,9 @@
 			<!-- Overlay mode: video fills screen, info bar overlaid at bottom -->
 			<div class="relative flex-1">
 				<div class="absolute inset-0">
-					<div class="w-full h-full [&_.glass]:rounded-none [&_.glass]:border-0 [&_.player-container]:!aspect-auto [&_.player-container]:!h-full">
+					<div
+						class="w-full h-full [&_.glass]:rounded-none [&_.glass]:border-0 [&_.player-container]:!aspect-auto [&_.player-container]:!h-full"
+					>
 						<YouTubePlayer
 							bind:this={ytPlayer}
 							videoId={currentSong.youtubeId}
@@ -169,7 +171,9 @@
 				</div>
 
 				<!-- Overlay info bar -->
-				<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-20 pb-6 px-6">
+				<div
+					class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-20 pb-6 px-6"
+				>
 					<div class="flex items-end justify-between gap-4">
 						<div class="flex-1 min-w-0">
 							<div class="flex items-center gap-2 mb-2">
@@ -189,7 +193,9 @@
 						<div class="flex items-center gap-3 flex-shrink-0">
 							<div class="flex items-center gap-1.5 text-neon-pink">
 								<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+									<path
+										d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+									/>
 								</svg>
 								<span class="text-lg font-heading font-bold">{likeCount}</span>
 							</div>
@@ -199,7 +205,7 @@
 					{#if nextSongs.length > 0}
 						<div class="mt-4 flex gap-2">
 							<span class="text-xs text-white/40 uppercase tracking-wider self-center mr-1">Up next</span>
-							{#each nextSongs as song}
+							{#each nextSongs as song (song.id)}
 								<div class="flex items-center gap-2 bg-white/10 rounded-lg px-2 py-1.5">
 									<img src={song.thumbnail} alt="" class="w-8 h-8 rounded object-cover" />
 									<span class="text-xs truncate max-w-[120px]">{song.title}</span>
@@ -212,7 +218,9 @@
 		{:else}
 			<!-- Split mode: video 60%, info panel below -->
 			<div class="flex-[6] min-h-0">
-				<div class="w-full h-full [&_.glass]:rounded-none [&_.glass]:border-0 [&_.player-container]:!aspect-auto [&_.player-container]:!h-full">
+				<div
+					class="w-full h-full [&_.glass]:rounded-none [&_.glass]:border-0 [&_.player-container]:!aspect-auto [&_.player-container]:!h-full"
+				>
 					<YouTubePlayer
 						bind:this={ytPlayer}
 						videoId={currentSong.youtubeId}
@@ -245,7 +253,9 @@
 					<div class="flex flex-col items-center gap-1 flex-shrink-0">
 						<div class="flex items-center gap-1.5 text-neon-pink">
 							<svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+								<path
+									d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+								/>
 							</svg>
 							<span class="text-2xl font-heading font-bold">{likeCount}</span>
 						</div>
@@ -257,7 +267,7 @@
 					<div class="mt-auto">
 						<span class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Up next</span>
 						<div class="flex gap-3">
-							{#each nextSongs as song}
+							{#each nextSongs as song (song.id)}
 								<div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2 flex-1 min-w-0">
 									<img src={song.thumbnail} alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
 									<div class="min-w-0">
@@ -273,18 +283,24 @@
 		{/if}
 
 		<!-- Controls bar -->
-		<div class="controls-bar absolute top-4 right-4 flex items-center gap-2 z-50 opacity-0 hover:opacity-100 transition-opacity duration-300">
+		<div
+			class="controls-bar absolute top-4 right-4 flex items-center gap-2 z-50 opacity-0 hover:opacity-100 transition-opacity duration-300"
+		>
 			{#if isDisplay}
-				<span class="px-2 py-1 rounded-full bg-neon-cyan/20 text-neon-cyan text-xs font-heading font-semibold mr-1">DISPLAY</span>
+				<span class="px-2 py-1 rounded-full bg-neon-cyan/20 text-neon-cyan text-xs font-heading font-semibold mr-1"
+					>DISPLAY</span
+				>
 			{/if}
 
 			<button
-				onclick={() => { if (hasPrev) skipPrev(); }}
+				onclick={() => {
+					if (hasPrev) skipPrev();
+				}}
 				disabled={!hasPrev}
 				class="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white disabled:opacity-30 transition-all"
 				title="Previous (Left arrow)"
 			>
-				<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+				<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
 			</button>
 
 			<button
@@ -293,19 +309,24 @@
 				title="Play/Pause (Space)"
 			>
 				{#if isPlaying}
-					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg
+					>
 				{:else}
-					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
 				{/if}
 			</button>
 
 			<button
-				onclick={() => { if (hasNext) skipNext(); }}
+				onclick={() => {
+					if (hasNext) skipNext();
+				}}
 				disabled={!hasNext}
 				class="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white disabled:opacity-30 transition-all"
 				title="Next (Right arrow)"
 			>
-				<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+				<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"
+					><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" /></svg
+				>
 			</button>
 
 			<button
@@ -315,9 +336,9 @@
 			>
 				<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					{#if displayMode === 'overlay'}
-						<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="14" x2="21" y2="14"/>
+						<rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="14" x2="21" y2="14" />
 					{:else}
-						<rect x="3" y="3" width="18" height="18" rx="2"/>
+						<rect x="3" y="3" width="18" height="18" rx="2" />
 					{/if}
 				</svg>
 			</button>
@@ -328,7 +349,7 @@
 					class="p-2 rounded-full bg-neon-pink/80 hover:bg-neon-pink text-white transition-all"
 					title="End Party Mode"
 				>
-					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+					<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z" /></svg>
 				</button>
 			</form>
 		</div>

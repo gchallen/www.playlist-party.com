@@ -34,13 +34,15 @@ class PartySimulator {
 	private nextSongId = 1;
 	private emails = new Set<string>();
 
-	constructor(config: {
-		targetDurationSeconds?: number | null;
-		maxAttendees?: number;
-		maxInvitesPerGuest?: number | null;
-		maxDepth?: number | null;
-		songsPerGuest?: number;
-	} = {}) {
+	constructor(
+		config: {
+			targetDurationSeconds?: number | null;
+			maxAttendees?: number;
+			maxInvitesPerGuest?: number | null;
+			maxDepth?: number | null;
+			songsPerGuest?: number;
+		} = {}
+	) {
 		this.targetDurationSeconds = config.targetDurationSeconds ?? null;
 		this.maxAttendees = config.maxAttendees ?? 100;
 		this.maxInvitesPerGuest = config.maxInvitesPerGuest ?? null;
@@ -106,12 +108,7 @@ class PartySimulator {
 		attendee.accepted = true;
 
 		// Run overflow check
-		const result = computeOverflowDrops(
-			this.songs,
-			songDurationSeconds,
-			this.targetDurationSeconds,
-			attendee.id
-		);
+		const result = computeOverflowDrops(this.songs, songDurationSeconds, this.targetDurationSeconds, attendee.id);
 
 		if (result === null) {
 			// Can't make room — reject acceptance
@@ -121,7 +118,7 @@ class PartySimulator {
 
 		// Drop songs
 		for (const dropId of result.drops) {
-			const idx = this.songs.findIndex(s => s.id === dropId);
+			const idx = this.songs.findIndex((s) => s.id === dropId);
 			if (idx !== -1) this.songs.splice(idx, 1);
 		}
 
@@ -141,20 +138,15 @@ class PartySimulator {
 		if (durationSeconds <= 0) return { success: false, droppedSongIds: [] };
 
 		const maxSongs = computeMaxSongs(attendee.isCreator, attendee.invitesSent, this.songsPerGuest);
-		const currentSongs = this.songs.filter(s => s.addedBy === attendee.id).length;
+		const currentSongs = this.songs.filter((s) => s.addedBy === attendee.id).length;
 		if (currentSongs >= maxSongs) return { success: false, droppedSongIds: [] };
 
-		const result = computeOverflowDrops(
-			this.songs,
-			durationSeconds,
-			this.targetDurationSeconds,
-			attendee.id
-		);
+		const result = computeOverflowDrops(this.songs, durationSeconds, this.targetDurationSeconds, attendee.id);
 
 		if (result === null) return { success: false, droppedSongIds: [] };
 
 		for (const dropId of result.drops) {
-			const idx = this.songs.findIndex(s => s.id === dropId);
+			const idx = this.songs.findIndex((s) => s.id === dropId);
 			if (idx !== -1) this.songs.splice(idx, 1);
 		}
 
@@ -177,25 +169,23 @@ class PartySimulator {
 	}
 
 	get acceptedAttendees(): SimAttendee[] {
-		return this.attendees.filter(a => a.accepted);
+		return this.attendees.filter((a) => a.accepted);
 	}
 
 	everyoneHasAtLeastOneSong(): boolean {
 		for (const a of this.acceptedAttendees) {
 			if (a.isCreator) continue; // creator may have 0 songs
-			if (!this.songs.some(s => s.addedBy === a.id)) return false;
+			if (!this.songs.some((s) => s.addedBy === a.id)) return false;
 		}
 		return true;
 	}
 
 	songCountFor(attendee: SimAttendee): number {
-		return this.songs.filter(s => s.addedBy === attendee.id).length;
+		return this.songs.filter((s) => s.addedBy === attendee.id).length;
 	}
 
 	durationFor(attendee: SimAttendee): number {
-		return this.songs
-			.filter(s => s.addedBy === attendee.id)
-			.reduce((sum, s) => sum + s.durationSeconds, 0);
+		return this.songs.filter((s) => s.addedBy === attendee.id).reduce((sum, s) => sum + s.durationSeconds, 0);
 	}
 }
 
@@ -561,7 +551,7 @@ describe('Comprehensive simulations', () => {
 
 		// Host adds some songs
 		for (let i = 0; i < 5; i++) {
-			sim.addSong(host, 200 + (i * 20));
+			sim.addSong(host, 200 + i * 20);
 		}
 
 		// Create chain of invites
@@ -819,12 +809,7 @@ describe('Invite gating', () => {
 		sim.acceptInvite(alice, 200); // total 600, but host has 2 → droppable
 
 		// Should still allow invites because host has >1 song
-		const canInvite = canIssueInvitations(
-			sim.attendees.length,
-			sim.maxAttendees,
-			sim.songs,
-			sim.targetDurationSeconds
-		);
+		const canInvite = canIssueInvitations(sim.attendees.length, sim.maxAttendees, sim.songs, sim.targetDurationSeconds);
 		expect(canInvite).toBe(true);
 	});
 
@@ -897,12 +882,10 @@ describe('Convergence/fairness properties', () => {
 		}
 
 		// Many guests join — may stop when invites are gated
-		let accepted = 0;
 		for (let i = 0; i < 12; i++) {
 			const g = sim.sendInvite(host, `G${i}`, `g${i}@fair.com`);
 			if (!g) break;
-			const result = sim.acceptInvite(g, 200);
-			if (result.success) accepted++;
+			sim.acceptInvite(g, 200);
 		}
 
 		const hostSongs = sim.songCountFor(host);
@@ -935,9 +918,7 @@ describe('Convergence/fairness properties', () => {
 
 describe('canIssueInvitations', () => {
 	it('returns true when under maxAttendees and under target duration', () => {
-		const songs: SongInfo[] = [
-			{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }
-		];
+		const songs: SongInfo[] = [{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }];
 		expect(canIssueInvitations(2, 10, songs, 3600)).toBe(true);
 	});
 
@@ -969,17 +950,13 @@ describe('canIssueInvitations', () => {
 
 describe('computeOverflowDrops', () => {
 	it('returns empty drops when under target', () => {
-		const songs: SongInfo[] = [
-			{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }
-		];
+		const songs: SongInfo[] = [{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }];
 		const result = computeOverflowDrops(songs, 200, 1000, 2);
 		expect(result).toEqual({ drops: [] });
 	});
 
 	it('returns empty drops when no target duration', () => {
-		const songs: SongInfo[] = [
-			{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }
-		];
+		const songs: SongInfo[] = [{ id: 1, addedBy: 1, durationSeconds: 200, addedAt: '2024-01-01' }];
 		const result = computeOverflowDrops(songs, 200, null, 2);
 		expect(result).toEqual({ drops: [] });
 	});

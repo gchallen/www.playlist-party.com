@@ -21,7 +21,13 @@ export function clearSentEmails(): void {
 	emailCounter = 0;
 }
 
-export function pushToDevStore(to: string, subject: string, html: string, type: EmailMessage['type'], metadata: Record<string, string> = {}): void {
+export function pushToDevStore(
+	to: string,
+	subject: string,
+	html: string,
+	type: EmailMessage['type'],
+	metadata: Record<string, string> = {}
+): void {
 	sentEmails.push({
 		id: `email_${++emailCounter}`,
 		to,

@@ -1,12 +1,17 @@
 import { dev } from '$app/environment';
-import { error, fail, redirect } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
 import { generateShareToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
-import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
+import {
+	computeTargetDuration,
+	computeMaxSongs,
+	computeOverflowDrops,
+	canIssueInvitations
+} from '$lib/server/playlist';
 import { toSongInfo } from '$lib/server/invite-validation';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { pickRandomTracks } from '$lib/test-tracks';
@@ -111,9 +116,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	// Build set of unavailable attendee IDs
-	const unavailableIds = new Set(
-		allAttendees.filter((a) => a.declinedAt).map((a) => a.id)
-	);
+	const unavailableIds = new Set(allAttendees.filter((a) => a.declinedAt).map((a) => a.id));
 
 	// Build song list with conditional attribution
 	const songList = allSongs.map((s) => {
@@ -142,8 +145,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		};
 	});
 
-	// Base return data
-	const result: Record<string, unknown> = {
+	return {
 		party: {
 			name: party.name,
 			description: party.description,
@@ -174,45 +176,42 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		targetDuration,
 		acceptedCount,
 		totalAttendees: activeAttendees.length,
-		canInvite
+		canInvite,
+		mySongs: !isPending
+			? mySongs.map((s) => ({
+					id: s.id,
+					youtubeId: s.youtubeId,
+					youtubeTitle: s.youtubeTitle,
+					youtubeThumbnail: s.youtubeThumbnail,
+					youtubeChannelName: s.youtubeChannelName,
+					durationSeconds: s.durationSeconds,
+					comment: s.comment
+				}))
+			: null,
+		maxSongs: !isPending ? (maxSongs === Infinity ? -1 : maxSongs) : null,
+		songsUsed: !isPending ? mySongs.length : null,
+		invitesSent: !isPending ? invitesSent : null,
+		myInvites: !isPending
+			? myInvites.map((i) => ({
+					name: i.name,
+					email: i.email,
+					accepted: !!i.acceptedAt,
+					status: getAttendeeStatus(i),
+					inviteToken: i.inviteToken
+				}))
+			: null,
+		allAttendees: creator
+			? allAttendees.map((a) => ({
+					id: a.id,
+					name: a.name,
+					email: a.email,
+					invitedBy: a.invitedBy,
+					depth: a.depth,
+					accepted: !!a.acceptedAt,
+					status: getAttendeeStatus(a)
+				}))
+			: null
 	};
-
-	if (!isPending) {
-		result.mySongs = mySongs.map((s) => ({
-			id: s.id,
-			youtubeId: s.youtubeId,
-			youtubeTitle: s.youtubeTitle,
-			youtubeThumbnail: s.youtubeThumbnail,
-			youtubeChannelName: s.youtubeChannelName,
-			durationSeconds: s.durationSeconds,
-			comment: s.comment
-		}));
-		result.maxSongs = maxSongs === Infinity ? -1 : maxSongs; // -1 signals unlimited
-		result.songsUsed = mySongs.length;
-		result.invitesSent = invitesSent;
-		result.myInvites = myInvites.map((i) => ({
-			name: i.name,
-			email: i.email,
-			accepted: !!i.acceptedAt,
-			status: getAttendeeStatus(i),
-			inviteToken: i.inviteToken
-		}));
-	}
-
-	// Creator extras
-	if (creator) {
-		result.allAttendees = allAttendees.map((a) => ({
-			id: a.id,
-			name: a.name,
-			email: a.email,
-			invitedBy: a.invitedBy,
-			depth: a.depth,
-			accepted: !!a.acceptedAt,
-			status: getAttendeeStatus(a)
-		}));
-	}
-
-	return result;
 };
 
 export const actions = {
@@ -281,9 +280,7 @@ export const actions = {
 		}
 
 		// Fetch metadata for all songs
-		const metadataList = await Promise.all(
-			parsedSongs.map((s) => fetchYouTubeMetadata(s.videoId))
-		);
+		const metadataList = await Promise.all(parsedSongs.map((s) => fetchYouTubeMetadata(s.videoId)));
 		for (let i = 0; i < metadataList.length; i++) {
 			if (!metadataList[i]) {
 				return fail(400, { error: `Song ${i + 1}: Could not find that YouTube video. Is it public?` });
@@ -341,17 +338,20 @@ export const actions = {
 			const metadata = metadataList[i]!;
 			const insertIdx = Math.floor(Math.random() * (positionArray.length + 1));
 
-			const [inserted] = await db.insert(songs).values({
-				partyId: party.id,
-				addedBy: attendee.id,
-				youtubeId: s.videoId,
-				youtubeTitle: metadata.title,
-				youtubeThumbnail: metadata.thumbnail,
-				youtubeChannelName: metadata.channelName,
-				durationSeconds: s.durationSeconds,
-				comment: s.comment,
-				position: 0 // temporary, will be fixed below
-			}).returning();
+			const [inserted] = await db
+				.insert(songs)
+				.values({
+					partyId: party.id,
+					addedBy: attendee.id,
+					youtubeId: s.videoId,
+					youtubeTitle: metadata.title,
+					youtubeThumbnail: metadata.thumbnail,
+					youtubeChannelName: metadata.channelName,
+					durationSeconds: s.durationSeconds,
+					comment: s.comment,
+					position: 0 // temporary, will be fixed below
+				})
+				.returning();
 
 			positionArray.splice(insertIdx, 0, inserted.id);
 			newSongIds.push(inserted.id);
@@ -501,10 +501,7 @@ export const actions = {
 		if (attendee.acceptedAt) return fail(400, { error: 'You have already accepted' });
 		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot decline' });
 
-		await db
-			.update(attendees)
-			.set({ declinedAt: new Date().toISOString() })
-			.where(eq(attendees.id, attendee.id));
+		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, attendee.id));
 
 		return { declined: true };
 	},
@@ -533,10 +530,7 @@ export const actions = {
 			return fail(400, { error: 'Party is now full — no room to rejoin' });
 		}
 
-		await db
-			.update(attendees)
-			.set({ declinedAt: null })
-			.where(eq(attendees.id, attendee.id));
+		await db.update(attendees).set({ declinedAt: null }).where(eq(attendees.id, attendee.id));
 
 		return { undeclined: true };
 	},
@@ -551,10 +545,7 @@ export const actions = {
 		if (!attendee.acceptedAt) return fail(400, { error: 'You have not accepted yet' });
 		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot mark unavailable' });
 
-		await db
-			.update(attendees)
-			.set({ declinedAt: new Date().toISOString() })
-			.where(eq(attendees.id, attendee.id));
+		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, attendee.id));
 
 		return { cantMakeIt: true };
 	},
@@ -582,10 +573,7 @@ export const actions = {
 			return fail(400, { error: 'Party is now full — no room to rejoin' });
 		}
 
-		await db
-			.update(attendees)
-			.set({ declinedAt: null })
-			.where(eq(attendees.id, attendee.id));
+		await db.update(attendees).set({ declinedAt: null }).where(eq(attendees.id, attendee.id));
 
 		return { reconfirmed: true };
 	},
@@ -815,10 +803,7 @@ export const actions = {
 		if (isCreator(target)) return fail(400, { inviteError: 'The creator cannot be declined' });
 		if (target.declinedAt) return fail(400, { inviteError: 'This guest has already declined' });
 
-		await db
-			.update(attendees)
-			.set({ declinedAt: new Date().toISOString() })
-			.where(eq(attendees.id, target.id));
+		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, target.id));
 
 		return { declinedOnBehalf: target.name };
 	},
@@ -910,16 +895,19 @@ export const actions = {
 		for (const track of tracks) {
 			const insertIdx = Math.floor(Math.random() * (positionArray.length + 1));
 
-			const [inserted] = await db.insert(songs).values({
-				partyId: party.id,
-				addedBy: attendee.id,
-				youtubeId: track.videoId,
-				youtubeTitle: track.title,
-				youtubeThumbnail: track.thumbnail,
-				youtubeChannelName: track.channelName,
-				durationSeconds: track.durationSeconds,
-				position: 0
-			}).returning();
+			const [inserted] = await db
+				.insert(songs)
+				.values({
+					partyId: party.id,
+					addedBy: attendee.id,
+					youtubeId: track.videoId,
+					youtubeTitle: track.title,
+					youtubeThumbnail: track.thumbnail,
+					youtubeChannelName: track.channelName,
+					durationSeconds: track.durationSeconds,
+					position: 0
+				})
+				.returning();
 
 			positionArray.splice(insertIdx, 0, inserted.id);
 		}

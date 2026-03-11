@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('YouTube Validate API', () => {
-
 	test('valid YouTube URL returns metadata', async ({ request }) => {
 		const response = await request.post('/api/youtube/validate', {
 			data: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }

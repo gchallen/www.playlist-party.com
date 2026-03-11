@@ -1,9 +1,5 @@
 import { renderMarkdown } from '$lib/markdown';
 
-function escapeHtml(str: string): string {
-	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 const EMAIL_LINK_STYLE = 'color:#d4a041;text-decoration:underline;';
 const EMAIL_LIST_STYLE = 'margin:8px 0;padding-left:20px;color:#a8a4a0;font-size:14px;';
 const EMAIL_LIST_ITEM_STYLE = 'margin:4px 0;';
@@ -32,10 +28,7 @@ function ctaButton(url: string, label: string): string {
 	return `<a href="${url}" style="display:inline-block;background:#e63b2e;color:#ffffff;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:16px;margin-top:16px;">${label}</a>`;
 }
 
-export function renderEmailVerification(data: {
-	email: string;
-	verifyUrl: string;
-}): string {
+export function renderEmailVerification(data: { email: string; verifyUrl: string }): string {
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Verify Your Email</h1>
 <p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
@@ -75,11 +68,7 @@ ${ctaButton(data.magicUrl, 'RSVP Now')}
 `);
 }
 
-export function renderCreatorWelcomeEmail(data: {
-	creatorName: string;
-	partyName: string;
-	magicUrl: string;
-}): string {
+export function renderCreatorWelcomeEmail(data: { creatorName: string; partyName: string; magicUrl: string }): string {
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Your Party is Ready!</h1>
 <p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">

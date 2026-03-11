@@ -36,11 +36,7 @@ export async function sendInviteEmail(opts: InviteEmailOptions): Promise<void> {
 	});
 }
 
-export async function sendEmailVerification(
-	to: string,
-	verifyUrl: string,
-	platform?: App.Platform
-): Promise<void> {
+export async function sendEmailVerification(to: string, verifyUrl: string, platform?: App.Platform): Promise<void> {
 	const html = renderEmailVerification({ email: to, verifyUrl });
 	await enqueueAndProcess(platform, {
 		to,

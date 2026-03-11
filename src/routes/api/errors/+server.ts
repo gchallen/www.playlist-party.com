@@ -24,11 +24,7 @@ export const GET: RequestHandler = async ({ platform, url, request }) => {
 		return json(row);
 	}
 
-	const rows = await db
-		.select()
-		.from(errorLog)
-		.orderBy(desc(errorLog.id))
-		.limit(50);
+	const rows = await db.select().from(errorLog).orderBy(desc(errorLog.id)).limit(50);
 
 	return json({ errors: rows });
 };

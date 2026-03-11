@@ -113,18 +113,27 @@
 				{channelName}
 				{#if comment}
 					<svg class="inline-block w-3 h-3 ml-1 -mt-0.5 text-neon-purple" viewBox="0 0 24 24" fill="currentColor">
-						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
 					</svg>
 				{/if}
 			</p>
 			{#if isMine}
-				<p class="text-neon-cyan text-xs mt-0.5">You{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
+				<p class="text-neon-cyan text-xs mt-0.5">
+					You{#if isUnavailable}
+						<span class="text-neon-yellow">(unavailable)</span>{/if}
+				</p>
 			{:else if isHost}
 				<p class="text-neon-mint text-xs mt-0.5">Host</p>
 			{:else if revealed && addedBy}
-				<p class="text-neon-mint text-xs mt-0.5">{addedBy}{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
+				<p class="text-neon-mint text-xs mt-0.5">
+					{addedBy}{#if isUnavailable}
+						<span class="text-neon-yellow">(unavailable)</span>{/if}
+				</p>
 			{:else}
-				<p class="text-text-muted text-xs mt-0.5">Guest{#if isUnavailable} <span class="text-neon-yellow">(unavailable)</span>{/if}</p>
+				<p class="text-text-muted text-xs mt-0.5">
+					Guest{#if isUnavailable}
+						<span class="text-neon-yellow">(unavailable)</span>{/if}
+				</p>
 			{/if}
 		</div>
 
@@ -142,11 +151,14 @@
 			<div class="flex items-center gap-1 flex-shrink-0">
 				{#if showControls}
 					{#if isDraggable}
-						<span data-testid="drag-handle" class="p-1.5 cursor-grab text-text-muted hover:text-neon-cyan transition-colors">
+						<span
+							data-testid="drag-handle"
+							class="p-1.5 cursor-grab text-text-muted hover:text-neon-cyan transition-colors"
+						>
 							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-								<circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
-								<circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
-								<circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+								<circle cx="9" cy="5" r="1.5" /><circle cx="15" cy="5" r="1.5" />
+								<circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+								<circle cx="9" cy="19" r="1.5" /><circle cx="15" cy="19" r="1.5" />
 							</svg>
 						</span>
 					{:else}
@@ -154,8 +166,15 @@
 							<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
 								<input type="hidden" name="songId" value={songId} />
 								<input type="hidden" name="direction" value="up" />
-								<button type="submit" data-testid="move-up-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move up">
-									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+								<button
+									type="submit"
+									data-testid="move-up-btn"
+									class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors"
+									title="Move up"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><path d="M18 15l-6-6-6 6" /></svg
+									>
 								</button>
 							</form>
 						{/if}
@@ -163,8 +182,15 @@
 							<form method="POST" action="/party/{token}?/reorderSong" use:enhance>
 								<input type="hidden" name="songId" value={songId} />
 								<input type="hidden" name="direction" value="down" />
-								<button type="submit" data-testid="move-down-btn" class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors" title="Move down">
-									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+								<button
+									type="submit"
+									data-testid="move-down-btn"
+									class="p-1.5 rounded-lg hover:bg-surface-light text-text-muted hover:text-neon-cyan transition-colors"
+									title="Move down"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><path d="M6 9l6 6 6-6" /></svg
+									>
 								</button>
 							</form>
 						{/if}
@@ -173,8 +199,15 @@
 				{#if showRemove}
 					<form method="POST" action="/party/{token}?/removeSong" use:enhance>
 						<input type="hidden" name="songId" value={songId} />
-						<button type="submit" data-testid="remove-song-btn" class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors" title="Remove song">
-							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+						<button
+							type="submit"
+							data-testid="remove-song-btn"
+							class="p-1.5 rounded-lg hover:bg-neon-pink/10 text-text-muted hover:text-neon-pink transition-colors"
+							title="Remove song"
+						>
+							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+								><path d="M18 6L6 18M6 6l12 12" /></svg
+							>
 						</button>
 					</form>
 				{/if}
@@ -183,7 +216,9 @@
 	</div>
 
 	{#if comment && expanded}
-		<div class="comment-box mx-2 mb-2 ml-12 p-2.5 rounded-lg bg-surface-light border border-neon-purple/15 text-xs text-text-secondary font-heading leading-relaxed">
+		<div
+			class="comment-box mx-2 mb-2 ml-12 p-2.5 rounded-lg bg-surface-light border border-neon-purple/15 text-xs text-text-secondary font-heading leading-relaxed"
+		>
 			{@html renderComment(comment)}
 		</div>
 	{/if}
@@ -194,7 +229,7 @@
 		background: rgba(0, 0, 0, 0.03);
 	}
 
-	:global(:root[data-theme="dark"]) .song-card:hover:not(.is-playing) {
+	:global(:root[data-theme='dark']) .song-card:hover:not(.is-playing) {
 		background: rgba(255, 255, 255, 0.04);
 	}
 
@@ -203,7 +238,7 @@
 		border: 1px solid rgba(194, 48, 36, 0.12);
 	}
 
-	:global(:root[data-theme="dark"]) .song-card.is-playing {
+	:global(:root[data-theme='dark']) .song-card.is-playing {
 		background: rgba(230, 59, 46, 0.08);
 		border: 1px solid rgba(230, 59, 46, 0.15);
 	}

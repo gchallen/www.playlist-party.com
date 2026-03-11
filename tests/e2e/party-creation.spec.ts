@@ -39,7 +39,8 @@ async function createParty(
 	await page.locator('#name').fill(options.name || 'Test Party');
 	await page.locator('#date').fill(options.date || '2026-07-04');
 	if (options.startTime) await page.locator('#startTimeInput').fill(options.startTime);
-	if (options.durationHours !== undefined) await page.locator('[data-testid="duration-hours"]').fill(String(options.durationHours));
+	if (options.durationHours !== undefined)
+		await page.locator('[data-testid="duration-hours"]').fill(String(options.durationHours));
 	await page.locator('#createdBy').fill(options.createdBy || 'Test Host');
 
 	if (options.maxAttendees !== undefined) {
@@ -110,7 +111,7 @@ test.describe('Party Creation', () => {
 		await expect(page.locator('[data-testid="verify-email-btn"]')).toBeVisible();
 	});
 
-	test('email verification bypasses email and shows creation form directly', async ({ page, request }) => {
+	test('email verification bypasses email and shows creation form directly', async ({ page }) => {
 		const email = uniqueEmail('verify');
 		await page.goto('/create');
 		await page.locator('[data-testid="creator-verify-email"]').fill(email);

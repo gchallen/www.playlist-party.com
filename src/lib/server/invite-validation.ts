@@ -23,12 +23,7 @@ export interface InviteValidationContext {
 	targetDuration: number | null;
 }
 
-export function toSongInfo(s: {
-	id: number;
-	addedBy: number;
-	durationSeconds: number;
-	addedAt: string;
-}): SongInfo {
+export function toSongInfo(s: { id: number; addedBy: number; durationSeconds: number; addedAt: string }): SongInfo {
 	return { id: s.id, addedBy: s.addedBy, durationSeconds: s.durationSeconds, addedAt: s.addedAt };
 }
 
@@ -60,9 +55,7 @@ export async function validateInvite(
 	}
 
 	// Check duplicate email
-	const existingAttendee = ctx.allAttendees.find(
-		(a) => a.email.toLowerCase() === email.toLowerCase()
-	);
+	const existingAttendee = ctx.allAttendees.find((a) => a.email.toLowerCase() === email.toLowerCase());
 	if (existingAttendee) {
 		return 'This person has already been invited!';
 	}

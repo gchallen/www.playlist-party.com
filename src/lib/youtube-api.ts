@@ -2,21 +2,30 @@
  * Load the YouTube IFrame API and return a Promise that resolves with window.YT.
  * Safe to call multiple times — deduplicates the script tag and promise.
  */
-let apiPromise: Promise<any> | null = null;
 
-export function loadYouTubeIframeApi(): Promise<any> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type YTNamespace = { Player: new (...args: any[]) => any; [key: string]: unknown };
+
+let apiPromise: Promise<YTNamespace> | null = null;
+
+const win = window as unknown as {
+	YT?: YTNamespace;
+	onYouTubeIframeAPIReady?: (() => void) | null;
+};
+
+export function loadYouTubeIframeApi(): Promise<YTNamespace> {
 	if (apiPromise) return apiPromise;
 
 	apiPromise = new Promise((resolve) => {
-		if ((window as any).YT?.Player) {
-			resolve((window as any).YT);
+		if (win.YT?.Player) {
+			resolve(win.YT);
 			return;
 		}
 
-		const prev = (window as any).onYouTubeIframeAPIReady;
-		(window as any).onYouTubeIframeAPIReady = () => {
+		const prev = win.onYouTubeIframeAPIReady;
+		win.onYouTubeIframeAPIReady = () => {
 			if (prev) prev();
-			resolve((window as any).YT);
+			resolve(win.YT!);
 		};
 
 		if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {

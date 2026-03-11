@@ -170,7 +170,7 @@ test.describe('Decline Invite', () => {
 });
 
 test.describe("Can't Make It", () => {
-	test('accepted attendee can mark can\'t make it', async ({ page, request }) => {
+	test("accepted attendee can mark can't make it", async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('cmi-host') });
 		const inviteeEmail = uniqueEmail('cmi-invitee');
 		const path = await inviteViaShareLink(page, request, 'Alice', inviteeEmail);
@@ -193,7 +193,7 @@ test.describe("Can't Make It", () => {
 		await expect(page.locator('text=Welcome, Bob!')).toBeVisible();
 	});
 
-	test('songs preserved after can\'t-make-it', async ({ page, request }) => {
+	test("songs preserved after can't-make-it", async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('songs-host') });
 		const inviteeEmail = uniqueEmail('songs-invitee');
 		const path = await inviteViaShareLink(page, request, 'Charlie', inviteeEmail);
@@ -211,7 +211,7 @@ test.describe("Can't Make It", () => {
 		expect(songsAfter).toBe(songsBefore);
 	});
 
-	test('creator does not see can\'t-make-it button', async ({ page, request }) => {
+	test("creator does not see can't-make-it button", async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('nocmi-host') });
 		await expect(page.locator('[data-testid="cant-make-it-btn"]')).not.toBeVisible();
 	});
@@ -219,7 +219,7 @@ test.describe("Can't Make It", () => {
 
 test.describe('Capacity with Decline', () => {
 	test('decline frees slot for new invite', async ({ page, request }) => {
-		const creatorUrl = await createParty(page, request, {
+		await createParty(page, request, {
 			creatorEmail: uniqueEmail('cap-host'),
 			maxAttendees: 2
 		});
@@ -248,7 +248,7 @@ test.describe('Capacity with Decline', () => {
 	});
 
 	test('undecline blocked when party became full', async ({ page, request }) => {
-		const creatorUrl = await createParty(page, request, {
+		await createParty(page, request, {
 			creatorEmail: uniqueEmail('full-host'),
 			maxAttendees: 2
 		});
@@ -275,7 +275,7 @@ test.describe('Capacity with Decline', () => {
 	});
 
 	test('reconfirm blocked when party became full', async ({ page, request }) => {
-		const creatorUrl = await createParty(page, request, {
+		await createParty(page, request, {
 			creatorEmail: uniqueEmail('rfull-host'),
 			maxAttendees: 2
 		});

@@ -122,9 +122,7 @@
 		if (!partyDurationMinutes || !calculatedGuests) return null;
 		const hours = Math.floor(partyDurationMinutes / 60);
 		const mins = partyDurationMinutes % 60;
-		const durationStr = hours > 0
-			? mins > 0 ? `${hours}h ${mins}m` : `${hours}-hour`
-			: `${mins}-minute`;
+		const durationStr = hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}-hour`) : `${mins}-minute`;
 		const songWord = songsPerGuestInput === 1 ? 'song' : 'songs';
 		return `Your ${durationStr} party fits ~${calculatedGuests} songs — each of ${maxAttendeesInput} guests picks ${songsPerGuestInput} ${songWord}`;
 	});
@@ -172,7 +170,8 @@
 				if (data.songsPerGuestInput !== undefined) songsPerGuestInput = data.songsPerGuestInput;
 				if (data.songsPerGuestOverride !== undefined) songsPerGuestOverride = data.songsPerGuestOverride;
 				if (data.songsRequiredToRsvpInput !== undefined) songsRequiredToRsvpInput = data.songsRequiredToRsvpInput;
-				if (data.songsRequiredToRsvpOverride !== undefined) songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
+				if (data.songsRequiredToRsvpOverride !== undefined)
+					songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
 			}
@@ -186,12 +185,24 @@
 	// Save to sessionStorage on change (only after restore completes, only when verified)
 	$effect(() => {
 		const formData = {
-			partyName, description, date, startTimeInput, durationHours,
-			locationUrl, createdBy, genre,
-			customMinutes, customSeconds, maxAttendeesInput,
-			manualOverride, songsPerGuestInput, songsPerGuestOverride,
-			songsRequiredToRsvpInput, songsRequiredToRsvpOverride,
-			maxDepthInput, maxInvitesInput
+			partyName,
+			description,
+			date,
+			startTimeInput,
+			durationHours,
+			locationUrl,
+			createdBy,
+			genre,
+			customMinutes,
+			customSeconds,
+			maxAttendeesInput,
+			manualOverride,
+			songsPerGuestInput,
+			songsPerGuestOverride,
+			songsRequiredToRsvpInput,
+			songsRequiredToRsvpOverride,
+			maxDepthInput,
+			maxInvitesInput
 		};
 		if (!restored || !verifiedEmail) return;
 		try {
@@ -200,7 +211,6 @@
 			// ignore
 		}
 	});
-
 </script>
 
 <svelte:head>
@@ -223,23 +233,30 @@
 				<div class="glass rounded-2xl p-6 md:p-8 text-center" data-testid="email-sent-message">
 					<h2 class="font-heading text-2xl font-bold text-text-primary mb-3">Check Your Email</h2>
 					<p class="text-text-secondary">
-						We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>.
-						Click the link to continue creating your party.
+						We sent a verification link to <strong class="text-neon-cyan">{emailInput || 'your email'}</strong>. Click
+						the link to continue creating your party.
 					</p>
 					<p class="text-text-muted text-sm mt-4">The link expires in 30 minutes.</p>
 				</div>
 			{:else}
-				<form method="POST" action="?/verify" use:enhance={() => {
-					return async ({ result, update }) => {
-						if (result.type === 'success' && result.data?.emailSent) {
-							emailSent = true;
-						}
-						await update();
-					};
-				}} class="glass rounded-2xl p-6 md:p-8 space-y-5" data-testid="verify-form">
-
+				<form
+					method="POST"
+					action="?/verify"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							if (result.type === 'success' && result.data?.emailSent) {
+								emailSent = true;
+							}
+							await update();
+						};
+					}}
+					class="glass rounded-2xl p-6 md:p-8 space-y-5"
+					data-testid="verify-form"
+				>
 					{#if form?.verifyError}
-						<div class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
+						<div
+							class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading"
+						>
 							{form.verifyError}
 						</div>
 					{/if}
@@ -247,16 +264,26 @@
 					<p class="text-text-secondary text-sm">Let's get started by verifying your email address.</p>
 
 					<div>
-						<label for="email" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Email</label>
-						<input type="email" id="email" name="email" required bind:value={emailInput}
+						<label for="email" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+							>Your Email</label
+						>
+						<input
+							type="email"
+							id="email"
+							name="email"
+							required
+							bind:value={emailInput}
 							data-testid="creator-verify-email"
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="you@example.com" />
+							placeholder="you@example.com"
+						/>
 					</div>
 
-					<button type="submit"
+					<button
+						type="submit"
 						data-testid="verify-email-btn"
-						class="cta-btn w-full font-heading font-bold text-xl py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
+						class="cta-btn w-full font-heading font-bold text-xl py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300"
+					>
 						Verify Email
 					</button>
 				</form>
@@ -264,14 +291,33 @@
 		{:else}
 			<!-- State 2: Full creation form (email verified) -->
 			{#if dev}
-				<button type="button" onclick={() => {
-					try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
-					partyName = ''; description = ''; date = ''; startTimeInput = ''; durationHours = null;
-					locationUrl = ''; createdBy = ''; genre = 'pop'; customMinutes = 4; customSeconds = 0;
-					maxAttendeesInput = 50; manualOverride = false; songsPerGuestInput = 1; songsPerGuestOverride = false;
-					songsRequiredToRsvpInput = 1; songsRequiredToRsvpOverride = false;
-					maxDepthInput = ''; maxInvitesInput = '';
-				}} class="mb-3 px-3 py-1.5 text-xs font-heading font-bold rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors">
+				<button
+					type="button"
+					onclick={() => {
+						try {
+							sessionStorage.removeItem(STORAGE_KEY);
+						} catch {}
+						partyName = '';
+						description = '';
+						date = '';
+						startTimeInput = '';
+						durationHours = null;
+						locationUrl = '';
+						createdBy = '';
+						genre = 'pop';
+						customMinutes = 4;
+						customSeconds = 0;
+						maxAttendeesInput = 50;
+						manualOverride = false;
+						songsPerGuestInput = 1;
+						songsPerGuestOverride = false;
+						songsRequiredToRsvpInput = 1;
+						songsRequiredToRsvpOverride = false;
+						maxDepthInput = '';
+						maxInvitesInput = '';
+					}}
+					class="mb-3 px-3 py-1.5 text-xs font-heading font-bold rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors"
+				>
 					[Dev] Clear Form
 				</button>
 			{/if}
@@ -282,30 +328,55 @@
 				</div>
 			{/if}
 
-			<form method="POST" action="?/create" use:enhance={() => {
-				return async ({ result }) => {
-					if (result.type === 'redirect') {
-						try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
-						window.location.href = result.location;
-					}
-				};
-			}} class="glass rounded-2xl p-6 md:p-8 space-y-5">
+			<form
+				method="POST"
+				action="?/create"
+				use:enhance={() => {
+					return async ({ result }) => {
+						if (result.type === 'redirect') {
+							try {
+								sessionStorage.removeItem(STORAGE_KEY);
+							} catch {}
+							window.location.href = result.location;
+						}
+					};
+				}}
+				class="glass rounded-2xl p-6 md:p-8 space-y-5"
+			>
 				<input type="hidden" name="verificationToken" value={verificationToken} />
 
 				<div>
-					<label for="name" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Party Name</label>
-					<input type="text" id="name" name="name" required bind:value={partyName}
+					<label for="name" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+						>Party Name</label
+					>
+					<input
+						type="text"
+						id="name"
+						name="name"
+						required
+						bind:value={partyName}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-						placeholder="e.g. Kyle's Birthday Bash" />
+						placeholder="e.g. Kyle's Birthday Bash"
+					/>
 				</div>
 
 				<div>
-					<label for="description" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Description</label>
-					<textarea id="description" name="description" rows="3" bind:value={description}
+					<label for="description" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+						>Description</label
+					>
+					<textarea
+						id="description"
+						name="description"
+						rows="3"
+						bind:value={description}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none"
-						placeholder="What's the vibe?"></textarea>
+						placeholder="What's the vibe?"
+					></textarea>
 					{#if description.trim()}
-						<div class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed" style="white-space:pre-line">
+						<div
+							class="mt-1.5 px-3 py-2 rounded-lg bg-surface-light/50 border border-neon-purple/10 text-sm text-text-secondary leading-relaxed"
+							style="white-space:pre-line"
+						>
 							{@html renderMarkdown(description)}
 						</div>
 					{/if}
@@ -314,14 +385,27 @@
 				<div class="grid grid-cols-[2fr_1fr_1fr] gap-4">
 					<div>
 						<label for="date" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Date</label>
-						<input type="date" id="date" name="date" required bind:value={date}
-							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+						<input
+							type="date"
+							id="date"
+							name="date"
+							required
+							bind:value={date}
+							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+						/>
 					</div>
 					<div>
-						<label for="startTimeInput" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Start Time</label>
-						<input type="text" id="startTimeInput" bind:value={startTimeInput} oninput={resetOverride}
+						<label for="startTimeInput" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+							>Start Time</label
+						>
+						<input
+							type="text"
+							id="startTimeInput"
+							bind:value={startTimeInput}
+							oninput={resetOverride}
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="e.g. 7pm" />
+							placeholder="e.g. 7pm"
+						/>
 						<input type="hidden" name="time" value={parsedStartTime ?? ''} />
 						{#if parsedStartTime}
 							<p class="text-neon-cyan text-xs font-heading mt-1 px-1">{formatTime(parsedStartTime)}</p>
@@ -330,11 +414,21 @@
 						{/if}
 					</div>
 					<div>
-						<label for="durationHours" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Duration</label>
-						<input type="number" id="durationHours" data-testid="duration-hours" bind:value={durationHours} oninput={resetOverride}
-							step="0.5" min="0.5" max="24"
+						<label for="durationHours" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+							>Duration</label
+						>
+						<input
+							type="number"
+							id="durationHours"
+							data-testid="duration-hours"
+							bind:value={durationHours}
+							oninput={resetOverride}
+							step="0.5"
+							min="0.5"
+							max="24"
 							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="Hours" />
+							placeholder="Hours"
+						/>
 						<input type="hidden" name="durationHours" value={durationHours ?? ''} />
 						{#if parsedStartTime && parsedEndTime}
 							<p class="text-neon-cyan text-xs font-heading mt-1 px-1">Ends {formatTime(parsedEndTime)}</p>
@@ -343,10 +437,17 @@
 				</div>
 
 				<div>
-					<label for="locationUrl" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Location</label>
-					<input type="text" id="locationUrl" name="locationUrl" bind:value={locationUrl}
+					<label for="locationUrl" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+						>Location</label
+					>
+					<input
+						type="text"
+						id="locationUrl"
+						name="locationUrl"
+						bind:value={locationUrl}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-						placeholder="Paste a Google Maps link" />
+						placeholder="Paste a Google Maps link"
+					/>
 					{#if isValidLocationUrl}
 						<p class="text-neon-cyan text-xs font-heading mt-1 px-1">&#10003; Google Maps link</p>
 					{:else if locationUrlError}
@@ -355,17 +456,33 @@
 				</div>
 
 				<div>
-					<label for="createdBy" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Name</label>
-					<input type="text" id="createdBy" name="createdBy" required bind:value={createdBy}
+					<label for="createdBy" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+						>Your Name</label
+					>
+					<input
+						type="text"
+						id="createdBy"
+						name="createdBy"
+						required
+						bind:value={createdBy}
 						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-						placeholder="Who's throwing this?" />
+						placeholder="Who's throwing this?"
+					/>
 				</div>
 
 				<div>
-					<label for="creatorEmail" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Your Email</label>
-					<input type="email" id="creatorEmail" name="creatorEmail" data-testid="creator-email" readonly
+					<label for="creatorEmail" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+						>Your Email</label
+					>
+					<input
+						type="email"
+						id="creatorEmail"
+						name="creatorEmail"
+						data-testid="creator-email"
+						readonly
 						value={verifiedEmail}
-						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary/60 transition-colors cursor-not-allowed" />
+						class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary/60 transition-colors cursor-not-allowed"
+					/>
 					<p class="text-neon-cyan text-xs font-heading mt-1 px-1">&#10003; Verified</p>
 				</div>
 
@@ -374,9 +491,16 @@
 
 					<div class="space-y-4">
 						<div>
-							<label for="genre" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Genre / Avg Song Length</label>
-							<select id="genre" data-testid="genre-select" bind:value={genre} onchange={resetOverride}
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors">
+							<label for="genre" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+								>Genre / Avg Song Length</label
+							>
+							<select
+								id="genre"
+								data-testid="genre-select"
+								bind:value={genre}
+								onchange={resetOverride}
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+							>
 								<option value="pop">Pop (3:30)</option>
 								<option value="rock">Rock (4:00)</option>
 								<option value="alt-indie">Alternative / Indie (4:00)</option>
@@ -391,14 +515,34 @@
 						{#if genre === 'custom'}
 							<div class="grid grid-cols-2 gap-4">
 								<div>
-									<label for="customMinutes" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Minutes</label>
-									<input type="number" id="customMinutes" bind:value={customMinutes} onchange={resetOverride} min="0" max="30"
-										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+									<label
+										for="customMinutes"
+										class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Minutes</label
+									>
+									<input
+										type="number"
+										id="customMinutes"
+										bind:value={customMinutes}
+										onchange={resetOverride}
+										min="0"
+										max="30"
+										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+									/>
 								</div>
 								<div>
-									<label for="customSeconds" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Seconds</label>
-									<input type="number" id="customSeconds" bind:value={customSeconds} onchange={resetOverride} min="0" max="59"
-										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+									<label
+										for="customSeconds"
+										class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Seconds</label
+									>
+									<input
+										type="number"
+										id="customSeconds"
+										bind:value={customSeconds}
+										onchange={resetOverride}
+										min="0"
+										max="59"
+										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+									/>
 								</div>
 							</div>
 						{/if}
@@ -417,36 +561,84 @@
 					<div class="space-y-4">
 						<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 							<div>
-								<label for="maxAttendees" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Max Guests</label>
-								<input type="number" id="maxAttendees" name="maxAttendees" data-testid="max-attendees"
-									value={maxAttendeesInput} oninput={handleMaxAttendeesInput} min="2" required
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+								<label for="maxAttendees" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+									>Max Guests</label
+								>
+								<input
+									type="number"
+									id="maxAttendees"
+									name="maxAttendees"
+									data-testid="max-attendees"
+									value={maxAttendeesInput}
+									oninput={handleMaxAttendeesInput}
+									min="2"
+									required
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+								/>
 							</div>
 							<div>
-								<label for="songsPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Songs / Guest</label>
-								<input type="number" id="songsPerGuest" name="songsPerGuest" data-testid="songs-per-guest"
-									value={songsPerGuestInput} oninput={handleSongsPerGuestInput} min="1" required
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+								<label for="songsPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+									>Songs / Guest</label
+								>
+								<input
+									type="number"
+									id="songsPerGuest"
+									name="songsPerGuest"
+									data-testid="songs-per-guest"
+									value={songsPerGuestInput}
+									oninput={handleSongsPerGuestInput}
+									min="1"
+									required
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+								/>
 							</div>
 							<div>
-								<label for="songsRequiredToRsvp" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">RSVP Songs</label>
-								<input type="number" id="songsRequiredToRsvp" name="songsRequiredToRsvp" data-testid="songs-required-to-rsvp"
-									value={songsRequiredToRsvpInput} oninput={handleSongsRequiredToRsvpInput} min="1" max={songsPerGuestInput}
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors" />
+								<label
+									for="songsRequiredToRsvp"
+									class="block font-heading text-base font-semibold text-text-secondary mb-1.5">RSVP Songs</label
+								>
+								<input
+									type="number"
+									id="songsRequiredToRsvp"
+									name="songsRequiredToRsvp"
+									data-testid="songs-required-to-rsvp"
+									value={songsRequiredToRsvpInput}
+									oninput={handleSongsRequiredToRsvpInput}
+									min="1"
+									max={songsPerGuestInput}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+								/>
 							</div>
 							<div>
-								<label for="maxInvitesPerGuest" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invites / Guest</label>
-								<input type="number" id="maxInvitesPerGuest" name="maxInvitesPerGuest" min="1" bind:value={maxInvitesInput}
+								<label
+									for="maxInvitesPerGuest"
+									class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Invites / Guest</label
+								>
+								<input
+									type="number"
+									id="maxInvitesPerGuest"
+									name="maxInvitesPerGuest"
+									min="1"
+									bind:value={maxInvitesInput}
 									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-									placeholder="Unlimited" />
+									placeholder="Unlimited"
+								/>
 							</div>
 						</div>
 
 						<div>
-							<label for="maxDepth" class="block font-heading text-base font-semibold text-text-secondary mb-1.5">Max Invite Depth</label>
-							<input type="number" id="maxDepth" name="maxDepth" min="1" bind:value={maxDepthInput}
+							<label for="maxDepth" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+								>Max Invite Depth</label
+							>
+							<input
+								type="number"
+								id="maxDepth"
+								name="maxDepth"
+								min="1"
+								bind:value={maxDepthInput}
 								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-								placeholder="No limit" />
+								placeholder="No limit"
+							/>
 						</div>
 					</div>
 				</div>
@@ -455,8 +647,10 @@
 					The playlist may run slightly over the party duration — that's by design!
 				</p>
 
-				<button type="submit"
-					class="cta-btn w-full font-heading font-bold text-xl py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300 mt-2">
+				<button
+					type="submit"
+					class="cta-btn w-full font-heading font-bold text-xl py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300 mt-2"
+				>
 					Create Party
 				</button>
 			</form>
@@ -474,11 +668,11 @@
 		transform: translateY(-2px);
 	}
 
-	:global(:root[data-theme="dark"]) .cta-btn {
+	:global(:root[data-theme='dark']) .cta-btn {
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 	}
 
-	:global(:root[data-theme="dark"]) .cta-btn:hover {
+	:global(:root[data-theme='dark']) .cta-btn:hover {
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-2px);
 	}
