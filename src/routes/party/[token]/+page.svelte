@@ -67,6 +67,15 @@
 		total: localSongs.length
 	});
 
+	const youtubePlaylistUrl = $derived(
+		localSongs.length > 0
+			? `https://www.youtube.com/watch_videos?video_ids=${localSongs
+					.slice(0, 50)
+					.map((s) => s.youtubeId)
+					.join(',')}`
+			: null
+	);
+
 	// ─── Playback handlers ───
 	function playSong(i: number) {
 		const wasNull = currentPlayingIndex === null;
@@ -1118,23 +1127,42 @@
 
 			<!-- Song List -->
 			<section class="mt-4">
-				{#if data.hasPlaylistControl && localSongs.length >= 2}
-					<div class="flex items-center justify-between mb-2">
-						<form method="POST" action="?/distributeSongs" use:enhance>
-							<button
-								type="submit"
-								data-testid="distribute-songs-btn"
-								class="inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:text-text-primary transition-all duration-200"
-								title="Evenly space each guest's songs throughout the playlist"
-							>
-								<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-									><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" /></svg
+				{#if (data.hasPlaylistControl && localSongs.length >= 2) || youtubePlaylistUrl}
+					<div class="flex items-center gap-2 mb-2">
+						{#if data.hasPlaylistControl && localSongs.length >= 2}
+							<form method="POST" action="?/distributeSongs" use:enhance>
+								<button
+									type="submit"
+									data-testid="distribute-songs-btn"
+									class="inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:text-text-primary transition-all duration-200"
+									title="Evenly space each guest's songs throughout the playlist"
 								>
-								Distribute by Guest
-							</button>
-						</form>
+									<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" /></svg
+									>
+									Distribute by Guest
+								</button>
+							</form>
+						{/if}
+						{#if youtubePlaylistUrl}
+							<a
+								href={youtubePlaylistUrl}
+								target="_blank"
+								rel="noopener"
+								data-testid="play-on-youtube-btn"
+								class="inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:text-text-primary transition-all duration-200"
+								title="Open playlist on YouTube"
+							>
+								<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+									><path
+										d="M21.582 6.186a2.506 2.506 0 0 0-1.768-1.768C18.254 4 12 4 12 4s-6.254 0-7.814.418A2.506 2.506 0 0 0 2.418 6.186C2 7.746 2 12 2 12s0 4.254.418 5.814a2.506 2.506 0 0 0 1.768 1.768C5.746 20 12 20 12 20s6.254 0 7.814-.418a2.506 2.506 0 0 0 1.768-1.768C22 16.254 22 12 22 12s0-4.254-.418-5.814zM10 15.464V8.536L16 12l-6 3.464z"
+									/></svg
+								>
+								Play on YouTube{#if localSongs.length > 50}&nbsp;(first 50){/if}
+							</a>
+						{/if}
 						{#if form?.distributed}
-							<span class="text-xs text-neon-mint font-heading animate-pulse">Songs distributed!</span>
+							<span class="text-xs text-neon-mint font-heading animate-pulse ml-auto">Songs distributed!</span>
 						{/if}
 					</div>
 				{/if}
