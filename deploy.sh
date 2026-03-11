@@ -39,11 +39,13 @@ if ! $FORCE && [ -n "$(git status --porcelain)" ]; then
 fi
 echo "Working tree clean (or --force)."
 
-# --- 2. Run E2E tests ---
+# --- 2. Run tests ---
 if $SKIP_TESTS; then
   step "Skipping tests (--skip-tests)"
 else
-  step "Running Playwright tests"
+  step "Running unit tests"
+  run bun run test:unit
+  step "Running E2E tests"
   run bun run build
   run env ADAPTER=node bunx playwright test
 fi
