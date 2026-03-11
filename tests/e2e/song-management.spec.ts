@@ -21,13 +21,6 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
-async function verifyEmail(page: Page, email: string): Promise<void> {
-	await page.locator('[data-testid="verify-email-input"]').waitFor();
-	await page.locator('[data-testid="verify-email-input"]').fill(email);
-	await page.locator('[data-testid="verify-email-btn"]').click();
-	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
-}
-
 async function verifyCreatorEmail(page: Page, _request: any, email: string): Promise<void> {
 	await page.locator('[data-testid="creator-verify-email"]').fill(email);
 	await page.locator('[data-testid="verify-email-btn"]').click();
@@ -85,22 +78,35 @@ async function getInvitePathFromEmail(request: any, to: string): Promise<string>
 	return match![0];
 }
 
-async function sendInviteAndGetPath(
+async function getShareLink(page: Page): Promise<string> {
+	const input = page.locator('[data-testid="share-link-input"]');
+	await input.waitFor();
+	const value = await input.inputValue();
+	const url = new URL(value);
+	return url.pathname;
+}
+
+async function inviteViaShareLink(
 	page: Page,
 	request: any,
 	inviteeName: string,
 	inviteeEmail: string
 ): Promise<string> {
-	await page.locator('[data-testid="invite-name"]').fill(inviteeName);
-	await page.locator('[data-testid="invite-email"]').fill(inviteeEmail);
-	await page.locator('[data-testid="send-invite-btn"]').click();
-	await page.waitForSelector('[data-testid="invite-sent-success"]');
+	const sharePath = await getShareLink(page);
+
+	const joinPage = await page.context().newPage();
+	await joinPage.goto(sharePath);
+	await joinPage.locator('[data-testid="join-name"]').fill(inviteeName);
+	await joinPage.locator('[data-testid="join-email"]').fill(inviteeEmail);
+	await joinPage.locator('[data-testid="join-btn"]').click();
+	await expect(joinPage.locator('[data-testid="join-success"]')).toBeVisible();
+	await joinPage.close();
+
 	return getInvitePathFromEmail(request, inviteeEmail);
 }
 
-async function acceptInvite(page: Page, path: string, email: string, name?: string): Promise<void> {
+async function acceptInvite(page: Page, path: string, name?: string): Promise<void> {
 	await page.goto(path);
-	await verifyEmail(page, email);
 	if (name) {
 		await page.locator('[data-testid="name-input"]').fill(name);
 	}
@@ -119,8 +125,8 @@ test.describe('Song Slots', () => {
 	test('attendee starts with 1 song slot (the accept song)', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('slot-host') });
 		const email = uniqueEmail('slot');
-		const path = await sendInviteAndGetPath(page, request, 'SlotTest', email);
-		await acceptInvite(page, path, email, 'SlotTest');
+		const path = await inviteViaShareLink(page, request, 'SlotTest', email);
+		await acceptInvite(page, path, 'SlotTest');
 
 		// Should show 1/1 songs
 		await expect(page.locator('[data-testid="song-slots"]')).toContainText('1 / 1');
@@ -129,12 +135,12 @@ test.describe('Song Slots', () => {
 	test('attendee gains +1 slot per invite sent', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('earn-host') });
 		const emailA = uniqueEmail('earnA');
-		const pathA = await sendInviteAndGetPath(page, request, 'Alice', emailA);
-		await acceptInvite(page, pathA, emailA, 'Alice');
+		const pathA = await inviteViaShareLink(page, request, 'Alice', emailA);
+		await acceptInvite(page, pathA, 'Alice');
 
-		// Alice sends an invite — should now have 2 slots
+		// Alice invites Bob via her share link — should now have 2 slots
 		const emailB = uniqueEmail('earnB');
-		await sendInviteAndGetPath(page, request, 'Bob', emailB);
+		await inviteViaShareLink(page, request, 'Bob', emailB);
 
 		// Reload to see updated slot count
 		await page.reload();
@@ -144,8 +150,8 @@ test.describe('Song Slots', () => {
 	test('attendee cannot add song when at slot limit', async ({ page, request }) => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('noslot-host') });
 		const email = uniqueEmail('noslot');
-		const path = await sendInviteAndGetPath(page, request, 'NoSlot', email);
-		await acceptInvite(page, path, email, 'NoSlot');
+		const path = await inviteViaShareLink(page, request, 'NoSlot', email);
+		await acceptInvite(page, path, 'NoSlot');
 
 		// At 1/1 — the add song form should not be visible (no slots left)
 		await expect(page.locator('text=Add a Song')).not.toBeVisible();
@@ -204,9 +210,9 @@ test.describe('Creator Song Management', () => {
 
 		// Invite and accept a guest to get a song on the playlist
 		const email = uniqueEmail('rm-guest');
-		const path = await sendInviteAndGetPath(page, request, 'Guest', email);
+		const path = await inviteViaShareLink(page, request, 'Guest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, email, 'Guest');
+		await acceptInvite(page2, path, 'Guest');
 		await page2.close();
 
 		// Reload creator page — should see the remove button
@@ -218,9 +224,9 @@ test.describe('Creator Song Management', () => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('del-host') });
 
 		const email = uniqueEmail('del-guest');
-		const path = await sendInviteAndGetPath(page, request, 'Guest', email);
+		const path = await inviteViaShareLink(page, request, 'Guest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, email, 'Guest');
+		await acceptInvite(page2, path, 'Guest');
 		await page2.close();
 
 		await page.reload();
@@ -239,16 +245,16 @@ test.describe('Creator Song Management', () => {
 
 		// Add two guests to have multiple songs
 		const email1 = uniqueEmail('reord1');
-		const path1 = await sendInviteAndGetPath(page, request, 'G1', email1);
+		const path1 = await inviteViaShareLink(page, request, 'G1', email1);
 		const email2 = uniqueEmail('reord2');
-		const path2 = await sendInviteAndGetPath(page, request, 'G2', email2);
+		const path2 = await inviteViaShareLink(page, request, 'G2', email2);
 
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path1, email1, 'G1');
+		await acceptInvite(page2, path1, 'G1');
 		await page2.close();
 
 		const page3 = await page.context().newPage();
-		await acceptInvite(page3, path2, email2, 'G2');
+		await acceptInvite(page3, path2, 'G2');
 		await page3.close();
 
 		await page.reload();
@@ -262,16 +268,16 @@ test.describe('Creator Song Management', () => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('nodrag-host') });
 
 		const email1 = uniqueEmail('nodrag1');
-		const path1 = await sendInviteAndGetPath(page, request, 'G1', email1);
+		const path1 = await inviteViaShareLink(page, request, 'G1', email1);
 		const email2 = uniqueEmail('nodrag2');
-		const path2 = await sendInviteAndGetPath(page, request, 'G2', email2);
+		const path2 = await inviteViaShareLink(page, request, 'G2', email2);
 
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path1, email1, 'G1');
+		await acceptInvite(page2, path1, 'G1');
 		await page2.close();
 
 		const page3 = await page.context().newPage();
-		await acceptInvite(page3, path2, email2, 'G2');
+		await acceptInvite(page3, path2, 'G2');
 
 		// Non-creator should see drag handle only on their own song (1 of 2)
 		await expect(page3.locator('[data-testid="drag-handle"]')).toHaveCount(1);
@@ -285,16 +291,16 @@ test.describe('Creator Song Management', () => {
 
 		// Add two guests
 		const email1 = uniqueEmail('move1');
-		const path1 = await sendInviteAndGetPath(page, request, 'First', email1);
+		const path1 = await inviteViaShareLink(page, request, 'First', email1);
 		const email2 = uniqueEmail('move2');
-		const path2 = await sendInviteAndGetPath(page, request, 'Second', email2);
+		const path2 = await inviteViaShareLink(page, request, 'Second', email2);
 
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path1, email1, 'First');
+		await acceptInvite(page2, path1, 'First');
 		await page2.close();
 
 		const page3 = await page.context().newPage();
-		await acceptInvite(page3, path2, email2, 'Second');
+		await acceptInvite(page3, path2, 'Second');
 		await page3.close();
 
 		// Reload creator page — should see two songs
@@ -373,9 +379,9 @@ test.describe('Song Timeline', () => {
 		await page.waitForURL(/\/party\//);
 
 		const email = uniqueEmail('timeline-guest');
-		const path = await sendInviteAndGetPath(page, request, 'TimeGuest', email);
+		const path = await inviteViaShareLink(page, request, 'TimeGuest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, email, 'TimeGuest');
+		await acceptInvite(page2, path, 'TimeGuest');
 		await page2.close();
 
 		// Reload creator page — song card should have a start time displayed
@@ -392,9 +398,9 @@ test.describe('Song Timeline', () => {
 		await createParty(page, request, { creatorEmail: uniqueEmail('notime-host') });
 
 		const email = uniqueEmail('notime-guest');
-		const path = await sendInviteAndGetPath(page, request, 'NoTimeGuest', email);
+		const path = await inviteViaShareLink(page, request, 'NoTimeGuest', email);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, path, email, 'NoTimeGuest');
+		await acceptInvite(page2, path, 'NoTimeGuest');
 		await page2.close();
 
 		await page.reload();
@@ -413,11 +419,10 @@ test.describe('Duplicate Song Rejection', () => {
 
 		// Invite and accept first guest with a specific URL
 		const email1 = uniqueEmail('dupsong1');
-		const path1 = await sendInviteAndGetPath(page, request, 'First', email1);
+		const path1 = await inviteViaShareLink(page, request, 'First', email1);
 
 		const page2 = await page.context().newPage();
 		await page2.goto(path1);
-		await verifyEmail(page2, email1);
 		await page2.locator('[data-testid="name-input"]').fill('First');
 		await page2.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page2.evaluate(() => {
@@ -430,11 +435,10 @@ test.describe('Duplicate Song Rejection', () => {
 
 		// Invite and try to accept second guest with the SAME URL
 		const email2 = uniqueEmail('dupsong2');
-		const path2 = await sendInviteAndGetPath(page, request, 'Second', email2);
+		const path2 = await inviteViaShareLink(page, request, 'Second', email2);
 
 		const page3 = await page.context().newPage();
 		await page3.goto(path2);
-		await verifyEmail(page3, email2);
 		await page3.locator('[data-testid="name-input"]').fill('Second');
 		await page3.locator('[data-testid="youtube-url"]').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 		await page3.evaluate(() => {

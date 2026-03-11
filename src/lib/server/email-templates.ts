@@ -75,28 +75,6 @@ ${ctaButton(data.magicUrl, 'RSVP Now')}
 `);
 }
 
-export function renderAnnouncementEmail(data: {
-	recipientName: string;
-	partyName: string;
-	partyUrl: string;
-	message: string;
-}): string {
-	const messageHtml = renderMarkdown(data.message, {
-		linkStyle: EMAIL_LINK_STYLE,
-		listStyle: EMAIL_LIST_STYLE,
-		listItemStyle: EMAIL_LIST_ITEM_STYLE
-	});
-
-	return baseLayout(`
-<h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Update from ${escapeHtml(data.partyName)}</h1>
-<p style="font-size:14px;color:#a8a4a0;margin:0 0 4px;">Hey ${escapeHtml(data.recipientName)},</p>
-<p style="font-size:14px;color:#a8a4a0;white-space:pre-line;margin:0 0 16px;">${messageHtml}</p>
-<div style="text-align:center;margin-top:20px;">
-${ctaButton(data.partyUrl, 'Go to Party')}
-</div>
-`);
-}
-
 export function renderCreatorWelcomeEmail(data: {
 	creatorName: string;
 	partyName: string;

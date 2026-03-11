@@ -11,7 +11,7 @@
 	<title>Playlist Party</title>
 	<meta
 		name="description"
-		content="Create a party playlist where every guest adds their song. No apps, no accounts — just music and vibes."
+		content="Create a party, share the link, and build the playlist together. No apps, no accounts — just music and vibes."
 	/>
 </svelte:head>
 
@@ -76,7 +76,7 @@
 				<div>
 					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Create a party.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
-						Add your tracks and friends. You always have control over the playlist.
+						Set up your event, add your tracks, and get an invite link to share.
 					</p>
 				</div>
 			</div>
@@ -84,9 +84,9 @@
 			<div class="flex gap-5 md:gap-8 items-start">
 				<span class="font-display text-5xl md:text-6xl text-neon-pink shrink-0 leading-none mt-1">2</span>
 				<div>
-					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Grow the party.</h3>
+					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Send the link.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
-						Your friends can add tracks and invite others. Every invite earns them another track. Watch your playlist and guest list grow.
+						Share it however you want — text, group chat, carrier pigeon. Friends RSVP and add their tracks. They can share the link too.
 					</p>
 				</div>
 			</div>
@@ -94,9 +94,9 @@
 			<div class="flex gap-5 md:gap-8 items-start">
 				<span class="font-display text-5xl md:text-6xl text-neon-pink shrink-0 leading-none mt-1">3</span>
 				<div>
-					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Start the party.</h3>
+					<h3 class="font-heading font-bold text-2xl md:text-3xl text-text-primary">Hit play.</h3>
 					<p class="text-text-secondary text-lg md:text-xl mt-2 leading-relaxed">
-						The night arrives, and it's time to find out who brought the bangers! Hit play and have fun.
+						The night arrives, and it's time to find out who brought the bangers! Track who's coming and enjoy the playlist together.
 					</p>
 				</div>
 			</div>

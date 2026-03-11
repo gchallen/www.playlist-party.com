@@ -19,13 +19,6 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
-async function verifyEmail(page: Page, email: string): Promise<void> {
-	await page.locator('[data-testid="verify-email-input"]').waitFor();
-	await page.locator('[data-testid="verify-email-input"]').fill(email);
-	await page.locator('[data-testid="verify-email-btn"]').click();
-	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
-}
-
 async function verifyCreatorEmail(page: Page, _request: any, email: string): Promise<void> {
 	await page.locator('[data-testid="creator-verify-email"]').fill(email);
 	await page.locator('[data-testid="verify-email-btn"]').click();
@@ -75,22 +68,36 @@ async function getInvitePathFromEmail(request: any, to: string): Promise<string>
 	return match![0];
 }
 
-async function sendInviteAndGetPath(
+async function getShareLink(page: Page): Promise<string> {
+	const input = page.locator('[data-testid="share-link-input"]');
+	await input.waitFor();
+	const value = await input.inputValue();
+	// Extract just the path portion
+	const url = new URL(value);
+	return url.pathname;
+}
+
+async function inviteViaShareLink(
 	page: Page,
 	request: any,
 	inviteeName: string,
 	inviteeEmail: string
 ): Promise<string> {
-	await page.locator('[data-testid="invite-name"]').fill(inviteeName);
-	await page.locator('[data-testid="invite-email"]').fill(inviteeEmail);
-	await page.locator('[data-testid="send-invite-btn"]').click();
-	await page.waitForSelector('[data-testid="invite-sent-success"]');
+	const sharePath = await getShareLink(page);
+
+	const joinPage = await page.context().newPage();
+	await joinPage.goto(sharePath);
+	await joinPage.locator('[data-testid="join-name"]').fill(inviteeName);
+	await joinPage.locator('[data-testid="join-email"]').fill(inviteeEmail);
+	await joinPage.locator('[data-testid="join-btn"]').click();
+	await expect(joinPage.locator('[data-testid="join-success"]')).toBeVisible();
+	await joinPage.close();
+
 	return getInvitePathFromEmail(request, inviteeEmail);
 }
 
-async function acceptInvite(page: Page, path: string, email: string, name?: string): Promise<void> {
+async function acceptInvite(page: Page, path: string, name?: string): Promise<void> {
 	await page.goto(path);
-	await verifyEmail(page, email);
 	if (name) {
 		await page.locator('[data-testid="name-input"]').fill(name);
 	}
@@ -101,15 +108,6 @@ async function acceptInvite(page: Page, path: string, email: string, name?: stri
 	});
 	await page.locator('[data-testid="accept-btn"]').click();
 	await page.waitForSelector('text=Welcome');
-}
-
-async function getShareLink(page: Page): Promise<string> {
-	const input = page.locator('[data-testid="share-link-input"]');
-	await input.waitFor();
-	const value = await input.inputValue();
-	// Extract just the path portion
-	const url = new URL(value);
-	return url.pathname;
 }
 
 // ─── Tests ────────────────────────────────────────────────────────
@@ -158,10 +156,10 @@ test.describe('Share Link', () => {
 			creatorEmail: uniqueEmail('credit-host')
 		});
 
-		// Creator invites Alice
+		// Creator invites Alice via share link
 		const aliceEmail = uniqueEmail('credit-alice');
-		const alicePath = await sendInviteAndGetPath(page, request, 'Alice', aliceEmail);
-		await acceptInvite(page, alicePath, aliceEmail, 'Alice');
+		const alicePath = await inviteViaShareLink(page, request, 'Alice', aliceEmail);
+		await acceptInvite(page, alicePath, 'Alice');
 
 		// Get Alice's share link
 		const aliceSharePath = await getShareLink(page);
@@ -203,7 +201,7 @@ test.describe('Share Link', () => {
 
 		// Get magic URL from email and accept
 		const invitePath = await getInvitePathFromEmail(request, guestEmail);
-		await acceptInvite(page2, invitePath, guestEmail, 'RoundTripper');
+		await acceptInvite(page2, invitePath, 'RoundTripper');
 		await expect(page2.locator('text=Welcome, RoundTripper!')).toBeVisible();
 		await page2.close();
 	});
@@ -213,9 +211,11 @@ test.describe('Share Link', () => {
 			creatorEmail: uniqueEmail('dup-share-host')
 		});
 
+		// Invite first via share link
 		const dupeEmail = uniqueEmail('dup-share');
-		await sendInviteAndGetPath(page, request, 'AlreadyInvited', dupeEmail);
+		await inviteViaShareLink(page, request, 'AlreadyInvited', dupeEmail);
 
+		// Try same email again via share link
 		const sharePath = await getShareLink(page);
 		const page2 = await page.context().newPage();
 		await page2.goto(sharePath);
@@ -233,12 +233,11 @@ test.describe('Share Link', () => {
 			maxAttendees: 2
 		});
 
-		// Send invite to fill the party (creator=1, invitee=2)
+		// Invite to fill the party (creator=1, invitee=2)
 		const fillEmail = uniqueEmail('full-share-fill');
-		await sendInviteAndGetPath(page, request, 'Filler', fillEmail);
+		await inviteViaShareLink(page, request, 'Filler', fillEmail);
 
-		// Get share link before the party is full (canInvite might already be false)
-		// We need the share token from the page data
+		// Get share link before reloading
 		const shareInput = page.locator('[data-testid="share-link-input"]');
 		const hasShareLink = await shareInput.isVisible().catch(() => false);
 
@@ -254,10 +253,6 @@ test.describe('Share Link', () => {
 			await page2.close();
 		} else {
 			// Party was at capacity immediately, so share link is hidden
-			// Navigate directly to share URL using the API
-			// The share link section is only visible when canInvite is true
-			// But the share page itself should still show the "full" message
-			// We just need to get the shareToken from the attendee data
 			await page.reload();
 			await expect(page.locator('text=Party is at capacity')).toBeVisible();
 		}
@@ -269,9 +264,9 @@ test.describe('Share Link', () => {
 			maxInvitesPerGuest: 1
 		});
 
-		// Creator sends 1 direct invite (uses their invite quota)
+		// Creator invites 1 via share link (uses their invite quota)
 		const email1 = uniqueEmail('maxinv-direct');
-		await sendInviteAndGetPath(page, request, 'DirectInvite', email1);
+		await inviteViaShareLink(page, request, 'DirectInvite', email1);
 
 		// Get share link
 		const sharePath = await getShareLink(page);
@@ -302,11 +297,11 @@ test.describe('Share Link', () => {
 		const shareUrl = await page.locator('[data-testid="share-link-input"]').inputValue();
 		expect(shareUrl).toContain('/share/');
 
-		// Send invite and accept — invitee should also see share link
+		// Invite and accept — invitee should also see share link
 		const inviteeEmail = uniqueEmail('visible-share-invitee');
-		const inviteePath = await sendInviteAndGetPath(page, request, 'Attendee', inviteeEmail);
+		const inviteePath = await inviteViaShareLink(page, request, 'Attendee', inviteeEmail);
 		const page2 = await page.context().newPage();
-		await acceptInvite(page2, inviteePath, inviteeEmail, 'Attendee');
+		await acceptInvite(page2, inviteePath, 'Attendee');
 
 		await expect(page2.locator('[data-testid="share-link-section"]')).toBeVisible();
 		const attendeeShareUrl = await page2.locator('[data-testid="share-link-input"]').inputValue();

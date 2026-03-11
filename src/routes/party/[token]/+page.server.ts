@@ -3,17 +3,12 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
-import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
+import { generateShareToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
-import { sendInviteEmail } from '$lib/server/email';
-import { renderAnnouncementEmail } from '$lib/server/email-templates';
-import { enqueueEmails, processEmailQueue } from '$lib/server/email-queue';
-import { recordEmailSend } from '$lib/server/rate-limit';
 import { computeTargetDuration, computeMaxSongs, computeOverflowDrops, canIssueInvitations } from '$lib/server/playlist';
-import { validateInvite, toSongInfo } from '$lib/server/invite-validation';
+import { toSongInfo } from '$lib/server/invite-validation';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
-import { parseInviteLines } from '$lib/parse-invites';
 import { pickRandomTracks } from '$lib/test-tracks';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -30,16 +25,7 @@ function getAttendeeStatus(a: { acceptedAt: string | null; declinedAt: string | 
 	return 'pending';
 }
 
-function maskEmail(email: string): string {
-	const [local, domain] = email.split('@');
-	const maskedLocal = local[0] + '***' + (local.length > 1 ? local[local.length - 1] : '');
-	const domainParts = domain.split('.');
-	const maskedDomain = domainParts[0][0] + '***' + '.' + domainParts.slice(1).join('.');
-	return maskedLocal + '@' + maskedDomain;
-}
-
-
-export const load: PageServerLoad = async ({ params, platform, cookies }) => {
+export const load: PageServerLoad = async ({ params, platform }) => {
 	const db = await getDb(platform);
 
 	let attendee = await db.query.attendees.findFirst({
@@ -65,7 +51,6 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 		error(404, 'Party not found');
 	}
 
-	const verified = cookies.get(`pv_${params.token}`) === '1';
 	const creator = isCreator(attendee);
 	const isPending = !attendee.acceptedAt;
 	const attendeeStatus = getAttendeeStatus(attendee);
@@ -159,8 +144,6 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 
 	// Base return data
 	const result: Record<string, unknown> = {
-		verified,
-		maskedEmail: maskEmail(attendee.email),
 		party: {
 			name: party.name,
 			description: party.description,
@@ -174,9 +157,7 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
 			songsPerGuest: party.songsPerGuest ?? 1,
 			songsRequiredToRsvp: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
-			songAttribution: party.songAttribution,
-			customInviteSubject: party.customInviteSubject,
-			customInviteMessage: party.customInviteMessage
+			songAttribution: party.songAttribution
 		},
 		attendee: {
 			name: attendee.name,
@@ -235,32 +216,6 @@ export const load: PageServerLoad = async ({ params, platform, cookies }) => {
 };
 
 export const actions = {
-	verify: async ({ params, request, platform, cookies }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const email = data.get('email')?.toString()?.trim();
-		if (!email) return fail(400, { verifyError: 'Email is required' });
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { verifyError: 'Not found' });
-
-		if (email.toLowerCase() !== attendee.email.toLowerCase()) {
-			return fail(400, { verifyError: 'Email does not match this invite' });
-		}
-
-		cookies.set(`pv_${params.token}`, '1', {
-			path: `/party/${params.token}`,
-			httpOnly: true,
-			sameSite: 'lax',
-			maxAge: 60 * 60 * 24 * 30 // 30 days
-		});
-
-		return { verified: true };
-	},
-
 	accept: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
@@ -536,195 +491,6 @@ export const actions = {
 		return { songAdded: true };
 	},
 
-	sendInvite: async ({ params, request, platform, url }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const name = data.get('name')?.toString()?.trim();
-		const email = data.get('email')?.toString()?.trim();
-
-		if (!name) return fail(400, { inviteError: "Friend's name is required" });
-		if (!email) return fail(400, { inviteError: "Friend's email is required" });
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { inviteError: 'Not found' });
-		if (attendee.declinedAt) return fail(400, { inviteError: 'You have declined this invitation' });
-
-		const party = await db.query.parties.findFirst({
-			where: eq(parties.id, attendee.partyId)
-		});
-		if (!party) return fail(404, { inviteError: 'Party not found' });
-
-		const allAttendeesList = await db.query.attendees.findMany({
-			where: eq(attendees.partyId, party.id)
-		});
-
-		const allSongs = await db.query.songs.findMany({
-			where: eq(songs.partyId, party.id)
-		});
-		const targetDuration = computeTargetDuration(party.time, party.endTime);
-
-		const validationError = await validateInvite(
-			{ db, party, attendee, allAttendees: allAttendeesList, allSongs: allSongs.map(toSongInfo), targetDuration },
-			name,
-			email
-		);
-		if (validationError) {
-			return fail(400, { inviteError: validationError });
-		}
-
-		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
-		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
-
-		const newToken = generateInviteToken();
-
-		await db.insert(attendees).values({
-			partyId: party.id,
-			name,
-			email,
-			invitedBy: attendee.id,
-			inviteToken: newToken,
-			shareToken: generateShareToken(),
-			depth: attendee.depth + 1
-		});
-
-		const effectiveSubject = customSubject ?? party.customInviteSubject;
-		const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
-
-		const magicUrl = `${url.origin}/party/${newToken}`;
-		await sendInviteEmail({
-			to: email,
-			inviteeName: name,
-			inviterName: attendee.name,
-			partyName: party.name,
-			magicUrl,
-			platform,
-			customSubject: effectiveSubject,
-			customMessage: effectiveMessage,
-			replyTo: party.creatorEmail
-		});
-		await recordEmailSend(db, email, 'invite');
-
-		// Auto-save invite email fields if sender is creator
-		if (isCreator(attendee)) {
-			const updates: Record<string, unknown> = {};
-			if (customSubject !== null) updates.customInviteSubject = customSubject.slice(0, 200) || null;
-			if (customMessage !== null) updates.customInviteMessage = customMessage.slice(0, 2000) || null;
-			if (Object.keys(updates).length > 0) {
-				await db.update(parties).set(updates).where(eq(parties.id, party.id));
-			}
-		}
-
-		return { inviteSent: name, inviteUrl: magicUrl };
-	},
-
-	bulkInvite: async ({ params, request, platform, url }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const text = data.get('bulkText')?.toString() || '';
-		const parsed = parseInviteLines(text);
-		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
-		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
-
-		if (parsed.length === 0) {
-			return fail(400, { bulkError: 'No valid entries found. Each line needs a name and email.' });
-		}
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { bulkError: 'Not found' });
-
-		if (!isCreator(attendee)) {
-			return fail(403, { bulkError: 'Only the party creator can use bulk invite' });
-		}
-		if (attendee.declinedAt) return fail(400, { bulkError: 'You have declined this invitation' });
-
-		const party = await db.query.parties.findFirst({
-			where: eq(parties.id, attendee.partyId)
-		});
-		if (!party) return fail(404, { bulkError: 'Party not found' });
-
-		const bulkResults: Array<{ name: string; email: string; success: boolean; error?: string; inviteUrl?: string }> = [];
-
-		// Track emails within this batch to catch duplicates
-		const batchEmails = new Set<string>();
-
-		for (const entry of parsed) {
-			// Check for duplicates within the batch
-			const emailLower = entry.email.toLowerCase();
-			if (batchEmails.has(emailLower)) {
-				bulkResults.push({ name: entry.name, email: entry.email, success: false, error: 'Duplicate in this batch' });
-				continue;
-			}
-
-			// Re-fetch attendees each iteration so newly added ones are visible
-			const allAttendeesList = await db.query.attendees.findMany({
-				where: eq(attendees.partyId, party.id)
-			});
-			const allSongs = await db.query.songs.findMany({
-				where: eq(songs.partyId, party.id)
-			});
-			const targetDuration = computeTargetDuration(party.time, party.endTime);
-
-			const validationError = await validateInvite(
-				{ db, party, attendee, allAttendees: allAttendeesList, allSongs: allSongs.map(toSongInfo), targetDuration },
-				entry.name,
-				entry.email
-			);
-
-			if (validationError) {
-				bulkResults.push({ name: entry.name, email: entry.email, success: false, error: validationError });
-				continue;
-			}
-
-			const newToken = generateInviteToken();
-
-			await db.insert(attendees).values({
-				partyId: party.id,
-				name: entry.name,
-				email: entry.email,
-				invitedBy: attendee.id,
-				inviteToken: newToken,
-				shareToken: generateShareToken(),
-				depth: attendee.depth + 1
-			});
-
-			const effectiveSubject = customSubject ?? party.customInviteSubject;
-			const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
-
-			const magicUrl = `${url.origin}/party/${newToken}`;
-			await sendInviteEmail({
-				to: entry.email,
-				inviteeName: entry.name,
-				inviterName: attendee.name,
-				partyName: party.name,
-				magicUrl,
-				platform,
-				customSubject: effectiveSubject,
-				customMessage: effectiveMessage,
-				replyTo: party.creatorEmail
-			});
-			await recordEmailSend(db, entry.email, 'invite');
-
-			batchEmails.add(emailLower);
-			bulkResults.push({ name: entry.name, email: entry.email, success: true, inviteUrl: magicUrl });
-		}
-
-		// Auto-save invite email fields to party
-		const saveUpdates: Record<string, unknown> = {};
-		if (customSubject !== null) saveUpdates.customInviteSubject = customSubject.slice(0, 200) || null;
-		if (customMessage !== null) saveUpdates.customInviteMessage = customMessage.slice(0, 2000) || null;
-		if (Object.keys(saveUpdates).length > 0) {
-			await db.update(parties).set(saveUpdates).where(eq(parties.id, party.id));
-		}
-
-		return { bulkResults };
-	},
-
 	decline: async ({ params, platform }) => {
 		const db = await getDb(platform);
 
@@ -941,50 +707,6 @@ export const actions = {
 		return { reordered: true };
 	},
 
-	sendTestEmail: async ({ params, request, platform, url }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can send test emails' });
-
-		const party = await db.query.parties.findFirst({
-			where: eq(parties.id, attendee.partyId)
-		});
-		if (!party) return fail(404, { error: 'Party not found' });
-
-		const customSubject = data.get('customInviteSubject')?.toString()?.trim() || null;
-		const customMessage = data.get('customInviteMessage')?.toString()?.trim() || null;
-		const effectiveSubject = customSubject ?? party.customInviteSubject;
-		const effectiveMessage = customMessage ?? party.customInviteMessage ?? '';
-
-		const magicUrl = `${url.origin}/party/${params.token}`;
-		await sendInviteEmail({
-			to: party.creatorEmail,
-			inviteeName: attendee.name,
-			inviterName: attendee.name,
-			partyName: party.name,
-			magicUrl,
-			platform,
-			customSubject: effectiveSubject,
-			customMessage: effectiveMessage,
-			replyTo: party.creatorEmail
-		});
-
-		// Auto-save invite email fields to party
-		const updates: Record<string, unknown> = {};
-		if (customSubject !== null) updates.customInviteSubject = customSubject.slice(0, 200) || null;
-		if (customMessage !== null) updates.customInviteMessage = customMessage.slice(0, 2000) || null;
-		if (Object.keys(updates).length > 0) {
-			await db.update(parties).set(updates).where(eq(parties.id, party.id));
-		}
-
-		return { testEmailSent: true };
-	},
-
 	updateSettings: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
@@ -1072,85 +794,6 @@ export const actions = {
 		return { inviteRemoved: target.name };
 	},
 
-	changeInviteEmail: async ({ params, request, platform, url }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const inviteToken = data.get('inviteToken')?.toString()?.trim();
-		const newEmail = data.get('newEmail')?.toString()?.trim();
-
-		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
-		if (!newEmail) return fail(400, { inviteError: 'New email is required' });
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { inviteError: 'Not found' });
-
-		const target = await db.query.attendees.findFirst({
-			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
-		});
-		if (!target) return fail(404, { inviteError: 'Invite not found' });
-
-		if (target.invitedBy !== attendee.id) {
-			return fail(403, { inviteError: 'You can only change your own invites' });
-		}
-
-		if (target.acceptedAt || target.declinedAt) {
-			return fail(400, { inviteError: 'Can only change email for pending invites' });
-		}
-
-		const party = await db.query.parties.findFirst({
-			where: eq(parties.id, attendee.partyId)
-		});
-		if (!party) return fail(404, { inviteError: 'Party not found' });
-
-		// Check that the new email isn't already invited (exclude the target being replaced)
-		const allAttendeesList = await db.query.attendees.findMany({
-			where: eq(attendees.partyId, party.id)
-		});
-		const duplicate = allAttendeesList.find(
-			(a) => a.id !== target.id && a.email.toLowerCase() === newEmail.toLowerCase()
-		);
-		if (duplicate) {
-			return fail(400, { inviteError: 'That email is already invited to this party' });
-		}
-
-		// Delete old invite
-		await db.delete(attendees).where(eq(attendees.id, target.id));
-
-		// Create new invite with same name, new email, fresh token
-		const newToken = generateInviteToken();
-		await db.insert(attendees).values({
-			partyId: party.id,
-			name: target.name,
-			email: newEmail,
-			invitedBy: attendee.id,
-			inviteToken: newToken,
-			shareToken: generateShareToken(),
-			depth: target.depth
-		});
-
-		// Send invite email
-		const effectiveSubject = party.customInviteSubject;
-		const effectiveMessage = party.customInviteMessage ?? '';
-		const magicUrl = `${url.origin}/party/${newToken}`;
-		await sendInviteEmail({
-			to: newEmail,
-			inviteeName: target.name,
-			inviterName: attendee.name,
-			partyName: party.name,
-			magicUrl,
-			platform,
-			customSubject: effectiveSubject,
-			customMessage: effectiveMessage,
-			replyTo: party.creatorEmail
-		});
-		await recordEmailSend(db, newEmail, 'invite');
-
-		return { emailChanged: target.name };
-	},
-
 	declineOnBehalf: async ({ params, request, platform }) => {
 		const db = await getDb(platform);
 		const data = await request.formData();
@@ -1178,55 +821,6 @@ export const actions = {
 			.where(eq(attendees.id, target.id));
 
 		return { declinedOnBehalf: target.name };
-	},
-
-	updateGuestEmail: async ({ params, request, platform }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const inviteToken = data.get('inviteToken')?.toString()?.trim();
-		const newEmail = data.get('newEmail')?.toString()?.trim();
-
-		if (!inviteToken) return fail(400, { inviteError: 'Missing invite token' });
-		if (!newEmail) return fail(400, { inviteError: 'New email is required' });
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { inviteError: 'Not found' });
-
-		const target = await db.query.attendees.findFirst({
-			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
-		});
-		if (!target) return fail(404, { inviteError: 'Invite not found' });
-
-		// Must be the inviter or the creator
-		if (target.invitedBy !== attendee.id && !isCreator(attendee)) {
-			return fail(403, { inviteError: 'You can only change your own invites' });
-		}
-
-		// Only for non-pending guests (pending uses changeInviteEmail)
-		if (!target.acceptedAt && !target.declinedAt) {
-			return fail(400, { inviteError: 'Use change invite email for pending invites' });
-		}
-
-		// Check for duplicate emails
-		const allAttendeesList = await db.query.attendees.findMany({
-			where: eq(attendees.partyId, attendee.partyId)
-		});
-		const duplicate = allAttendeesList.find(
-			(a) => a.id !== target.id && a.email.toLowerCase() === newEmail.toLowerCase()
-		);
-		if (duplicate) {
-			return fail(400, { inviteError: 'That email is already invited to this party' });
-		}
-
-		await db
-			.update(attendees)
-			.set({ email: newEmail })
-			.where(eq(attendees.id, target.id));
-
-		return { guestEmailUpdated: target.name };
 	},
 
 	distributeSongs: async ({ params, platform }) => {
@@ -1279,82 +873,6 @@ export const actions = {
 		}
 
 		return { distributed: true };
-	},
-
-	sendAnnouncement: async ({ params, request, platform, url }) => {
-		const db = await getDb(platform);
-		const data = await request.formData();
-
-		const attendee = await db.query.attendees.findFirst({
-			where: eq(attendees.inviteToken, params.token)
-		});
-		if (!attendee) return fail(404, { announcementError: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { announcementError: 'Only the creator can send announcements' });
-
-		const party = await db.query.parties.findFirst({
-			where: eq(parties.id, attendee.partyId)
-		});
-		if (!party) return fail(404, { announcementError: 'Party not found' });
-
-		const subject = data.get('announcementSubject')?.toString()?.trim();
-		const message = data.get('announcementMessage')?.toString()?.trim();
-		const audience = data.get('announcementAudience')?.toString()?.trim();
-
-		if (!subject) return fail(400, { announcementError: 'Subject is required' });
-		if (!message) return fail(400, { announcementError: 'Message is required' });
-		if (audience !== 'accepted' && audience !== 'pending' && audience !== 'all') {
-			return fail(400, { announcementError: 'Invalid audience selection' });
-		}
-
-		const allAttendeesList = await db.query.attendees.findMany({
-			where: eq(attendees.partyId, party.id)
-		});
-
-		// Filter recipients: exclude the creator themselves
-		const recipients = allAttendeesList.filter((a) => {
-			if (isCreator(a)) return false;
-			if (audience === 'accepted') {
-				return a.acceptedAt && !a.declinedAt;
-			}
-			if (audience === 'pending') {
-				return !a.acceptedAt && !a.declinedAt;
-			}
-			// 'all' = accepted + pending (exclude declined/unavailable)
-			return !a.declinedAt;
-		});
-
-		if (recipients.length === 0) {
-			return fail(400, { announcementError: 'No recipients match the selected group' });
-		}
-
-		const emails = recipients.map((recipient) => {
-			const partyUrl = `${url.origin}/party/${recipient.inviteToken}`;
-			const html = renderAnnouncementEmail({
-				recipientName: recipient.name,
-				partyName: party.name,
-				partyUrl,
-				message
-			});
-			return {
-				to: recipient.email,
-				subject,
-				html,
-				type: 'announcement',
-				replyTo: party.creatorEmail
-			};
-		});
-
-		const enqueued = await enqueueEmails(db, emails);
-
-		// Process queue immediately via waitUntil (non-blocking) or inline fallback
-		const processingPromise = processEmailQueue(platform);
-		if (platform?.context?.waitUntil) {
-			platform.context.waitUntil(processingPromise);
-		} else {
-			await processingPromise;
-		}
-
-		return { announcementSent: enqueued };
 	},
 
 	devAddRandomSongs: async ({ params, request, platform }) => {

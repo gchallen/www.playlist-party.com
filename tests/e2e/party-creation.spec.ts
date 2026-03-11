@@ -6,13 +6,6 @@ function uniqueEmail(prefix: string): string {
 	return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@test.com`;
 }
 
-async function verifyEmail(page: Page, email: string): Promise<void> {
-	await page.locator('[data-testid="verify-email-input"]').waitFor();
-	await page.locator('[data-testid="verify-email-input"]').fill(email);
-	await page.locator('[data-testid="verify-email-btn"]').click();
-	await page.locator('[data-testid="verify-gate"]').waitFor({ state: 'detached' });
-}
-
 async function verifyCreatorEmail(page: Page, _request: any, email: string): Promise<void> {
 	await page.locator('[data-testid="creator-verify-email"]').fill(email);
 	await page.locator('[data-testid="verify-email-btn"]').click();
@@ -62,6 +55,43 @@ async function createParty(
 	await page.getByRole('button', { name: 'Create Party' }).click();
 	await page.waitForURL(/\/party\//);
 	return page.url();
+}
+
+async function getInvitePathFromEmail(request: any, to: string): Promise<string> {
+	const res = await request.get(`/api/emails?to=${encodeURIComponent(to)}&type=invite`);
+	const data = await res.json();
+	const email = data.emails[0];
+	expect(email).toBeTruthy();
+	const match = email.metadata.magicUrl.match(/\/party\/[a-zA-Z0-9_-]+/);
+	expect(match).toBeTruthy();
+	return match![0];
+}
+
+async function getShareLink(page: Page): Promise<string> {
+	const input = page.locator('[data-testid="share-link-input"]');
+	await input.waitFor();
+	const value = await input.inputValue();
+	const url = new URL(value);
+	return url.pathname;
+}
+
+async function inviteViaShareLink(
+	page: Page,
+	request: any,
+	inviteeName: string,
+	inviteeEmail: string
+): Promise<string> {
+	const sharePath = await getShareLink(page);
+
+	const joinPage = await page.context().newPage();
+	await joinPage.goto(sharePath);
+	await joinPage.locator('[data-testid="join-name"]').fill(inviteeName);
+	await joinPage.locator('[data-testid="join-email"]').fill(inviteeEmail);
+	await joinPage.locator('[data-testid="join-btn"]').click();
+	await expect(joinPage.locator('[data-testid="join-success"]')).toBeVisible();
+	await joinPage.close();
+
+	return getInvitePathFromEmail(request, inviteeEmail);
 }
 
 // ─── Tests ────────────────────────────────────────────────────────
@@ -147,119 +177,17 @@ test.describe('Party Creation', () => {
 		expect(val).toBe('50');
 	});
 
-	test('custom invite message appears in invite emails', async ({ page, request }) => {
-		const creatorEmail = uniqueEmail('custmsg-host');
-		const customMsg = 'Bring your dancing shoes and your best playlist picks!';
-
-		await createParty(page, request, { creatorEmail, name: 'Custom Msg Party' });
-
-		// Fill custom message on party page
-		await page.locator('[data-testid="invite-email-message"]').fill(customMsg);
-
-		// Send an invite
-		const guestEmail = uniqueEmail('custmsg-guest');
-		await page.locator('[data-testid="invite-name"]').fill('Guest One');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
-		await page.locator('[data-testid="send-invite-btn"]').click();
-		await page.locator('[data-testid="invite-sent-success"]').waitFor();
-
-		// Check the invite email
-		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
-		const data = await res.json();
-		expect(data.emails.length).toBe(1);
-		expect(data.emails[0].html).toContain(customMsg);
-		expect(data.emails[0].html).not.toContain('to the playlist when you RSVP');
-	});
-
 	test('invite email has reply-to set to creator email', async ({ page, request }) => {
 		const creatorEmail = uniqueEmail('replyto-host');
 
-		const partyUrl = await createParty(page, request, { creatorEmail });
+		await createParty(page, request, { creatorEmail });
 
 		const guestEmail = uniqueEmail('replyto-guest');
-		await page.locator('[data-testid="invite-name"]').fill('Reply Guest');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
-		await page.locator('[data-testid="send-invite-btn"]').click();
-		await page.locator('[data-testid="invite-sent-success"]').waitFor();
+		await inviteViaShareLink(page, request, 'Reply Guest', guestEmail);
 
 		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
 		const data = await res.json();
 		expect(data.emails.length).toBe(1);
 		expect(data.emails[0].metadata.replyTo).toBe(creatorEmail);
-	});
-
-	test('default message used when custom message is empty', async ({ page, request }) => {
-		const creatorEmail = uniqueEmail('defmsg-host');
-
-		await createParty(page, request, { creatorEmail });
-
-		const guestEmail = uniqueEmail('defmsg-guest');
-		await page.locator('[data-testid="invite-name"]').fill('Default Guest');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmail);
-		await page.locator('[data-testid="send-invite-btn"]').click();
-		await page.locator('[data-testid="invite-sent-success"]').waitFor();
-
-		const res = await request.get(`/api/emails?to=${encodeURIComponent(guestEmail)}&type=invite`);
-		const data = await res.json();
-		expect(data.emails.length).toBe(1);
-		expect(data.emails[0].html).toContain('to the playlist when you RSVP');
-	});
-
-	test('test email sent to creator inbox', async ({ page, request }) => {
-		const creatorEmail = uniqueEmail('testemail-host');
-		const customMsg = 'This is a test invite preview message!';
-
-		await createParty(page, request, { creatorEmail, name: 'Test Email Party' });
-
-		// Fill custom message on party page
-		await page.locator('[data-testid="invite-email-message"]').fill(customMsg);
-
-		// Click "Send Test Email"
-		await page.locator('[data-testid="send-test-email-btn"]').click();
-		await page.locator('[data-testid="test-email-success"]').waitFor();
-
-		// Check the email was sent to the creator
-		const res = await request.get(`/api/emails?to=${encodeURIComponent(creatorEmail)}&type=invite`);
-		const data = await res.json();
-		expect(data.emails.length).toBe(1);
-		expect(data.emails[0].html).toContain(customMsg);
-	});
-
-	test('custom message can be changed between invites', async ({ page, request }) => {
-		const creatorEmail = uniqueEmail('editmsg-host');
-		const messageA = 'Original custom message for the party';
-		const messageB = 'Updated message for the second invite';
-
-		await createParty(page, request, { creatorEmail, name: 'Editable Msg Party' });
-
-		// Set message A and send first invite
-		await page.locator('[data-testid="invite-email-message"]').fill(messageA);
-		const guestEmailA = uniqueEmail('editmsg-guestA');
-		await page.locator('[data-testid="invite-name"]').fill('Guest A');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmailA);
-		await page.locator('[data-testid="send-invite-btn"]').click();
-		await page.locator('[data-testid="invite-sent-success"]').waitFor();
-
-		// Change to message B and send second invite
-		await page.locator('[data-testid="invite-email-message"]').fill(messageB);
-		const guestEmailB = uniqueEmail('editmsg-guestB');
-		await page.locator('[data-testid="invite-name"]').fill('Guest B');
-		await page.locator('[data-testid="invite-email"]').fill(guestEmailB);
-		await page.locator('[data-testid="send-invite-btn"]').click();
-		await page.locator('[data-testid="invite-sent-success"]').waitFor();
-
-		// Verify first invite got message A
-		const resA = await request.get(`/api/emails?to=${encodeURIComponent(guestEmailA)}&type=invite`);
-		const dataA = await resA.json();
-		expect(dataA.emails.length).toBe(1);
-		expect(dataA.emails[0].html).toContain(messageA);
-		expect(dataA.emails[0].html).not.toContain(messageB);
-
-		// Verify second invite got message B
-		const resB = await request.get(`/api/emails?to=${encodeURIComponent(guestEmailB)}&type=invite`);
-		const dataB = await resB.json();
-		expect(dataB.emails.length).toBe(1);
-		expect(dataB.emails[0].html).toContain(messageB);
-		expect(dataB.emails[0].html).not.toContain(messageA);
 	});
 });

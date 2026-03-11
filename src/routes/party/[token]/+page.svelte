@@ -10,10 +10,8 @@
 	import NowPlayingCard from '$lib/components/NowPlayingCard.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
-	import { renderMarkdown } from '$lib/markdown';
 	import { computeSongStartTimes, formatTime } from '$lib/time';
 	import { loadYouTubeIframeApi } from '$lib/youtube-api';
-	import { parseInviteLines } from '$lib/parse-invites';
 	import { pickRandomTracks } from '$lib/test-tracks';
 
 	let { data, form } = $props();
@@ -28,50 +26,7 @@
 	let muted = $state(false);
 	let ytPlayer = $state<YouTubePlayer>();
 
-	// ─── Invite email state (snapshot initial values to avoid Svelte reactivity warnings) ───
-	const initInvite = (() => {
-		const { party, attendee } = data;
-		const lines: string[] = [];
-		lines.push(`**${attendee.name}** is throwing a playlist party!`);
-		lines.push('');
-		lines.push(`* **Who:** ${attendee.name}`);
-		lines.push(`* **What:** ${party.name}`);
-		const dateObj = new Date(party.date + 'T00:00:00');
-		const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-		const dateStr = `${dayName} ${dateObj.getMonth() + 1}/${dateObj.getDate()}/${dateObj.getFullYear()}`;
-		if (party.time) {
-			lines.push(`* **When:** ${dateStr} at ${formatTime(party.time)}`);
-		} else {
-			lines.push(`* **When:** ${dateStr}`);
-		}
-		if (party.location || party.locationUrl) {
-			const locText = party.location || 'View location';
-			if (party.locationUrl) {
-				lines.push(`* **Where:** [${locText}](${party.locationUrl})`);
-			} else {
-				lines.push(`* **Where:** ${locText}`);
-			}
-		}
-		if (party.description) {
-			lines.push('');
-			lines.push(party.description);
-		}
-		const songCount = (party as any).songsRequiredToRsvp ?? 1;
-		const songWord = songCount === 1 ? 'a song' : `${songCount} songs`;
-		lines.push('');
-		lines.push(`You'll be asked to add ${songWord} to the playlist when you RSVP.`);
-		return {
-			partyName: party.name,
-			subject: party.customInviteSubject || `You're Invited to ${party.name}`,
-			message: party.customInviteMessage || lines.join('\n')
-		};
-	})();
-	let inviteSubject = $state(initInvite.subject);
-	let inviteMessage = $state(initInvite.message);
-
 	// ─── Drag-and-drop state ───
-	let announcementSubject = $state(`${initInvite.partyName} Update`);
-	let announcementMessage = $state('');
 	let songOverride = $state<typeof data.songs | null>(null);
 	const localSongs = $derived(songOverride ?? data.songs);
 	let dragIdx = $state<number | null>(null);
@@ -253,15 +208,6 @@
 		}
 	}
 
-	// ─── Bulk invite state ───
-	let bulkMode = $state(false);
-	let bulkText = $state('');
-	const bulkParsed = $derived(bulkText ? parseInviteLines(bulkText) : []);
-
-	// ─── Change email state ───
-	let editingEmailToken = $state<string | null>(null);
-	let editingEmailValue = $state('');
-
 	function formatDuration(totalSeconds: number): string {
 		const hours = Math.floor(totalSeconds / 3600);
 		const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -404,36 +350,6 @@
 			locationUrl={data.party.locationUrl}
 			description={data.isPending ? data.party.description : undefined}
 		/>
-
-		{#if !data.verified}
-			<!-- ─── EMAIL VERIFICATION GATE ─── -->
-			<div class="mt-8 glass rounded-2xl p-6 md:p-8" data-testid="verify-gate">
-				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">Confirm Your Identity</h2>
-				<p class="text-text-secondary mb-6 font-heading text-sm">
-					Enter the email address for <span class="text-neon-cyan">{data.maskedEmail}</span> to continue.
-				</p>
-
-				{#if form?.verifyError}
-					<div class="mb-4 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
-						{form.verifyError}
-					</div>
-				{/if}
-
-				<form method="POST" action="?/verify" use:enhance class="space-y-4">
-					<div>
-						<label for="verify-email" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">Your Email</label>
-						<input type="email" id="verify-email" name="email" required
-							data-testid="verify-email-input"
-							class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-							placeholder="you@email.com" />
-					</div>
-					<button type="submit" data-testid="verify-email-btn"
-						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300">
-						Continue
-					</button>
-				</form>
-			</div>
-		{:else}
 
 		<!-- ─── DECLINED VIEW ─── -->
 		{#if data.attendeeStatus === 'declined'}
@@ -669,41 +585,17 @@
 					</div>
 				{/if}
 
-				{#if form?.inviteSent}
-					<div class="mb-4 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-sm font-heading" data-testid="invite-sent-success">
-						<p class="text-neon-mint">Invite sent to {form.inviteSent}!</p>
-						{#if form?.inviteUrl}
-							<a href={form.inviteUrl} target="_blank" rel="noopener"
-								class="inline-block mt-2 text-neon-cyan text-xs hover:underline break-all"
-								data-testid="invite-link">
-								{form.inviteUrl}
-							</a>
-						{/if}
-					</div>
-				{/if}
-
 				{#if form?.inviteRemoved}
 					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="invite-removed-success">
 						Invite for {form.inviteRemoved} has been removed.
 					</div>
 				{/if}
 
-				{#if form?.emailChanged}
-					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="email-changed-success">
-						Email updated for {form.emailChanged} — new invite sent!
-					</div>
-				{/if}
 				{#if form?.declinedOnBehalf}
 					<div class="mb-3 p-3 rounded-xl bg-neon-yellow/10 border border-neon-yellow/20 text-neon-yellow text-sm font-heading" data-testid="declined-on-behalf-success">
 						{form.declinedOnBehalf} marked as can't make it.
 					</div>
 				{/if}
-				{#if form?.guestEmailUpdated}
-					<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="guest-email-updated-success">
-						Email updated for {form.guestEmailUpdated}.
-					</div>
-				{/if}
-
 				<!-- Invite list -->
 				{#if (data as any).myInvites?.length > 0}
 					<div class="space-y-2 mb-4">
@@ -728,20 +620,6 @@
 									</div>
 								</div>
 								<div class="flex items-center gap-2">
-									<button type="button" title="Change email"
-										data-testid="change-email-btn"
-										class="text-text-muted hover:text-neon-cyan transition-colors p-1"
-										onclick={() => {
-											if (editingEmailToken === invite.inviteToken) {
-												editingEmailToken = null;
-												editingEmailValue = '';
-											} else {
-												editingEmailToken = invite.inviteToken;
-												editingEmailValue = invite.email;
-											}
-										}}>
-										<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-									</button>
 									{#if data.isCreator && (invite.status === 'pending' || invite.status === 'attending')}
 										<form method="POST" action="?/declineOnBehalf" use:enhance>
 											<input type="hidden" name="inviteToken" value={invite.inviteToken} />
@@ -782,93 +660,32 @@
 									</span>
 								</div>
 								</div>
-								{#if editingEmailToken === invite.inviteToken}
-									<form method="POST" action={invite.status === 'pending' ? '?/changeInviteEmail' : '?/updateGuestEmail'} use:enhance={() => {
-										return async ({ update }) => {
-											editingEmailToken = null;
-											editingEmailValue = '';
-											await update();
-										};
-									}} class="mt-2 flex gap-2" data-testid="change-email-form">
-										<input type="hidden" name="inviteToken" value={invite.inviteToken} />
-										<input type="email" name="newEmail" required bind:value={editingEmailValue}
-											data-testid="change-email-input"
-											class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-3 py-1.5 text-text-primary text-sm"
-											placeholder="new@email.com" />
-										<button type="submit" data-testid="change-email-submit"
-											class="font-heading font-semibold text-xs px-3 py-1.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
-											{invite.status === 'pending' ? 'Update & Resend' : 'Update Email'}
-										</button>
-										<button type="button"
-											class="font-heading text-xs text-text-muted hover:text-text-secondary transition-colors px-2"
-											onclick={() => { editingEmailToken = null; editingEmailValue = ''; }}>
-											Cancel
-										</button>
-									</form>
-								{/if}
 							</div>
 						{/each}
 					</div>
 				{/if}
 
-				{#if data.isCreator}
-					<div class="glass rounded-2xl p-5 mb-4">
-						<h3 class="font-heading font-semibold text-xs text-text-secondary mb-3 uppercase tracking-wider">Invite Email</h3>
-						<div class="space-y-3">
-							<div>
-								<label for="invite-email-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
-								<input type="text" id="invite-email-subject" maxlength="200" bind:value={inviteSubject}
-									data-testid="invite-email-subject"
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-									placeholder="You're Invited to {data.party.name}" />
-							</div>
-							<div>
-								<label for="invite-email-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Body</label>
-								<textarea id="invite-email-message" maxlength="2000" rows="8" bind:value={inviteMessage}
-									data-testid="invite-email-message"
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-								></textarea>
-							</div>
+				{#if data.isCreator && (data as any).allAttendees?.length > 1}
+					{@const allGuests = (data as any).allAttendees.filter((a: any) => a.depth > 0 && a.status !== 'declined')}
+					{@const confirmedGuests = allGuests.filter((a: any) => a.status === 'attending')}
+					{#if allGuests.length > 0}
+						<div class="flex flex-wrap gap-2 mb-4">
+							<a href={`mailto:?bcc=${allGuests.map((a: any) => a.email).join(',')}&subject=${encodeURIComponent(data.party.name)}`}
+								class="inline-flex items-center gap-1.5 font-heading text-xs font-semibold px-3 py-1.5 rounded-xl bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200"
+								data-testid="email-all-guests">
+								<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+								Email All Guests ({allGuests.length})
+							</a>
+							{#if confirmedGuests.length > 0 && confirmedGuests.length !== allGuests.length}
+								<a href={`mailto:?bcc=${confirmedGuests.map((a: any) => a.email).join(',')}&subject=${encodeURIComponent(data.party.name)}`}
+									class="inline-flex items-center gap-1.5 font-heading text-xs font-semibold px-3 py-1.5 rounded-xl bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200"
+									data-testid="email-confirmed-guests">
+									<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+									Email Confirmed ({confirmedGuests.length})
+								</a>
+							{/if}
 						</div>
-
-						<!-- Live email preview -->
-						<div class="mt-4 rounded-2xl overflow-hidden border border-white/5" style="background:#111111;">
-							<div class="px-4 py-3" style="max-width:480px;margin:0 auto;">
-								<div class="text-center mb-4">
-									<span class="text-xs font-bold tracking-widest" style="color:#e63b2e;letter-spacing:3px;">PLAYLIST PARTY</span>
-								</div>
-								<div class="rounded-2xl p-5" style="background:#1e1e1e;border:1px solid rgba(255,255,255,0.08);">
-									<h4 class="text-lg font-semibold mb-2" style="color:#e8e4e0;">You're Invited!</h4>
-									<div class="text-sm leading-relaxed" style="color:#a8a4a0;white-space:pre-line;">
-										{@html renderMarkdown(inviteMessage)}
-									</div>
-									<p class="text-xs mt-3" style="color:#706c68;">
-										This invite is just for you. Don't forward it!
-									</p>
-									<div class="text-center mt-4">
-										<span class="inline-block font-bold text-sm px-8 py-3 rounded-xl" style="background:#e63b2e;color:#ffffff;">
-											RSVP Now
-										</span>
-									</div>
-								</div>
-								<p class="text-center text-xs mt-4" style="color:#706c68;">
-									Made for parties worth remembering.
-								</p>
-							</div>
-						</div>
-
-						<form method="POST" action="?/sendTestEmail" use:enhance class="mt-3">
-							<input type="hidden" name="customInviteSubject" value={inviteSubject} />
-							<input type="hidden" name="customInviteMessage" value={inviteMessage} />
-							<button type="submit" data-testid="send-test-email-btn"
-								class="font-heading text-xs text-neon-cyan hover:text-neon-cyan/80 transition-colors">
-								Send Test Email
-							</button>
-						</form>
-						{#if form?.testEmailSent}
-							<p class="text-neon-mint text-xs font-heading mt-1" data-testid="test-email-success">Test email sent to your inbox!</p>
-						{/if}
-					</div>
+					{/if}
 				{/if}
 
 				{#if data.canInvite}
@@ -895,109 +712,6 @@
 								</button>
 							</div>
 						</div>
-					{/if}
-
-					{#if !bulkMode}
-					<form method="POST" action="?/sendInvite" use:enhance class="glass rounded-2xl p-5" data-testid="invite-form">
-						{#if data.isCreator}
-							<input type="hidden" name="customInviteSubject" value={inviteSubject} />
-							<input type="hidden" name="customInviteMessage" value={inviteMessage} />
-						{/if}
-						<div class="flex flex-col sm:flex-row gap-3 mb-3">
-							<div class="flex-1">
-								<label for="invite-name" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Friend's Name</label>
-								<input type="text" id="invite-name" name="name" required data-testid="invite-name"
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-									placeholder="Their name" />
-							</div>
-							<div class="flex-1">
-								<label for="invite-email" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Friend's Email</label>
-								<input type="email" id="invite-email" name="email" required data-testid="invite-email"
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-									placeholder="friend@email.com" />
-							</div>
-						</div>
-						<button type="submit" data-testid="send-invite-btn"
-							class="inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
-							<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-								<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
-							</svg>
-							Send Invite
-						</button>
-						{#if !data.isCreator}
-							<p class="text-neon-cyan font-heading font-semibold text-sm mt-3">
-								Each invite you send earns you +1 song slot!
-							</p>
-						{/if}
-					</form>
-					{/if}
-
-					{#if data.isCreator}
-						<button
-							type="button"
-							data-testid="bulk-toggle"
-							class="mt-3 font-heading text-xs font-semibold text-neon-cyan hover:text-neon-cyan/80 transition-colors"
-							onclick={() => bulkMode = !bulkMode}
-						>
-							{bulkMode ? 'Switch to single invite' : 'Bulk invite multiple people'}
-						</button>
-
-						{#if bulkMode}
-							{#if form?.bulkError}
-								<div class="mt-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
-									{form.bulkError}
-								</div>
-							{/if}
-
-							{#if form?.bulkResults}
-								<div class="mt-3 space-y-1.5" data-testid="bulk-results">
-									{#each form.bulkResults as result}
-										<div class="p-2.5 rounded-xl text-sm font-heading flex items-start gap-2 border {result.success ? 'bg-neon-mint/10 border-neon-mint/20 text-neon-mint' : 'bg-neon-pink/10 border-neon-pink/20 text-neon-pink'}">
-											<span class="flex-shrink-0 mt-0.5">{result.success ? '✓' : '✗'}</span>
-											<span>
-												{result.name} ({result.email})
-												{#if result.error}
-													— {result.error}
-												{/if}
-											</span>
-										</div>
-									{/each}
-								</div>
-							{/if}
-
-							<form method="POST" action="?/bulkInvite" use:enhance class="mt-3 glass rounded-2xl p-5" data-testid="bulk-invite-form">
-								<input type="hidden" name="customInviteSubject" value={inviteSubject} />
-								<input type="hidden" name="customInviteMessage" value={inviteMessage} />
-								<label for="bulk-text" class="block font-heading text-xs font-semibold text-text-secondary mb-1.5">
-									Paste names and emails, one per line
-								</label>
-								<textarea
-									id="bulk-text"
-									name="bulkText"
-									rows="6"
-									required
-									bind:value={bulkText}
-									data-testid="bulk-textarea"
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm font-mono resize-y"
-									placeholder={"John Doe john@example.com\nJane Smith <jane@example.com>\nBob, bob@test.com"}
-								></textarea>
-
-								{#if bulkParsed.length > 0}
-									<p class="text-neon-cyan text-xs font-heading mt-2" data-testid="bulk-preview-count">
-										{bulkParsed.length} {bulkParsed.length === 1 ? 'invite' : 'invites'} detected
-									</p>
-								{/if}
-
-								<button type="submit" data-testid="bulk-send-btn"
-									disabled={bulkParsed.length === 0}
-									class="mt-3 inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
-									<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-										<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
-									</svg>
-									Send {bulkParsed.length} {bulkParsed.length === 1 ? 'Invite' : 'Invites'}
-								</button>
-							</form>
-						{/if}
 					{/if}
 				{:else}
 					<div class="glass rounded-2xl p-5 text-center">
@@ -1249,93 +963,6 @@
 				</details>
 			{/if}
 
-			<!-- Creator: Send Announcement -->
-			{#if data.isCreator}
-				<details class="mt-8 group" open>
-					<summary class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none">
-						<svg class="w-4 h-4 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-						Send Announcement
-					</summary>
-
-					{#if form?.announcementError}
-						<div class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading">
-							{form.announcementError}
-						</div>
-					{/if}
-
-					{#if form?.announcementSent}
-						<div class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading" data-testid="announcement-sent-success">
-							Announcement sending to {form.announcementSent} {form.announcementSent === 1 ? 'guest' : 'guests'}!
-						</div>
-					{/if}
-
-					<form method="POST" action="?/sendAnnouncement" use:enhance class="glass rounded-2xl p-5 space-y-3" data-testid="announcement-form">
-						<div>
-							<label for="announcement-audience" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Send To</label>
-							<select id="announcement-audience" name="announcementAudience" data-testid="announcement-audience"
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm">
-								<option value="accepted">Accepted guests only</option>
-								<option value="pending">Pending guests only</option>
-								<option value="all">Accepted + pending guests</option>
-							</select>
-						</div>
-						<div>
-							<label for="announcement-subject" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Subject</label>
-							<input type="text" id="announcement-subject" name="announcementSubject" required maxlength="200"
-								data-testid="announcement-subject"
-								bind:value={announcementSubject}
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
-								placeholder="Party update!" />
-						</div>
-						<div>
-							<label for="announcement-message" class="block font-heading text-xs font-semibold text-text-secondary mb-1">Message</label>
-							<textarea id="announcement-message" name="announcementMessage" required maxlength="2000" rows="4"
-								data-testid="announcement-message"
-								bind:value={announcementMessage}
-								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-								placeholder="Write your message here... (Markdown supported)"
-							></textarea>
-							<p class="text-text-muted text-xs mt-1 ml-1">
-								Each guest's personal invite link is always included at the bottom of the email.
-							</p>
-						</div>
-
-						<!-- Preview -->
-						{#if announcementSubject || announcementMessage}
-							<details class="group/preview" open>
-								<summary class="text-xs font-heading font-semibold text-text-muted cursor-pointer select-none flex items-center gap-1">
-									<svg class="w-3 h-3 transition-transform group-open/preview:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-									Preview
-								</summary>
-								<div class="mt-2 rounded-xl overflow-hidden border border-neon-purple/15" data-testid="announcement-preview">
-									<div class="bg-[#111] p-4 text-center">
-										<span class="text-xs tracking-[3px] text-neon-pink font-bold">PLAYLIST PARTY</span>
-									</div>
-									<div class="bg-[#1e1e1e] p-4 text-sm" style="color: #a8a4a0;">
-										<p class="text-base font-bold mb-2" style="color: #e8e4e0;">Update from {data.party.name}</p>
-										<p class="mb-1">Hey Guest Name,</p>
-										{#if announcementMessage}
-											<div class="whitespace-pre-line mb-3">{@html renderMarkdown(announcementMessage)}</div>
-										{/if}
-										<div class="text-center mt-4">
-											<span class="inline-block bg-neon-pink text-white font-bold text-sm px-6 py-2.5 rounded-xl">Go to Party</span>
-										</div>
-									</div>
-								</div>
-							</details>
-						{/if}
-
-						<button type="submit" data-testid="send-announcement-btn"
-							class="inline-flex items-center gap-2 font-heading font-semibold text-sm px-5 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200">
-							<svg class="w-4 h-4 text-neon-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-								<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
-							</svg>
-							Send Announcement
-						</button>
-					</form>
-				</details>
-			{/if}
-
 			<!-- Creator: Settings -->
 			{#if data.isCreator}
 				<details class="mt-8 mb-8 group" open>
@@ -1401,7 +1028,6 @@
 					</form>
 				</details>
 			{/if}
-		{/if}
 		{/if}
 
 	</div>

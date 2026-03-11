@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 	const type = url.searchParams.get('type');
 
 	let filtered = emails;
-	if (to) filtered = filtered.filter((e) => e.to === to);
+	if (to) filtered = filtered.filter((e) => e.to.toLowerCase() === to.toLowerCase());
 	if (type) filtered = filtered.filter((e) => e.type === type);
 
 	return json({ emails: filtered });
