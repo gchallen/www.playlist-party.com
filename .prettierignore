@@ -1,0 +1,6 @@
+.svelte-kit
+build
+node_modules
+drizzle
+package-lock.json
+bun.lock
