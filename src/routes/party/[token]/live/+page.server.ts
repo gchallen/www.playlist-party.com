@@ -2,11 +2,8 @@ import { error, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
+import { hasPlaylistControl } from '$lib/server/roles';
 import type { PageServerLoad, Actions } from './$types';
-
-function isCreator(attendee: { depth: number; invitedBy: number | null }): boolean {
-	return attendee.depth === 0 && attendee.invitedBy === null;
-}
 
 export const load: PageServerLoad = async ({ params, platform }) => {
 	const db = await getDb(platform);
@@ -15,7 +12,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		where: eq(attendees.inviteToken, params.token)
 	});
 	if (!attendee) error(404, 'Not found');
-	if (!isCreator(attendee)) error(403, 'Only the party creator can access the DJ screen');
+	if (!hasPlaylistControl(attendee)) error(403, 'Only the party creator or DJs can access the DJ screen');
 
 	const party = await db.query.parties.findFirst({
 		where: eq(parties.id, attendee.partyId)
@@ -62,7 +59,7 @@ export const actions: Actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) error(404, 'Not found');
-		if (!isCreator(attendee)) error(403, 'Only the creator can stop party mode');
+		if (!hasPlaylistControl(attendee)) error(403, 'Only the creator or DJs can stop party mode');
 
 		await db.update(parties).set({ nowPlayingSongId: null }).where(eq(parties.id, attendee.partyId));
 

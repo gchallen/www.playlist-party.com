@@ -13,13 +13,10 @@ import {
 	canIssueInvitations
 } from '$lib/server/playlist';
 import { toSongInfo } from '$lib/server/invite-validation';
+import { isCreator, hasPlaylistControl } from '$lib/server/roles';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { pickRandomTracks } from '$lib/test-tracks';
 import type { PageServerLoad, Actions } from './$types';
-
-function isCreator(attendee: { depth: number; invitedBy: number | null }): boolean {
-	return attendee.depth === 0 && attendee.invitedBy === null;
-}
 
 type AttendeeStatus = 'pending' | 'declined' | 'attending' | 'unavailable';
 
@@ -57,6 +54,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	const creator = isCreator(attendee);
+	const playlistControl = hasPlaylistControl(attendee);
 	const isPending = !attendee.acceptedAt;
 	const attendeeStatus = getAttendeeStatus(attendee);
 
@@ -81,7 +79,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const invitesSent = myInvites.length;
 
 	const songsPerGuest = party.songsPerGuest ?? 1;
-	const maxSongs = computeMaxSongs(creator, invitesSent, songsPerGuest);
+	const maxSongs = computeMaxSongs(playlistControl, invitesSent, songsPerGuest);
 	const mySongs = allSongs.filter((s) => s.addedBy === attendee.id);
 
 	const canInvite = canIssueInvitations(
@@ -100,7 +98,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	// For own_tree: build set of attendee IDs in this attendee's tree
 	let treeIds: Set<number> | null = null;
-	if (attribution === 'own_tree' && !creator) {
+	if (attribution === 'own_tree' && !playlistControl) {
 		treeIds = new Set<number>([attendee.id]);
 		// Walk down: find all attendees invited by anyone in the tree
 		const queue = [attendee.id];
@@ -121,7 +119,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	// Build song list with conditional attribution
 	const songList = allSongs.map((s) => {
 		let addedByName: string | null = null;
-		if (creator) {
+		if (playlistControl) {
 			addedByName = attendeeMap.get(s.addedBy) || 'Unknown';
 		} else if (attribution === 'visible') {
 			addedByName = attendeeMap.get(s.addedBy) || 'Unknown';
@@ -168,6 +166,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			shareToken: attendee.shareToken
 		},
 		isCreator: creator,
+		hasPlaylistControl: playlistControl,
 		partyModeActive: !!party.nowPlayingSongId,
 		isPending,
 		attendeeStatus,
@@ -193,9 +192,11 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		invitesSent: !isPending ? invitesSent : null,
 		myInvites: !isPending
 			? myInvites.map((i) => ({
+					id: i.id,
 					name: i.name,
 					email: i.email,
 					accepted: !!i.acceptedAt,
+					isDj: i.isDj === 1,
 					status: getAttendeeStatus(i),
 					inviteToken: i.inviteToken
 				}))
@@ -208,6 +209,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					invitedBy: a.invitedBy,
 					depth: a.depth,
 					accepted: !!a.acceptedAt,
+					isDj: a.isDj === 1,
 					status: getAttendeeStatus(a)
 				}))
 			: null
@@ -396,14 +398,14 @@ export const actions = {
 		});
 		if (!party) return fail(404, { songError: 'Party not found' });
 
-		const creator = isCreator(attendee);
+		const plControl = hasPlaylistControl(attendee);
 
 		// Check slot limit
 		const allAttendees = await db.query.attendees.findMany({
 			where: eq(attendees.partyId, party.id)
 		});
 		const invitesSent = allAttendees.filter((a) => a.invitedBy === attendee.id).length;
-		const maxSongs = computeMaxSongs(creator, invitesSent, party.songsPerGuest ?? 1);
+		const maxSongs = computeMaxSongs(plControl, invitesSent, party.songsPerGuest ?? 1);
 		const mySongs = await db.query.songs.findMany({
 			where: and(eq(songs.partyId, party.id), eq(songs.addedBy, attendee.id))
 		});
@@ -431,8 +433,8 @@ export const actions = {
 		});
 		const targetDuration = computeTargetDuration(party.time, party.endTime);
 
-		if (creator) {
-			// Creator must remove songs manually to make space — no auto-drops
+		if (plControl) {
+			// Creator/DJ must remove songs manually to make space — no auto-drops
 			if (targetDuration !== null) {
 				const currentDuration = allSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
 				if (currentDuration + durationSeconds > targetDuration) {
@@ -589,7 +591,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can remove songs' });
+		if (!hasPlaylistControl(attendee)) return fail(403, { error: 'Only the creator or DJs can remove songs' });
 
 		const song = await db.query.songs.findFirst({
 			where: and(eq(songs.id, songId), eq(songs.partyId, attendee.partyId))
@@ -635,8 +637,8 @@ export const actions = {
 		const idx = allSongs.findIndex((s) => s.id === songId);
 		if (idx === -1) return fail(404, { error: 'Song not found' });
 
-		// Song must belong to this attendee, or attendee must be the creator
-		if (!isCreator(attendee) && allSongs[idx].addedBy !== attendee.id) {
+		// Song must belong to this attendee, or attendee must have playlist control
+		if (!hasPlaylistControl(attendee) && allSongs[idx].addedBy !== attendee.id) {
 			return fail(403, { error: 'You can only reorder your own songs' });
 		}
 		if (newPosition >= allSongs.length) return fail(400, { error: 'Invalid position' });
@@ -678,8 +680,8 @@ export const actions = {
 		const idx = allSongs.findIndex((s) => s.id === songId);
 		if (idx === -1) return fail(404, { error: 'Song not found' });
 
-		// Song must belong to this attendee, or attendee must be the creator
-		if (!isCreator(attendee) && allSongs[idx].addedBy !== attendee.id) {
+		// Song must belong to this attendee, or attendee must have playlist control
+		if (!hasPlaylistControl(attendee) && allSongs[idx].addedBy !== attendee.id) {
 			return fail(403, { error: 'You can only reorder your own songs' });
 		}
 
@@ -815,7 +817,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { songError: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { songError: 'Only the creator can distribute songs' });
+		if (!hasPlaylistControl(attendee)) return fail(403, { songError: 'Only the creator or DJs can distribute songs' });
 
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, attendee.partyId),
@@ -917,5 +919,31 @@ export const actions = {
 		}
 
 		return { devSongsAdded: tracks.length };
+	},
+
+	toggleDj: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendeeId = parseInt(data.get('attendeeId')?.toString() || '', 10);
+		if (isNaN(attendeeId)) return fail(400, { error: 'Invalid attendee ID' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can toggle DJ status' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.id, attendeeId), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { error: 'Attendee not found' });
+		if (isCreator(target)) return fail(400, { error: 'The creator cannot be made a DJ' });
+		if (!target.acceptedAt) return fail(400, { error: 'Only accepted attendees can be made DJs' });
+
+		const newValue = target.isDj === 1 ? 0 : 1;
+		await db.update(attendees).set({ isDj: newValue }).where(eq(attendees.id, target.id));
+
+		return { djToggled: target.name, isDj: newValue === 1 };
 	}
 } satisfies Actions;

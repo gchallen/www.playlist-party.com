@@ -1,0 +1,1 @@
+ALTER TABLE `attendees` ADD `is_dj` integer DEFAULT 0 NOT NULL;

@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { eq, and, sql } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { parties, attendees, songs, songLikes } from '$lib/server/db/schema';
+import { hasPlaylistControl } from '$lib/server/roles';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -72,9 +73,9 @@ export const POST: RequestHandler = async ({ params, platform, request }) => {
 	});
 	if (!attendee) error(404, 'Not found');
 
-	// Creator-only
-	if (attendee.depth !== 0 || attendee.invitedBy !== null) {
-		error(403, 'Only the party creator can control playback');
+	// Creator or DJ only
+	if (!hasPlaylistControl(attendee)) {
+		error(403, 'Only the party creator or DJs can control playback');
 	}
 
 	const party = await db.query.parties.findFirst({

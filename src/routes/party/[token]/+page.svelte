@@ -217,7 +217,7 @@
 
 	const maxSongs = $derived(data.maxSongs === -1 ? Infinity : (data.maxSongs ?? 0));
 	const slotsDisplay = $derived.by(() => {
-		if (data.isCreator) return 'unlimited';
+		if (data.hasPlaylistControl) return 'unlimited';
 		if (data.maxSongs == null) return '';
 		return `${data.songsUsed ?? 0} / ${maxSongs}`;
 	});
@@ -565,6 +565,39 @@
 						</a>
 					{/if}
 				</div>
+			{:else if data.hasPlaylistControl}
+				<!-- DJ bar (non-creator DJs) -->
+				<div class="mt-3 flex flex-wrap items-center gap-3 text-sm font-heading">
+					<span class="inline-flex items-center gap-1.5 text-neon-cyan font-semibold" data-testid="dj-badge">
+						<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+							><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" /></svg
+						>
+						DJ
+					</span>
+					<span class="text-text-muted">|</span>
+					{#if data.partyModeActive}
+						<a
+							href="/party/{data.attendee.inviteToken}/live"
+							class="inline-flex items-center gap-1.5 text-neon-pink font-semibold"
+						>
+							<span class="relative flex h-2 w-2">
+								<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-pink opacity-75"
+								></span>
+								<span class="relative inline-flex rounded-full h-2 w-2 bg-neon-pink"></span>
+							</span>
+							Party Mode Live!
+						</a>
+					{:else}
+						<a
+							href="/party/{data.attendee.inviteToken}/live"
+							data-testid="start-party-mode"
+							class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-neon-pink/10 text-neon-pink font-semibold hover:bg-neon-pink/20 transition-colors"
+						>
+							<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+							Start Party Mode
+						</a>
+					{/if}
+				</div>
 			{/if}
 
 			<!-- Unavailable banner -->
@@ -670,6 +703,16 @@
 							{form.declinedOnBehalf} marked as can't make it.
 						</div>
 					{/if}
+
+					{#if form?.djToggled}
+						<div
+							class="mb-3 p-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan text-sm font-heading"
+							data-testid="dj-toggled-success"
+						>
+							{form.djToggled}
+							{form.isDj ? 'is now a DJ' : 'is no longer a DJ'}.
+						</div>
+					{/if}
 					<!-- Invite list -->
 					{#if (data.myInvites?.length ?? 0) > 0}
 						<div class="space-y-2 mb-4">
@@ -699,6 +742,21 @@
 											</div>
 										</div>
 										<div class="flex items-center gap-2">
+											{#if data.isCreator && invite.status === 'attending'}
+												<form method="POST" action="?/toggleDj" use:enhance>
+													<input type="hidden" name="attendeeId" value={invite.id} />
+													<button
+														type="submit"
+														title={invite.isDj ? 'Remove DJ role' : 'Make DJ'}
+														data-testid="toggle-dj-btn"
+														class="text-sm font-heading font-semibold px-2 py-0.5 rounded-lg transition-colors {invite.isDj
+															? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/30'
+															: 'bg-surface-light text-text-muted border border-neon-purple/20 hover:text-neon-cyan hover:border-neon-cyan/30'}"
+													>
+														{invite.isDj ? 'DJ' : 'Make DJ'}
+													</button>
+												</form>
+											{/if}
 											{#if data.isCreator && (invite.status === 'pending' || invite.status === 'attending')}
 												<form method="POST" action="?/declineOnBehalf" use:enhance>
 													<input type="hidden" name="inviteToken" value={invite.inviteToken} />
@@ -864,7 +922,7 @@
 			{/if}
 
 			<!-- Add Song Form -->
-			{#if !data.isPending && data.attendeeStatus !== 'unavailable' && ((data.songsUsed ?? 0) < maxSongs || data.isCreator)}
+			{#if !data.isPending && data.attendeeStatus !== 'unavailable' && ((data.songsUsed ?? 0) < maxSongs || data.hasPlaylistControl)}
 				<div class="mt-4 glass rounded-2xl p-5">
 					<h3 class="font-heading font-semibold text-sm text-text-secondary mb-3">
 						Add a Song
@@ -964,7 +1022,7 @@
 			{/if}
 
 			<!-- My Songs (non-creator) -->
-			{#if !data.isCreator && (data.mySongs?.length ?? 0) > 0}
+			{#if !data.hasPlaylistControl && (data.mySongs?.length ?? 0) > 0}
 				<section class="mt-6">
 					<h2 class="font-heading text-lg font-bold gradient-text mb-3">Your Songs</h2>
 					<div class="glass rounded-2xl p-2 space-y-0.5">
@@ -987,7 +1045,7 @@
 					<NowPlayingCard
 						token={data.attendee.inviteToken}
 						isAccepted={data.attendeeStatus === 'attending'}
-						isCreator={data.isCreator}
+						isCreator={data.hasPlaylistControl}
 					/>
 				</div>
 			{/if}
@@ -1060,7 +1118,7 @@
 
 			<!-- Song List -->
 			<section class="mt-4">
-				{#if data.isCreator && localSongs.length >= 2}
+				{#if data.hasPlaylistControl && localSongs.length >= 2}
 					<div class="flex items-center justify-between mb-2">
 						<form method="POST" action="?/distributeSongs" use:enhance>
 							<button
@@ -1098,16 +1156,16 @@
 								isHost={song.isHost}
 								isPlaying={currentPlayingIndex === i && isActuallyPlaying}
 								onclick={() => playSong(i)}
-								showControls={data.isCreator || song.isMine}
-								showRemove={data.isCreator}
+								showControls={data.hasPlaylistControl || song.isMine}
+								showRemove={data.hasPlaylistControl}
 								songId={song.id}
 								canMoveUp={i > 0}
 								canMoveDown={i < localSongs.length - 1}
 								token={data.attendee.inviteToken}
 								comment={song.comment}
 								startTime={songStartTimes[i]}
-								isDraggable={data.isCreator || song.isMine}
-								isUnavailable={data.isCreator && song.isUnavailable}
+								isDraggable={data.hasPlaylistControl || song.isMine}
+								isUnavailable={data.hasPlaylistControl && song.isUnavailable}
 								ondragstart={(e) => handleDragStart(i, song.id, e)}
 								ondragover={(e) => handleDragOver(i, e)}
 								ondragend={handleDragEnd}
