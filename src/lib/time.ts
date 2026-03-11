@@ -59,6 +59,7 @@ export function formatTime(hhMM: string): string {
 	if (h === 0) h = 12;
 	else if (h > 12) h -= 12;
 
+	if (m === 0) return `${h} ${period}`;
 	return `${h}:${String(m).padStart(2, '0')} ${period}`;
 }
 
