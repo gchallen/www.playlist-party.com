@@ -4,7 +4,7 @@ import { parties, attendees } from '$lib/server/db/schema';
 import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { sendCreatorWelcomeEmail, sendEmailVerification } from '$lib/server/email';
 import { createSignedToken, verifySignedToken } from '$lib/server/hmac';
-import { checkEmailRateLimit, recordEmailSend } from '$lib/server/rate-limit';
+import { checkEmailRateLimit, checkIpRateLimit, recordEmailSend, getClientIp } from '$lib/server/rate-limit';
 import { parseFlexibleTime } from '$lib/time';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -104,7 +104,14 @@ export const actions = {
 		const email = data.get('email')?.toString()?.trim()?.toLowerCase();
 		if (!email) return fail(400, { verifyError: 'Email is required' });
 
-		// Rate limit check
+		const ip = getClientIp(request);
+
+		// Rate limit checks
+		const ipLimit = await checkIpRateLimit(db, ip);
+		if (!ipLimit.allowed) {
+			return fail(429, { verifyError: ipLimit.retryAfterMessage });
+		}
+
 		const rateLimit = await checkEmailRateLimit(db, email);
 		if (!rateLimit.allowed) {
 			return fail(429, { verifyError: rateLimit.retryAfterMessage });
@@ -125,7 +132,7 @@ export const actions = {
 
 		const verifyUrl = `${url.origin}/create?token=${token}`;
 		await sendEmailVerification(email, verifyUrl, platform);
-		await recordEmailSend(db, email, 'email_verification');
+		await recordEmailSend(db, email, 'email_verification', ip);
 
 		return { emailSent: true };
 	},
@@ -228,7 +235,7 @@ export const actions = {
 
 		const magicUrl = `${url.origin}/party/${inviteToken}`;
 		await sendCreatorWelcomeEmail(creatorEmail, createdBy, name, magicUrl, platform);
-		await recordEmailSend(db, creatorEmail, 'creator_welcome');
+		await recordEmailSend(db, creatorEmail, 'creator_welcome', getClientIp(request));
 
 		cookies.delete(VERIFY_COOKIE, { path: '/create' });
 		cookies.set(`pv_${inviteToken}`, '1', {

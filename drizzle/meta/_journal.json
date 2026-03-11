@@ -99,6 +99,13 @@
       "when": 1772822222660,
       "tag": "0013_known_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1773234526250,
+      "tag": "0014_stiff_valkyrie",
+      "breakpoints": true
     }
   ]
 }

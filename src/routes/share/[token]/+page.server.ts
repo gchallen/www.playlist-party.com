@@ -4,7 +4,7 @@ import { getDb } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
 import { generateInviteToken, generateShareToken } from '$lib/server/tokens';
 import { sendInviteEmail } from '$lib/server/email';
-import { recordEmailSend } from '$lib/server/rate-limit';
+import { recordEmailSend, getClientIp } from '$lib/server/rate-limit';
 import { computeTargetDuration } from '$lib/server/playlist';
 import { validateInvite, toSongInfo } from '$lib/server/invite-validation';
 import type { PageServerLoad, Actions } from './$types';
@@ -91,6 +91,8 @@ export const actions = {
 		});
 		const targetDuration = computeTargetDuration(party.time, party.endTime);
 
+		const ip = getClientIp(request);
+
 		const validationError = await validateInvite(
 			{
 				db,
@@ -98,7 +100,8 @@ export const actions = {
 				attendee: sharer,
 				allAttendees: allAttendeesList,
 				allSongs: allSongs.map(toSongInfo),
-				targetDuration
+				targetDuration,
+				ip
 			},
 			name,
 			email
@@ -132,7 +135,7 @@ export const actions = {
 			customMessage: party.customInviteMessage ?? '',
 			replyTo: party.creatorEmail
 		});
-		await recordEmailSend(db, email, 'invite');
+		await recordEmailSend(db, email, 'invite', ip);
 
 		return { joinSuccess: true };
 	}

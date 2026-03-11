@@ -131,9 +131,13 @@ export const emailSends = sqliteTable(
 		id: integer('id').primaryKey({ autoIncrement: true }),
 		recipientEmail: text('recipient_email').notNull(),
 		emailType: text('email_type').notNull(),
+		senderIp: text('sender_ip'),
 		sentAt: text('sent_at')
 			.notNull()
 			.$defaultFn(() => new Date().toISOString())
 	},
-	(table) => [index('idx_email_sends_recipient').on(table.recipientEmail)]
+	(table) => [
+		index('idx_email_sends_recipient').on(table.recipientEmail),
+		index('idx_email_sends_ip').on(table.senderIp)
+	]
 );

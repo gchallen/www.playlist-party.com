@@ -1,7 +1,7 @@
 import type { Database } from '$lib/server/db';
 import type { SongInfo } from '$lib/server/playlist';
 import { canIssueInvitations } from '$lib/server/playlist';
-import { checkEmailRateLimit } from '$lib/server/rate-limit';
+import { checkEmailRateLimit, checkIpRateLimit } from '$lib/server/rate-limit';
 
 export interface InviteValidationContext {
 	db: Database;
@@ -21,6 +21,7 @@ export interface InviteValidationContext {
 	allAttendees: Array<{ id: number; email: string; invitedBy: number | null; declinedAt: string | null }>;
 	allSongs: SongInfo[];
 	targetDuration: number | null;
+	ip: string;
 }
 
 export function toSongInfo(s: { id: number; addedBy: number; durationSeconds: number; addedAt: string }): SongInfo {
@@ -60,7 +61,12 @@ export async function validateInvite(
 		return 'This person has already been invited!';
 	}
 
-	// Rate limit check
+	// Rate limit checks
+	const ipLimit = await checkIpRateLimit(ctx.db, ctx.ip);
+	if (!ipLimit.allowed) {
+		return ipLimit.retryAfterMessage || 'Too many emails sent from this network';
+	}
+
 	const rateLimit = await checkEmailRateLimit(ctx.db, email);
 	if (!rateLimit.allowed) {
 		return rateLimit.retryAfterMessage || 'Too many emails sent to this address';
