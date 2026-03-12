@@ -167,6 +167,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		},
 		isCreator: creator,
 		hasPlaylistControl: playlistControl,
+		playlistLocked: !!party.playlistLockedAt,
 		partyModeActive: !!party.nowPlayingSongId,
 		isPending,
 		attendeeStatus,
@@ -234,6 +235,15 @@ export const actions = {
 			where: eq(parties.id, attendee.partyId)
 		});
 		if (!party) return fail(404, { error: 'Party not found' });
+
+		// If playlist is locked, accept without songs
+		if (party.playlistLockedAt) {
+			await db
+				.update(attendees)
+				.set({ name, acceptedAt: new Date().toISOString(), declinedAt: null })
+				.where(eq(attendees.id, attendee.id));
+			return { accepted: true };
+		}
 
 		const songsRequired = party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1;
 
@@ -397,6 +407,11 @@ export const actions = {
 			where: eq(parties.id, attendee.partyId)
 		});
 		if (!party) return fail(404, { songError: 'Party not found' });
+
+		// Lock guard: only creator can add songs when locked
+		if (party.playlistLockedAt && !isCreator(attendee)) {
+			return fail(403, { songError: 'Playlist is locked' });
+		}
 
 		const plControl = hasPlaylistControl(attendee);
 
@@ -629,6 +644,16 @@ export const actions = {
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
 
+		// Lock guard: only creator can move songs when locked
+		if (!isCreator(attendee)) {
+			const party = await db.query.parties.findFirst({
+				where: eq(parties.id, attendee.partyId)
+			});
+			if (party?.playlistLockedAt) {
+				return fail(403, { error: 'Playlist is locked' });
+			}
+		}
+
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, attendee.partyId),
 			orderBy: songs.position
@@ -671,6 +696,16 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
+
+		// Lock guard: only creator can reorder songs when locked
+		if (!isCreator(attendee)) {
+			const party = await db.query.parties.findFirst({
+				where: eq(parties.id, attendee.partyId)
+			});
+			if (party?.playlistLockedAt) {
+				return fail(403, { error: 'Playlist is locked' });
+			}
+		}
 
 		const allSongs = await db.query.songs.findMany({
 			where: eq(songs.partyId, attendee.partyId),
@@ -919,6 +954,37 @@ export const actions = {
 		}
 
 		return { devSongsAdded: tracks.length };
+	},
+
+	lockPlaylist: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can lock the playlist' });
+
+		await db
+			.update(parties)
+			.set({ playlistLockedAt: new Date().toISOString() })
+			.where(eq(parties.id, attendee.partyId));
+
+		return { playlistLocked: true };
+	},
+
+	unlockPlaylist: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can unlock the playlist' });
+
+		await db.update(parties).set({ playlistLockedAt: null }).where(eq(parties.id, attendee.partyId));
+
+		return { playlistUnlocked: true };
 	},
 
 	toggleDj: async ({ params, request, platform }) => {

@@ -379,10 +379,16 @@
 		{:else if data.isPending}
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8">
 				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">You're Invited!</h2>
-				<p class="text-text-secondary mb-6 font-heading text-sm">
-					Accept your invitation by adding {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} to the
-					playlist. {songsRequiredToRsvp === 1 ? 'Your track is your RSVP!' : 'Your tracks are your RSVP!'}
-				</p>
+				{#if data.playlistLocked}
+					<p class="text-text-secondary mb-6 font-heading text-sm">
+						The playlist is currently locked — you can add songs later if the host unlocks it.
+					</p>
+				{:else}
+					<p class="text-text-secondary mb-6 font-heading text-sm">
+						Accept your invitation by adding {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} to the
+						playlist. {songsRequiredToRsvp === 1 ? 'Your track is your RSVP!' : 'Your tracks are your RSVP!'}
+					</p>
+				{/if}
 
 				{#if form?.error}
 					<div
@@ -409,82 +415,90 @@
 						/>
 					</div>
 
-					{#each rsvpSongs as song, i (i)}
-						<div class="space-y-3 {i > 0 ? 'pt-3 border-t border-neon-purple/10' : ''}">
-							{#if songsRequiredToRsvp > 1}
-								<p class="font-heading text-sm font-semibold text-neon-cyan">Song {i + 1}</p>
-							{/if}
-							<div>
-								<label for="youtubeUrl_{i}" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5">
-									{songsRequiredToRsvp > 1 ? '' : 'Your Song'}
-									<svg class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor"
-										><path
-											d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
-										/></svg
-									>
-								</label>
-								<input
-									type="url"
-									id="youtubeUrl_{i}"
-									name="youtubeUrl_{i}"
-									required
-									bind:value={song.youtubeUrl}
-									data-testid={i === 0 ? 'youtube-url' : `youtube-url-${i}`}
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
-									placeholder="Search YouTube, copy the link, paste it here"
-								/>
-								{#if i === 0}
-									<p class="text-text-muted text-xs mt-1.5 ml-1">
-										Find a song on <a
-											href="https://youtube.com"
-											target="_blank"
-											rel="noopener"
-											class="text-neon-cyan hover:underline">youtube.com</a
-										>, copy its URL, and paste it above
-									</p>
+					{#if !data.playlistLocked}
+						{#each rsvpSongs as song, i (i)}
+							<div class="space-y-3 {i > 0 ? 'pt-3 border-t border-neon-purple/10' : ''}">
+								{#if songsRequiredToRsvp > 1}
+									<p class="font-heading text-sm font-semibold text-neon-cyan">Song {i + 1}</p>
 								{/if}
-							</div>
-
-							{#if song.durationSeconds}
-								<div
-									class="flex items-center gap-3 p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20"
-									data-testid={i === 0 ? 'duration-display' : `duration-display-${i}`}
-								>
-									<span class="font-heading text-sm text-text-secondary">
-										Duration: <span class="text-neon-cyan font-semibold"
-											>{formatShortDuration(song.durationSeconds)}</span
+								<div>
+									<label
+										for="youtubeUrl_{i}"
+										class="block font-heading text-sm font-semibold text-text-secondary mb-1.5"
+									>
+										{songsRequiredToRsvp > 1 ? '' : 'Your Song'}
+										<svg
+											class="inline-block w-4 h-4 text-red-500 -mt-0.5 ml-0.5"
+											viewBox="0 0 24 24"
+											fill="currentColor"
+											><path
+												d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"
+											/></svg
 										>
-									</span>
+									</label>
+									<input
+										type="url"
+										id="youtubeUrl_{i}"
+										name="youtubeUrl_{i}"
+										required
+										bind:value={song.youtubeUrl}
+										data-testid={i === 0 ? 'youtube-url' : `youtube-url-${i}`}
+										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors"
+										placeholder="Search YouTube, copy the link, paste it here"
+									/>
+									{#if i === 0}
+										<p class="text-text-muted text-xs mt-1.5 ml-1">
+											Find a song on <a
+												href="https://youtube.com"
+												target="_blank"
+												rel="noopener"
+												class="text-neon-cyan hover:underline">youtube.com</a
+											>, copy its URL, and paste it above
+										</p>
+									{/if}
 								</div>
-							{/if}
 
-							<div>
-								<label for="comment_{i}" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5"
-									>Comment <span class="text-text-muted font-normal">(optional)</span></label
-								>
-								<textarea
-									id="comment_{i}"
-									name="comment_{i}"
-									maxlength={MAX_COMMENT_LENGTH}
-									rows="2"
-									bind:value={song.comment}
-									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
-									placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"
-								></textarea>
+								{#if song.durationSeconds}
+									<div
+										class="flex items-center gap-3 p-3 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20"
+										data-testid={i === 0 ? 'duration-display' : `duration-display-${i}`}
+									>
+										<span class="font-heading text-sm text-text-secondary">
+											Duration: <span class="text-neon-cyan font-semibold"
+												>{formatShortDuration(song.durationSeconds)}</span
+											>
+										</span>
+									</div>
+								{/if}
+
+								<div>
+									<label for="comment_{i}" class="block font-heading text-sm font-semibold text-text-secondary mb-1.5"
+										>Comment <span class="text-text-muted font-normal">(optional)</span></label
+									>
+									<textarea
+										id="comment_{i}"
+										name="comment_{i}"
+										maxlength={MAX_COMMENT_LENGTH}
+										rows="2"
+										bind:value={song.comment}
+										class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+										placeholder="Why this song? Supports **bold**, *italic*, and [links](url)"
+									></textarea>
+								</div>
+
+								<input type="hidden" name="durationSeconds_{i}" value={song.durationSeconds || ''} />
 							</div>
+						{/each}
 
-							<input type="hidden" name="durationSeconds_{i}" value={song.durationSeconds || ''} />
-						</div>
-					{/each}
-
-					{#if dev}
-						<button
-							type="button"
-							onclick={randomFillRsvp}
-							class="w-full font-heading font-bold text-sm py-2.5 rounded-xl bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-all duration-200"
-						>
-							[Dev] Random Fill
-						</button>
+						{#if dev}
+							<button
+								type="button"
+								onclick={randomFillRsvp}
+								class="w-full font-heading font-bold text-sm py-2.5 rounded-xl bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-all duration-200"
+							>
+								[Dev] Random Fill
+							</button>
+						{/if}
 					{/if}
 
 					<button
@@ -492,7 +506,11 @@
 						data-testid="accept-btn"
 						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300"
 					>
-						Accept & Add {songsRequiredToRsvp === 1 ? 'Song' : `${songsRequiredToRsvp} Songs`}
+						{#if data.playlistLocked}
+							Accept Invitation
+						{:else}
+							Accept & Add {songsRequiredToRsvp === 1 ? 'Song' : `${songsRequiredToRsvp} Songs`}
+						{/if}
 					</button>
 				</form>
 
@@ -931,7 +949,7 @@
 			{/if}
 
 			<!-- Add Song Form -->
-			{#if !data.isPending && data.attendeeStatus !== 'unavailable' && ((data.songsUsed ?? 0) < maxSongs || data.hasPlaylistControl)}
+			{#if !data.isPending && data.attendeeStatus !== 'unavailable' && ((data.songsUsed ?? 0) < maxSongs || data.hasPlaylistControl) && (data.isCreator || !data.playlistLocked)}
 				<div class="mt-4 glass rounded-2xl p-5">
 					<h3 class="font-heading font-semibold text-sm text-text-secondary mb-3">
 						Add a Song
@@ -1127,8 +1145,19 @@
 
 			<!-- Song List -->
 			<section class="mt-4">
-				{#if (data.hasPlaylistControl && localSongs.length >= 2) || youtubePlaylistUrl}
+				{#if (data.hasPlaylistControl && localSongs.length >= 2) || youtubePlaylistUrl || data.playlistLocked}
 					<div class="flex items-center gap-2 mb-2">
+						{#if data.playlistLocked}
+							<span
+								data-testid="playlist-locked-badge"
+								class="inline-flex items-center gap-1 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/20"
+							>
+								<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+									><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg
+								>
+								Playlist locked
+							</span>
+						{/if}
 						{#if data.hasPlaylistControl && localSongs.length >= 2}
 							<form method="POST" action="?/distributeSongs" use:enhance>
 								<button
@@ -1184,15 +1213,15 @@
 								isHost={song.isHost}
 								isPlaying={currentPlayingIndex === i && isActuallyPlaying}
 								onclick={() => playSong(i)}
-								showControls={data.hasPlaylistControl || song.isMine}
-								showRemove={data.hasPlaylistControl}
+								showControls={(data.hasPlaylistControl || song.isMine) && (data.isCreator || !data.playlistLocked)}
+								showRemove={data.hasPlaylistControl && (data.isCreator || !data.playlistLocked)}
 								songId={song.id}
 								canMoveUp={i > 0}
 								canMoveDown={i < localSongs.length - 1}
 								token={data.attendee.inviteToken}
 								comment={song.comment}
 								startTime={songStartTimes[i]}
-								isDraggable={data.hasPlaylistControl || song.isMine}
+								isDraggable={(data.hasPlaylistControl || song.isMine) && (data.isCreator || !data.playlistLocked)}
 								isUnavailable={data.hasPlaylistControl && song.isUnavailable}
 								ondragstart={(e) => handleDragStart(i, song.id, e)}
 								ondragover={(e) => handleDragOver(i, e)}
@@ -1352,6 +1381,39 @@
 							Save Settings
 						</button>
 					</form>
+
+					<!-- Lock/Unlock Playlist -->
+					<div class="mt-4 glass rounded-2xl p-5">
+						<h4 class="font-heading text-xs font-semibold text-text-secondary mb-2">Playlist Lock</h4>
+						<p class="text-text-muted text-xs mb-3">Prevents guests from adding or reordering songs</p>
+						{#if data.playlistLocked}
+							<form method="POST" action="?/unlockPlaylist" use:enhance>
+								<button
+									type="submit"
+									data-testid="unlock-playlist-btn"
+									class="inline-flex items-center gap-1.5 font-heading font-semibold text-sm px-4 py-2.5 rounded-xl bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/20 hover:border-neon-yellow/40 hover:bg-neon-yellow/20 transition-all duration-200"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" /></svg
+									>
+									Unlock Playlist
+								</button>
+							</form>
+						{:else}
+							<form method="POST" action="?/lockPlaylist" use:enhance>
+								<button
+									type="submit"
+									data-testid="lock-playlist-btn"
+									class="inline-flex items-center gap-1.5 font-heading font-semibold text-sm px-4 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg
+									>
+									Lock Playlist
+								</button>
+							</form>
+						{/if}
+					</div>
 				</details>
 			{/if}
 		{/if}

@@ -20,6 +20,7 @@ export const parties = sqliteTable('parties', {
 	customInviteSubject: text('custom_invite_subject'),
 	customInviteMessage: text('custom_invite_message'),
 	nowPlayingSongId: integer('now_playing_song_id'),
+	playlistLockedAt: text('playlist_locked_at'),
 	createdAt: text('created_at')
 		.notNull()
 		.$defaultFn(() => new Date().toISOString())

@@ -1,0 +1,1 @@
+ALTER TABLE `parties` ADD `playlist_locked_at` text;
