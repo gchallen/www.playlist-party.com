@@ -8,13 +8,15 @@ type YTNamespace = { Player: new (...args: any[]) => any; [key: string]: unknown
 
 let apiPromise: Promise<YTNamespace> | null = null;
 
-const win = window as unknown as {
+type YTWindow = {
 	YT?: YTNamespace;
 	onYouTubeIframeAPIReady?: (() => void) | null;
 };
 
 export function loadYouTubeIframeApi(): Promise<YTNamespace> {
 	if (apiPromise) return apiPromise;
+
+	const win = window as unknown as YTWindow;
 
 	apiPromise = new Promise((resolve) => {
 		if (win.YT?.Player) {
