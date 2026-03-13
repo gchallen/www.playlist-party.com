@@ -2,12 +2,14 @@
 	import { dev } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/stores';
 	import PartyHeader from '$lib/components/PartyHeader.svelte';
 	import SongCard from '$lib/components/SongCard.svelte';
 	import YouTubePlayer from '$lib/components/YouTubePlayer.svelte';
 	import PlayerControls from '$lib/components/PlayerControls.svelte';
 	import InviteTree, { type TreeNode } from '$lib/components/InviteTree.svelte';
 	import NowPlayingCard from '$lib/components/NowPlayingCard.svelte';
+	import CopyButton from '$lib/components/CopyButton.svelte';
 	import { extractYouTubeId } from '$lib/youtube';
 	import { MAX_COMMENT_LENGTH } from '$lib/comment';
 	import { computeSongStartTimes } from '$lib/time';
@@ -911,7 +913,7 @@
 									<input
 										type="text"
 										readonly
-										value={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${data.attendee.shareToken}`}
+										value={`${$page.url.origin}/share/${data.attendee.shareToken}`}
 										data-testid="share-link-input"
 										class="flex-1 bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary text-sm select-all"
 									/>
@@ -1410,6 +1412,101 @@
 										><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg
 									>
 									Lock Playlist
+								</button>
+							</form>
+						{/if}
+					</div>
+
+					<!-- Public Feed -->
+					<div class="mt-4 glass rounded-2xl p-5">
+						<h4 class="font-heading text-xs font-semibold text-text-secondary mb-2">Public Feed</h4>
+						{#if data.party.publishedAt}
+							<p class="text-text-muted text-xs mb-3">Your playlist is visible on the homepage</p>
+
+							<!-- Public link -->
+							<div class="flex items-center gap-2 mb-4">
+								<CopyButton text="{$page.url.origin}/public/{data.party.publicToken}" label="Copy public link" />
+							</div>
+
+							<!-- Visibility toggles -->
+							<form method="POST" action="?/updatePublicVisibility" use:enhance>
+								<div class="space-y-2 mb-3">
+									<label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+										<input
+											type="checkbox"
+											name="publicShowHost"
+											checked={!!data.party.publicShowHost}
+											class="accent-neon-pink"
+										/>
+										Show host name
+									</label>
+									<label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+										<input
+											type="checkbox"
+											name="publicShowGuestCount"
+											checked={!!data.party.publicShowGuestCount}
+											class="accent-neon-pink"
+										/>
+										Show guest count
+									</label>
+									<label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+										<input
+											type="checkbox"
+											name="publicShowTime"
+											checked={!!data.party.publicShowTime}
+											class="accent-neon-pink"
+										/>
+										Show time
+									</label>
+									<label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+										<input
+											type="checkbox"
+											name="publicShowLocation"
+											checked={!!data.party.publicShowLocation}
+											class="accent-neon-pink"
+										/>
+										Show location
+									</label>
+									<label class="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+										<input
+											type="checkbox"
+											name="publicShowDescription"
+											checked={!!data.party.publicShowDescription}
+											class="accent-neon-pink"
+										/>
+										Show description
+									</label>
+								</div>
+								<button
+									type="submit"
+									class="font-heading font-semibold text-sm px-4 py-2 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200"
+								>
+									Save Visibility
+								</button>
+							</form>
+
+							<!-- Unpublish -->
+							<form method="POST" action="?/unpublishParty" use:enhance class="mt-3">
+								<button
+									type="submit"
+									class="font-heading font-semibold text-sm px-4 py-2 rounded-xl text-text-muted border border-neon-purple/10 hover:border-neon-pink/30 hover:text-neon-pink transition-all duration-200"
+								>
+									Unpublish
+								</button>
+							</form>
+						{:else}
+							<p class="text-text-muted text-xs mb-3">Share your playlist publicly on the homepage</p>
+							<form method="POST" action="?/publishParty" use:enhance>
+								<button
+									type="submit"
+									class="inline-flex items-center gap-1.5 font-heading font-semibold text-sm px-4 py-2.5 rounded-xl bg-surface-light text-text-primary border border-neon-purple/20 hover:border-neon-purple/40 hover:bg-surface-hover transition-all duration-200"
+								>
+									<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+										><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path
+											d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"
+										/></svg
+									>
+									Publish to Feed
 								</button>
 							</form>
 						{/if}

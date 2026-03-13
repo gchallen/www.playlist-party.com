@@ -3,7 +3,7 @@ import { error, fail } from '@sveltejs/kit';
 import { eq, and } from 'drizzle-orm';
 import { getDb } from '$lib/server/db';
 import { parties, attendees, songs } from '$lib/server/db/schema';
-import { generateShareToken } from '$lib/server/tokens';
+import { generateShareToken, generatePublicToken } from '$lib/server/tokens';
 import { extractYouTubeId } from '$lib/youtube';
 import { fetchYouTubeMetadata } from '$lib/server/youtube';
 import {
@@ -157,7 +157,14 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
 			songsPerGuest: party.songsPerGuest ?? 1,
 			songsRequiredToRsvp: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
-			songAttribution: party.songAttribution
+			songAttribution: party.songAttribution,
+			publishedAt: creator ? party.publishedAt : undefined,
+			publicToken: creator ? party.publicToken : undefined,
+			publicShowHost: creator ? party.publicShowHost : undefined,
+			publicShowGuestCount: creator ? party.publicShowGuestCount : undefined,
+			publicShowTime: creator ? party.publicShowTime : undefined,
+			publicShowLocation: creator ? party.publicShowLocation : undefined,
+			publicShowDescription: creator ? party.publicShowDescription : undefined
 		},
 		attendee: {
 			name: attendee.name,
@@ -1011,5 +1018,69 @@ export const actions = {
 		await db.update(attendees).set({ isDj: newValue }).where(eq(attendees.id, target.id));
 
 		return { djToggled: target.name, isDj: newValue === 1 };
+	},
+
+	publishParty: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can publish the party' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+
+		const updates: Record<string, unknown> = {
+			publishedAt: new Date().toISOString()
+		};
+		if (!party.publicToken) {
+			updates.publicToken = generatePublicToken();
+		}
+
+		await db.update(parties).set(updates).where(eq(parties.id, party.id));
+
+		return { published: true };
+	},
+
+	unpublishParty: async ({ params, platform }) => {
+		const db = await getDb(platform);
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can unpublish the party' });
+
+		await db.update(parties).set({ publishedAt: null }).where(eq(parties.id, attendee.partyId));
+
+		return { unpublished: true };
+	},
+
+	updatePublicVisibility: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can update visibility' });
+
+		await db
+			.update(parties)
+			.set({
+				publicShowHost: data.get('publicShowHost') ? 1 : 0,
+				publicShowGuestCount: data.get('publicShowGuestCount') ? 1 : 0,
+				publicShowTime: data.get('publicShowTime') ? 1 : 0,
+				publicShowLocation: data.get('publicShowLocation') ? 1 : 0,
+				publicShowDescription: data.get('publicShowDescription') ? 1 : 0
+			})
+			.where(eq(parties.id, attendee.partyId));
+
+		return { visibilityUpdated: true };
 	}
 } satisfies Actions;

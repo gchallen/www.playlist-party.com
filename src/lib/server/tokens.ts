@@ -7,3 +7,7 @@ export function generateInviteToken(): string {
 export function generateShareToken(): string {
 	return nanoid(21);
 }
+
+export function generatePublicToken(): string {
+	return nanoid(21);
+}

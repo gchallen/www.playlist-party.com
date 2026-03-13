@@ -1,4 +1,9 @@
 <script lang="ts">
+	import { formatTime } from '$lib/time';
+	import type { PageProps } from './$types';
+
+	let { data }: PageProps = $props();
+
 	const eqBars = Array.from({ length: 30 }, (_, i) => ({
 		height: 60 + ((i * 7 + i * i * 2) % 120),
 		delay: (i * 0.08) % 0.8,
@@ -72,6 +77,81 @@
 		</div>
 	</section>
 
+	<!-- Live Parties Feed -->
+	{#if data.feed.length > 0}
+		<section class="relative z-10 max-w-4xl mx-auto px-4 pb-16">
+			<h2 class="font-heading font-bold text-2xl md:text-3xl text-text-primary text-center mb-8">Live Parties</h2>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				{#each data.feed as party (party.publicToken)}
+					<a
+						href="/public/{party.publicToken}"
+						class="feed-card glass rounded-2xl p-5 block transition-all duration-200 hover:scale-[1.02]"
+					>
+						<h3 class="font-heading font-bold text-lg text-text-primary truncate">{party.name}</h3>
+						<div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-text-secondary">
+							<span class="flex items-center gap-1">
+								<svg
+									class="w-3.5 h-3.5 text-neon-purple"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg
+								>
+								{party.date}{#if party.time}<span class="text-text-muted">&nbsp;at {formatTime(party.time)}</span>{/if}
+							</span>
+							{#if party.hostName}
+								<span class="flex items-center gap-1">
+									<svg
+										class="w-3.5 h-3.5 text-neon-mint"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg
+									>
+									{party.hostName}
+								</span>
+							{/if}
+							{#if party.guestCount !== null}
+								<span class="flex items-center gap-1">
+									<svg
+										class="w-3.5 h-3.5 text-neon-cyan"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path
+											d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+										/></svg
+									>
+									{party.guestCount}
+								</span>
+							{/if}
+						</div>
+						{#if party.artists.length > 0}
+							<p class="mt-2.5 text-xs text-text-muted truncate">
+								{party.artists.join(', ')}{#if party.moreArtistCount > 0}
+									<span class="text-neon-purple">+{party.moreArtistCount} more</span>{/if}
+							</p>
+						{/if}
+						<div class="mt-2.5">
+							<span class="inline-flex items-center gap-1 text-xs font-heading font-semibold text-neon-pink">
+								<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+									><path
+										d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"
+									/></svg
+								>
+								{party.songCount}
+								{party.songCount === 1 ? 'song' : 'songs'}
+							</span>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
 	<!-- How it works -->
 	<section class="relative z-10 max-w-3xl mx-auto px-4 pb-24">
 		<div class="space-y-10">
@@ -135,5 +215,17 @@
 	:global(:root[data-theme='dark']) .cta-btn:hover {
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		transform: translateY(-2px);
+	}
+
+	.feed-card {
+		border: 1px solid rgba(0, 0, 0, 0.06);
+	}
+
+	:global(:root[data-theme='dark']) .feed-card {
+		border-color: rgba(255, 255, 255, 0.06);
+	}
+
+	.feed-card:hover {
+		border-color: var(--color-neon-purple);
 	}
 </style>

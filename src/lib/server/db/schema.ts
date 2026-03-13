@@ -1,30 +1,41 @@
 import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 
-export const parties = sqliteTable('parties', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	name: text('name').notNull(),
-	description: text('description'),
-	date: text('date').notNull(),
-	time: text('time'),
-	endTime: text('end_time'),
-	location: text('location'),
-	locationUrl: text('location_url'),
-	createdBy: text('created_by').notNull(),
-	creatorEmail: text('creator_email').notNull(),
-	maxDepth: integer('max_depth'),
-	maxAttendees: integer('max_attendees').notNull(),
-	maxInvitesPerGuest: integer('max_invites_per_guest'),
-	songsPerGuest: integer('songs_per_guest').notNull().default(1),
-	songsRequiredToRsvp: integer('songs_required_to_rsvp'),
-	songAttribution: text('song_attribution').notNull().default('hidden'),
-	customInviteSubject: text('custom_invite_subject'),
-	customInviteMessage: text('custom_invite_message'),
-	nowPlayingSongId: integer('now_playing_song_id'),
-	playlistLockedAt: text('playlist_locked_at'),
-	createdAt: text('created_at')
-		.notNull()
-		.$defaultFn(() => new Date().toISOString())
-});
+export const parties = sqliteTable(
+	'parties',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		name: text('name').notNull(),
+		description: text('description'),
+		date: text('date').notNull(),
+		time: text('time'),
+		endTime: text('end_time'),
+		location: text('location'),
+		locationUrl: text('location_url'),
+		createdBy: text('created_by').notNull(),
+		creatorEmail: text('creator_email').notNull(),
+		maxDepth: integer('max_depth'),
+		maxAttendees: integer('max_attendees').notNull(),
+		maxInvitesPerGuest: integer('max_invites_per_guest'),
+		songsPerGuest: integer('songs_per_guest').notNull().default(1),
+		songsRequiredToRsvp: integer('songs_required_to_rsvp'),
+		songAttribution: text('song_attribution').notNull().default('hidden'),
+		customInviteSubject: text('custom_invite_subject'),
+		customInviteMessage: text('custom_invite_message'),
+		nowPlayingSongId: integer('now_playing_song_id'),
+		playlistLockedAt: text('playlist_locked_at'),
+		publishedAt: text('published_at'),
+		publicToken: text('public_token', { length: 21 }),
+		publicShowHost: integer('public_show_host').notNull().default(1),
+		publicShowGuestCount: integer('public_show_guest_count').notNull().default(1),
+		publicShowTime: integer('public_show_time').notNull().default(1),
+		publicShowLocation: integer('public_show_location').notNull().default(0),
+		publicShowDescription: integer('public_show_description').notNull().default(0),
+		createdAt: text('created_at')
+			.notNull()
+			.$defaultFn(() => new Date().toISOString())
+	},
+	(table) => [uniqueIndex('parties_public_token_idx').on(table.publicToken)]
+);
 
 export const attendees = sqliteTable(
 	'attendees',
