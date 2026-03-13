@@ -21,6 +21,12 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		orderBy: songs.position
 	});
 
+	// Find the creator attendee
+	const creator = await db.query.attendees.findFirst({
+		where: sql`${attendees.partyId} = ${party.id} AND ${attendees.depth} = 0 AND ${attendees.invitedBy} IS NULL`
+	});
+	const hostId = creator?.id ?? null;
+
 	const songList = allSongs.map((s) => ({
 		youtubeId: s.youtubeId,
 		youtubeTitle: s.youtubeTitle,
@@ -28,17 +34,12 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		youtubeChannelName: s.youtubeChannelName,
 		durationSeconds: s.durationSeconds,
 		position: s.position,
-		comment: s.comment
+		comment: s.comment,
+		isHost: s.addedBy === hostId
 	}));
 
 	// Conditionally load details based on visibility flags
-	let hostName: string | null = null;
-	if (party.publicShowHost) {
-		const creator = await db.query.attendees.findFirst({
-			where: sql`${attendees.partyId} = ${party.id} AND ${attendees.depth} = 0 AND ${attendees.invitedBy} IS NULL`
-		});
-		if (creator) hostName = abbreviateName(creator.name);
-	}
+	const hostName = party.publicShowHost && creator ? abbreviateName(creator.name) : null;
 
 	let guestCount: number | null = null;
 	if (party.publicShowGuestCount) {

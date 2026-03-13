@@ -34,6 +34,15 @@
 		)
 	);
 
+	const youtubePlaylistUrl = $derived(
+		data.songs.length > 0
+			? `https://www.youtube.com/watch_videos?video_ids=${data.songs
+					.slice(0, 50)
+					.map((s) => s.youtubeId)
+					.join(',')}`
+			: null
+	);
+
 	const currentPlaylistTime = $derived(() => {
 		if (currentPlayingIndex === null) return 0;
 		let t = 0;
@@ -143,6 +152,23 @@
 		{/if}
 	</div>
 
+	{#if youtubePlaylistUrl}
+		<a
+			href={youtubePlaylistUrl}
+			target="_blank"
+			rel="noopener"
+			class="inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-3 py-1.5 rounded-lg bg-surface-light text-text-secondary border border-neon-purple/20 hover:border-neon-purple/40 hover:text-text-primary transition-all duration-200"
+			title="Open playlist on YouTube"
+		>
+			<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+				><path
+					d="M21.582 6.186a2.506 2.506 0 0 0-1.768-1.768C18.254 4 12 4 12 4s-6.254 0-7.814.418A2.506 2.506 0 0 0 2.418 6.186C2 7.746 2 12 2 12s0 4.254.418 5.814a2.506 2.506 0 0 0 1.768 1.768C5.746 20 12 20 12 20s6.254 0 7.814-.418a2.506 2.506 0 0 0 1.768-1.768C22 16.254 22 12 22 12s0-4.254-.418-5.814zM10 15.464V8.536L16 12l-6 3.464z"
+				/></svg
+			>
+			Play on YouTube{#if data.songs.length > 50}&nbsp;(first 50){/if}
+		</a>
+	{/if}
+
 	{#if data.songs.length > 0}
 		<!-- YouTube Player -->
 		<YouTubePlayer
@@ -193,6 +219,7 @@
 					channelName={song.youtubeChannelName ?? ''}
 					position={i + 1}
 					comment={song.comment}
+					isHost={song.isHost}
 					isPlaying={currentPlayingIndex === i}
 					startTime={startTimes[i] || null}
 					onclick={() => playSong(i)}
