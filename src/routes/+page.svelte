@@ -79,8 +79,8 @@
 
 	<!-- Live Parties Feed -->
 	{#if data.feed.length > 0}
-		<section class="relative z-10 max-w-4xl mx-auto px-4 pb-16">
-			<h2 class="font-heading font-bold text-2xl md:text-3xl text-text-primary text-center mb-8">Live Parties</h2>
+		<section class="relative z-10 max-w-6xl mx-auto px-4 pb-16">
+			<h2 class="font-heading font-bold text-2xl md:text-3xl text-text-primary text-center mb-8">Playlist Parties</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{#each data.feed as party (party.publicToken)}
 					<a
@@ -130,9 +130,8 @@
 							{/if}
 						</div>
 						{#if party.artists.length > 0}
-							<p class="mt-2.5 text-xs text-text-muted truncate">
-								{party.artists.join(', ')}{#if party.moreArtistCount > 0}
-									<span class="text-neon-purple">+{party.moreArtistCount} more</span>{/if}
+							<p class="mt-2.5 text-xs text-text-muted line-clamp-3">
+								{party.artists.join(', ')}
 							</p>
 						{/if}
 						<div class="mt-2.5">

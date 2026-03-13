@@ -28,9 +28,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 			for (const s of partySongs) {
 				if (s.youtubeChannelName) artistSet.add(s.youtubeChannelName);
 			}
-			const allArtists = [...artistSet];
-			const displayArtists = allArtists.slice(0, 5);
-			const moreCount = allArtists.length - displayArtists.length;
+			const allArtists = [...artistSet].sort((a, b) => a.localeCompare(b));
 
 			// Host name (creator = depth 0, invitedBy null)
 			let hostName: string | null = null;
@@ -57,8 +55,7 @@ export const load: PageServerLoad = async ({ platform }) => {
 				hostName,
 				guestCount,
 				songCount: partySongs.length,
-				artists: displayArtists,
-				moreArtistCount: moreCount,
+				artists: allArtists,
 				publicToken: party.publicToken!
 			};
 		})
