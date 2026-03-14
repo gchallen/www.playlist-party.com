@@ -45,7 +45,14 @@ export const load: PageServerLoad = async ({ platform }) => {
 				const allAttendees = await db.query.attendees.findMany({
 					where: eq(attendees.partyId, party.id)
 				});
-				guestCount = allAttendees.filter((a) => a.acceptedAt && !a.declinedAt).length;
+				guestCount = allAttendees.filter((a) => {
+					if (!a.acceptedAt || a.declinedAt) return false;
+					if (party.inviteMode === 'audition') {
+						// Only count approved attendees (creator is always approved)
+						return a.approvedAt !== null || (a.depth === 0 && a.invitedBy === null);
+					}
+					return true;
+				}).length;
 			}
 
 			return {

@@ -56,6 +56,8 @@
 	let createdBy = $state('');
 	let maxDepthInput = $state('');
 	let maxInvitesInput = $state('');
+	let inviteMode = $state<'standard' | 'audition'>('standard');
+	let applicationPrompt = $state('');
 
 	let avgSongDurationSeconds = $derived(
 		genre === 'custom' ? customMinutes * 60 + customSeconds : (GENRE_DURATIONS[genre] ?? 210)
@@ -174,6 +176,8 @@
 					songsRequiredToRsvpOverride = data.songsRequiredToRsvpOverride;
 				if (data.maxDepthInput) maxDepthInput = data.maxDepthInput;
 				if (data.maxInvitesInput) maxInvitesInput = data.maxInvitesInput;
+				if (data.inviteMode) inviteMode = data.inviteMode;
+				if (data.applicationPrompt) applicationPrompt = data.applicationPrompt;
 			}
 		} catch {
 			// ignore
@@ -202,7 +206,9 @@
 			songsRequiredToRsvpInput,
 			songsRequiredToRsvpOverride,
 			maxDepthInput,
-			maxInvitesInput
+			maxInvitesInput,
+			inviteMode,
+			applicationPrompt
 		};
 		if (!restored || !verifiedEmail) return;
 		try {
@@ -315,6 +321,8 @@
 						songsRequiredToRsvpOverride = false;
 						maxDepthInput = '';
 						maxInvitesInput = '';
+						inviteMode = 'standard';
+						applicationPrompt = '';
 					}}
 					class="mb-3 px-3 py-1.5 text-xs font-heading font-bold rounded-lg bg-neon-yellow/20 text-neon-yellow border border-neon-yellow/30 hover:bg-neon-yellow/30 transition-colors"
 				>
@@ -640,6 +648,45 @@
 								placeholder="No limit"
 							/>
 						</div>
+					</div>
+				</div>
+
+				<div class="pt-2 border-t border-neon-purple/10">
+					<p class="font-heading text-sm font-semibold text-text-muted uppercase tracking-wider mb-4">Invite Mode</p>
+
+					<div class="space-y-4">
+						<div>
+							<label for="inviteMode" class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+								>How Guests Join</label
+							>
+							<select
+								id="inviteMode"
+								name="inviteMode"
+								bind:value={inviteMode}
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary transition-colors"
+							>
+								<option value="standard">Standard — invitees join immediately</option>
+								<option value="audition">Audition — applicants submit songs for your approval</option>
+							</select>
+						</div>
+
+						{#if inviteMode === 'audition'}
+							<div>
+								<label
+									for="applicationPrompt"
+									class="block font-heading text-base font-semibold text-text-secondary mb-1.5"
+									>Application Prompt</label
+								>
+								<textarea
+									id="applicationPrompt"
+									name="applicationPrompt"
+									rows="3"
+									bind:value={applicationPrompt}
+									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-3 text-text-primary placeholder:text-text-muted/50 transition-colors resize-none"
+									placeholder="What kind of music should applicants submit?"
+								></textarea>
+							</div>
+						{/if}
 					</div>
 				</div>
 

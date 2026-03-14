@@ -30,6 +30,8 @@ export const parties = sqliteTable(
 		publicShowTime: integer('public_show_time').notNull().default(1),
 		publicShowLocation: integer('public_show_location').notNull().default(0),
 		publicShowDescription: integer('public_show_description').notNull().default(0),
+		inviteMode: text('invite_mode').notNull().default('standard'),
+		applicationPrompt: text('application_prompt'),
 		createdAt: text('created_at')
 			.notNull()
 			.$defaultFn(() => new Date().toISOString())
@@ -51,6 +53,7 @@ export const attendees = sqliteTable(
 		shareToken: text('share_token', { length: 21 }),
 		depth: integer('depth').notNull().default(0),
 		isDj: integer('is_dj').notNull().default(0),
+		approvedAt: text('approved_at'),
 		acceptedAt: text('accepted_at'),
 		declinedAt: text('declined_at'),
 		createdAt: text('created_at')

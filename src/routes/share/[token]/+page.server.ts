@@ -39,19 +39,23 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	const isFull = activeCount >= party.maxAttendees;
 
+	const isAudition = party.inviteMode === 'audition';
+
 	return {
 		party: {
 			name: party.name,
 			date: party.date,
 			time: party.time,
-			location: party.location,
-			locationUrl: party.locationUrl,
-			description: party.description
+			location: isAudition ? null : party.location,
+			locationUrl: isAudition ? null : party.locationUrl,
+			description: isAudition ? null : party.description
 		},
 		sharerName: sharer.name,
 		songCount: allSongs.length,
 		attendeeCount: activeCount,
-		isFull
+		isFull,
+		inviteMode: party.inviteMode,
+		applicationPrompt: party.applicationPrompt
 	};
 };
 
@@ -124,6 +128,8 @@ export const actions = {
 		});
 
 		const magicUrl = `${url.origin}/party/${newToken}`;
+
+		const isAudition = party.inviteMode === 'audition';
 		await sendInviteEmail({
 			to: email,
 			inviteeName: name,
@@ -131,8 +137,12 @@ export const actions = {
 			partyName: party.name,
 			magicUrl,
 			platform,
-			customSubject: party.customInviteSubject,
-			customMessage: party.customInviteMessage ?? '',
+			customSubject: isAudition ? `Submit Your Application for ${party.name}` : party.customInviteSubject,
+			customMessage: isAudition
+				? party.applicationPrompt
+					? `You've been invited to apply for **${party.name}**!\n\n${party.applicationPrompt}\n\nClick below to submit your songs.`
+					: `You've been invited to apply for **${party.name}**! Click below to submit your songs for review.`
+				: (party.customInviteMessage ?? ''),
 			replyTo: party.creatorEmail
 		});
 		await recordEmailSend(db, email, 'invite', ip);

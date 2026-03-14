@@ -56,13 +56,27 @@
 		</div>
 	</div>
 
+	{#if data.inviteMode === 'audition' && data.applicationPrompt}
+		<div class="glass rounded-2xl p-6 border border-neon-cyan/20 bg-neon-cyan/5">
+			<h3 class="font-heading text-sm font-bold text-neon-cyan uppercase tracking-wider mb-2">Application Prompt</h3>
+			<p class="text-text-primary text-sm" style="white-space:pre-line">{data.applicationPrompt}</p>
+		</div>
+	{/if}
+
 	{#if form?.joinSuccess}
 		<div class="glass rounded-2xl p-6 text-center neon-border" data-testid="join-success">
 			<div class="text-3xl mb-3">&#127881;</div>
-			<h2 class="font-heading text-xl font-bold text-neon-mint mb-2">You're in!</h2>
-			<p class="text-text-secondary text-sm">
-				Check your email for your personal invite link to RSVP and add songs to the playlist.
-			</p>
+			{#if data.inviteMode === 'audition'}
+				<h2 class="font-heading text-xl font-bold text-neon-mint mb-2">Application Submitted!</h2>
+				<p class="text-text-secondary text-sm">
+					Check your email for a link to submit your songs. The host will review your application.
+				</p>
+			{:else}
+				<h2 class="font-heading text-xl font-bold text-neon-mint mb-2">You're in!</h2>
+				<p class="text-text-secondary text-sm">
+					Check your email for your personal invite link to RSVP and add songs to the playlist.
+				</p>
+			{/if}
 		</div>
 	{:else if data.isFull}
 		<div class="glass rounded-2xl p-6 text-center" data-testid="party-full">
@@ -70,7 +84,9 @@
 		</div>
 	{:else}
 		<div class="glass rounded-2xl p-6">
-			<h2 class="font-heading text-lg font-bold gradient-text mb-4">Request an Invite</h2>
+			<h2 class="font-heading text-lg font-bold gradient-text mb-4">
+				{data.inviteMode === 'audition' ? 'Apply to Attend' : 'Request an Invite'}
+			</h2>
 
 			{#if form?.joinError}
 				<div
@@ -127,7 +143,7 @@
 					>
 						<path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
 					</svg>
-					Request Invite
+					{data.inviteMode === 'audition' ? 'Apply to Attend' : 'Request Invite'}
 				</button>
 			</form>
 		</div>

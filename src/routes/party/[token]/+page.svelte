@@ -352,8 +352,42 @@
 			description={data.isPending ? (data.party.description ?? undefined) : undefined}
 		/>
 
-		<!-- ─── DECLINED VIEW ─── -->
-		{#if data.attendeeStatus === 'declined'}
+		<!-- ─── REJECTED VIEW (audition) ─── -->
+		{#if data.attendeeStatus === 'rejected'}
+			<div class="mt-8 glass rounded-2xl p-6 md:p-8 text-center" data-testid="rejected-view">
+				<h2 class="font-heading text-2xl font-extrabold text-neon-pink mb-2">Application Not Accepted</h2>
+				<p class="text-text-secondary mb-4 font-heading text-sm">
+					Unfortunately, the host wasn't able to include your application for this party. Thanks for your interest!
+				</p>
+			</div>
+
+			<!-- ─── APPLIED VIEW (audition, awaiting approval) ─── -->
+		{:else if data.attendeeStatus === 'applied'}
+			<div class="mt-8 glass rounded-2xl p-6 md:p-8 text-center" data-testid="applied-view">
+				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">Application Pending</h2>
+				<p class="text-text-secondary mb-4 font-heading text-sm">
+					The host will review your submission and notify you by email.
+				</p>
+				{#if data.mySongs && data.mySongs.length > 0}
+					<div class="mt-4 text-left">
+						<h3 class="font-heading text-sm font-semibold text-text-secondary mb-2">Your Submitted Songs</h3>
+						<div class="glass rounded-2xl p-2 space-y-0.5">
+							{#each data.mySongs as song, i (song.id)}
+								<SongCard
+									youtubeId={song.youtubeId}
+									title={song.youtubeTitle}
+									channelName={song.youtubeChannelName || ''}
+									position={i + 1}
+									comment={song.comment}
+								/>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- ─── DECLINED VIEW ─── -->
+		{:else if data.attendeeStatus === 'declined'}
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8 text-center" data-testid="declined-view">
 				<h2 class="font-heading text-2xl font-extrabold text-neon-pink mb-2">Invitation Declined</h2>
 				<p class="text-text-secondary mb-6 font-heading text-sm">You declined this invitation. Changed your mind?</p>
@@ -380,16 +414,34 @@
 			<!-- ─── PENDING INVITEE MODE ─── -->
 		{:else if data.isPending}
 			<div class="mt-8 glass rounded-2xl p-6 md:p-8">
-				<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">You're Invited!</h2>
-				{#if data.playlistLocked}
+				{#if data.party.inviteMode === 'audition'}
+					<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">Apply to Attend</h2>
+					{#if data.party.applicationPrompt}
+						<div class="mb-4 p-4 rounded-xl border border-neon-cyan/20 bg-neon-cyan/5">
+							<h3 class="font-heading text-xs font-bold text-neon-cyan uppercase tracking-wider mb-1.5">
+								Application Prompt
+							</h3>
+							<p class="text-text-primary text-sm" style="white-space:pre-line">{data.party.applicationPrompt}</p>
+						</div>
+					{/if}
 					<p class="text-text-secondary mb-6 font-heading text-sm">
-						The playlist is currently locked — you can add songs later if the host unlocks it.
+						Submit {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} for the host to review. {songsRequiredToRsvp ===
+						1
+							? 'Your track is your application!'
+							: 'Your tracks are your application!'}
 					</p>
 				{:else}
-					<p class="text-text-secondary mb-6 font-heading text-sm">
-						Accept your invitation by adding {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} to the
-						playlist. {songsRequiredToRsvp === 1 ? 'Your track is your RSVP!' : 'Your tracks are your RSVP!'}
-					</p>
+					<h2 class="font-heading text-2xl font-extrabold gradient-text mb-2">You're Invited!</h2>
+					{#if data.playlistLocked}
+						<p class="text-text-secondary mb-6 font-heading text-sm">
+							The playlist is currently locked — you can add songs later if the host unlocks it.
+						</p>
+					{:else}
+						<p class="text-text-secondary mb-6 font-heading text-sm">
+							Accept your invitation by adding {songsRequiredToRsvp === 1 ? 'a song' : `${songsRequiredToRsvp} songs`} to
+							the playlist. {songsRequiredToRsvp === 1 ? 'Your track is your RSVP!' : 'Your tracks are your RSVP!'}
+						</p>
+					{/if}
 				{/if}
 
 				{#if form?.error}
@@ -508,7 +560,9 @@
 						data-testid="accept-btn"
 						class="cta-btn w-full font-heading font-bold text-lg py-3.5 rounded-xl bg-neon-pink text-on-accent transition-all duration-300"
 					>
-						{#if data.playlistLocked}
+						{#if data.party.inviteMode === 'audition'}
+							Submit Application
+						{:else if data.playlistLocked}
 							Accept Invitation
 						{:else}
 							Accept & Add {songsRequiredToRsvp === 1 ? 'Song' : `${songsRequiredToRsvp} Songs`}
@@ -570,6 +624,12 @@
 							/ {formatDuration(data.targetDuration)}
 						{/if}
 					</span>
+					{#if data.party.inviteMode === 'audition' && data.pendingApplications && data.pendingApplications.length > 0}
+						<span class="text-text-muted">|</span>
+						<span class="text-neon-pink font-semibold">
+							{data.pendingApplications.length} pending
+						</span>
+					{/if}
 					<span class="text-text-muted">|</span>
 					{#if data.partyModeActive}
 						<a
@@ -627,6 +687,95 @@
 						</a>
 					{/if}
 				</div>
+			{/if}
+
+			<!-- Pending application count in stats -->
+			{#if data.isCreator && data.party.inviteMode === 'audition' && data.pendingApplications && data.pendingApplications.length > 0}
+				<!-- Review Applications Section -->
+				<details class="mt-4 group" data-testid="review-applications">
+					<summary
+						class="font-heading text-lg font-bold gradient-text mb-3 cursor-pointer list-none flex items-center gap-2 select-none"
+					>
+						<svg
+							class="w-4 h-4 transition-transform group-open:rotate-90"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"><path d="M9 18l6-6-6-6" /></svg
+						>
+						Review Applications
+						<span
+							class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-neon-pink/20 text-neon-pink border border-neon-pink/30"
+						>
+							{data.pendingApplications.length} pending
+						</span>
+					</summary>
+
+					{#if form?.approved}
+						<div
+							class="mb-3 p-3 rounded-xl bg-neon-mint/10 border border-neon-mint/20 text-neon-mint text-sm font-heading"
+						>
+							{form.approved} has been approved!
+						</div>
+					{/if}
+					{#if form?.rejected}
+						<div
+							class="mb-3 p-3 rounded-xl bg-neon-yellow/10 border border-neon-yellow/20 text-neon-yellow text-sm font-heading"
+						>
+							{form.rejected}'s application has been rejected.
+						</div>
+					{/if}
+
+					<div class="space-y-4">
+						{#each data.pendingApplications as applicant (applicant.id)}
+							<div class="glass rounded-2xl p-5" data-testid="application-card">
+								<div class="flex items-center justify-between mb-3">
+									<div>
+										<span class="font-heading font-bold text-text-primary">{applicant.name}</span>
+										<span class="text-xs text-text-muted ml-2">{applicant.email}</span>
+									</div>
+									<div class="flex items-center gap-2">
+										<form method="POST" action="?/approveApplication" use:enhance>
+											<input type="hidden" name="attendeeId" value={applicant.id} />
+											<button
+												type="submit"
+												data-testid="approve-btn"
+												class="font-heading font-semibold text-sm px-4 py-2 rounded-xl bg-neon-mint/10 text-neon-mint border border-neon-mint/30 hover:bg-neon-mint/20 transition-colors"
+											>
+												Approve
+											</button>
+										</form>
+										<form method="POST" action="?/rejectApplication" use:enhance>
+											<input type="hidden" name="attendeeId" value={applicant.id} />
+											<button
+												type="submit"
+												data-testid="reject-btn"
+												class="font-heading font-semibold text-sm px-4 py-2 rounded-xl bg-surface-light text-text-muted border border-neon-purple/20 hover:text-neon-pink hover:border-neon-pink/30 transition-colors"
+											>
+												Reject
+											</button>
+										</form>
+									</div>
+								</div>
+								{#if applicant.songs.length > 0}
+									<div class="space-y-0.5">
+										{#each applicant.songs as song, i (song.youtubeId)}
+											<SongCard
+												youtubeId={song.youtubeId}
+												title={song.youtubeTitle}
+												channelName={song.youtubeChannelName || ''}
+												position={i + 1}
+												comment={song.comment}
+											/>
+										{/each}
+									</div>
+								{:else}
+									<p class="text-text-muted text-xs font-heading">No songs submitted yet</p>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</details>
 			{/if}
 
 			<!-- Unavailable banner -->
@@ -1374,6 +1523,54 @@
 									class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm"
 								/>
 							</div>
+						</div>
+
+						<div>
+							<label
+								for="setting-invite-mode"
+								class="block font-heading text-xs font-semibold text-text-secondary mb-1"
+							>
+								Invite Mode
+							</label>
+							<select
+								id="setting-invite-mode"
+								name="inviteMode"
+								data-testid="setting-invite-mode"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary transition-colors text-sm"
+							>
+								<option value="standard" selected={data.party.inviteMode === 'standard'}
+									>Standard — invitees join immediately</option
+								>
+								<option value="audition" selected={data.party.inviteMode === 'audition'}
+									>Audition — applicants submit songs for approval</option
+								>
+							</select>
+							{#if data.party.inviteMode === 'audition' && data.pendingApplications && data.pendingApplications.length > 0}
+								<p class="text-neon-yellow text-xs font-heading mt-1 px-1">
+									Switching to Standard will auto-approve {data.pendingApplications.length} pending {data
+										.pendingApplications.length === 1
+										? 'application'
+										: 'applications'}
+								</p>
+							{/if}
+						</div>
+
+						<div>
+							<label
+								for="setting-application-prompt"
+								class="block font-heading text-xs font-semibold text-text-secondary mb-1"
+							>
+								Application Prompt <span class="text-text-muted font-normal">(shown to audition applicants)</span>
+							</label>
+							<textarea
+								id="setting-application-prompt"
+								name="applicationPrompt"
+								rows="2"
+								data-testid="setting-application-prompt"
+								class="w-full bg-surface border border-neon-purple/20 rounded-xl px-4 py-2.5 text-text-primary placeholder:text-text-muted/50 transition-colors text-sm resize-none"
+								placeholder="What kind of music should applicants submit?"
+								>{data.party.applicationPrompt ?? ''}</textarea
+							>
 						</div>
 
 						<button

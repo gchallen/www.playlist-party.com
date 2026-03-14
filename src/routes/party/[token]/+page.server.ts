@@ -13,15 +13,29 @@ import {
 	canIssueInvitations
 } from '$lib/server/playlist';
 import { toSongInfo } from '$lib/server/invite-validation';
-import { isCreator, hasPlaylistControl } from '$lib/server/roles';
+import { isCreator, hasPlaylistControl, isApproved } from '$lib/server/roles';
+import { sendApplicationApprovedEmail, sendApplicationRejectedEmail } from '$lib/server/email';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { pickRandomTracks } from '$lib/test-tracks';
 import type { PageServerLoad, Actions } from './$types';
 
-type AttendeeStatus = 'pending' | 'declined' | 'attending' | 'unavailable';
+type AttendeeStatus = 'pending' | 'declined' | 'attending' | 'unavailable' | 'applied' | 'rejected';
 
-function getAttendeeStatus(a: { acceptedAt: string | null; declinedAt: string | null }): AttendeeStatus {
+function getAttendeeStatus(
+	a: {
+		acceptedAt: string | null;
+		declinedAt: string | null;
+		approvedAt: string | null;
+		depth: number;
+		invitedBy: number | null;
+	},
+	party?: { inviteMode: string }
+): AttendeeStatus {
+	const audition = party?.inviteMode === 'audition';
+	const creator = isCreator(a);
+	if (audition && a.acceptedAt && a.declinedAt && !a.approvedAt && !creator) return 'rejected';
 	if (a.acceptedAt && a.declinedAt) return 'unavailable';
+	if (audition && a.acceptedAt && !a.approvedAt && !creator) return 'applied';
 	if (a.acceptedAt) return 'attending';
 	if (a.declinedAt) return 'declined';
 	return 'pending';
@@ -56,7 +70,20 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const creator = isCreator(attendee);
 	const playlistControl = hasPlaylistControl(attendee);
 	const isPending = !attendee.acceptedAt;
-	const attendeeStatus = getAttendeeStatus(attendee);
+	const approved = isApproved(attendee, party);
+	const attendeeStatus = getAttendeeStatus(attendee, party);
+
+	// Load all attendees
+	const allAttendees = await db.query.attendees.findMany({
+		where: eq(attendees.partyId, party.id)
+	});
+	const activeAttendees = allAttendees.filter((a) => !a.declinedAt);
+	const acceptedCount = allAttendees.filter((a) => a.acceptedAt && !a.declinedAt && isApproved(a, party)).length;
+
+	// In audition mode, build set of unapproved attendee IDs for song filtering
+	const unapprovedIds = new Set(
+		party.inviteMode === 'audition' ? allAttendees.filter((a) => !isApproved(a, party)).map((a) => a.id) : []
+	);
 
 	// Load all songs
 	const allSongs = await db.query.songs.findMany({
@@ -64,15 +91,11 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		orderBy: songs.position
 	});
 
-	const targetDuration = computeTargetDuration(party.time, party.endTime);
-	const totalDuration = allSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
+	// Filter songs: exclude unapproved audition attendees' songs (unless viewer is creator)
+	const visibleSongs = creator ? allSongs : allSongs.filter((s) => !unapprovedIds.has(s.addedBy));
 
-	// Load all attendees
-	const allAttendees = await db.query.attendees.findMany({
-		where: eq(attendees.partyId, party.id)
-	});
-	const activeAttendees = allAttendees.filter((a) => !a.declinedAt);
-	const acceptedCount = allAttendees.filter((a) => a.acceptedAt && !a.declinedAt).length;
+	const targetDuration = computeTargetDuration(party.time, party.endTime);
+	const totalDuration = visibleSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
 
 	// My invites
 	const myInvites = allAttendees.filter((a) => a.invitedBy === attendee.id);
@@ -117,7 +140,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const unavailableIds = new Set(allAttendees.filter((a) => a.declinedAt).map((a) => a.id));
 
 	// Build song list with conditional attribution
-	const songList = allSongs.map((s) => {
+	const songList = visibleSongs.map((s) => {
 		let addedByName: string | null = null;
 		if (playlistControl) {
 			addedByName = attendeeMap.get(s.addedBy) || 'Unknown';
@@ -143,21 +166,49 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		};
 	});
 
+	// Hide location from unapproved audition attendees
+	const showLocation = approved || creator;
+
+	// Build pending applications for creator in audition mode
+	const pendingApplications =
+		creator && party.inviteMode === 'audition'
+			? allAttendees
+					.filter((a) => a.acceptedAt && !a.approvedAt && !a.declinedAt && !isCreator(a))
+					.map((a) => ({
+						id: a.id,
+						name: a.name,
+						email: a.email,
+						createdAt: a.createdAt,
+						songs: allSongs
+							.filter((s) => s.addedBy === a.id)
+							.map((s) => ({
+								youtubeId: s.youtubeId,
+								youtubeTitle: s.youtubeTitle,
+								youtubeThumbnail: s.youtubeThumbnail,
+								youtubeChannelName: s.youtubeChannelName,
+								durationSeconds: s.durationSeconds,
+								comment: s.comment
+							}))
+					}))
+			: null;
+
 	return {
 		party: {
 			name: party.name,
-			description: party.description,
+			description: showLocation ? party.description : null,
 			date: party.date,
 			time: party.time,
 			endTime: party.endTime,
-			location: party.location,
-			locationUrl: party.locationUrl,
+			location: showLocation ? party.location : null,
+			locationUrl: showLocation ? party.locationUrl : null,
 			maxAttendees: party.maxAttendees,
 			maxDepth: party.maxDepth,
 			maxInvitesPerGuest: party.maxInvitesPerGuest,
 			songsPerGuest: party.songsPerGuest ?? 1,
 			songsRequiredToRsvp: party.songsRequiredToRsvp ?? party.songsPerGuest ?? 1,
 			songAttribution: party.songAttribution,
+			inviteMode: party.inviteMode,
+			applicationPrompt: party.applicationPrompt,
 			publishedAt: creator ? party.publishedAt : undefined,
 			publicToken: creator ? party.publicToken : undefined,
 			publicShowHost: creator ? party.publicShowHost : undefined,
@@ -205,7 +256,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					email: i.email,
 					accepted: !!i.acceptedAt,
 					isDj: i.isDj === 1,
-					status: getAttendeeStatus(i),
+					status: getAttendeeStatus(i, party),
 					inviteToken: i.inviteToken
 				}))
 			: null,
@@ -218,9 +269,10 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					depth: a.depth,
 					accepted: !!a.acceptedAt,
 					isDj: a.isDj === 1,
-					status: getAttendeeStatus(a)
+					status: getAttendeeStatus(a, party)
 				}))
-			: null
+			: null,
+		pendingApplications
 	};
 };
 
@@ -789,11 +841,184 @@ export const actions = {
 			updates.songAttribution = attribution;
 		}
 
+		const inviteModeRaw = data.get('inviteMode')?.toString()?.trim();
+		if (inviteModeRaw && ['standard', 'audition'].includes(inviteModeRaw)) {
+			updates.inviteMode = inviteModeRaw;
+
+			// Switching from audition to standard: auto-approve all pending applicants
+			if (inviteModeRaw === 'standard' && party.inviteMode === 'audition') {
+				const allAttendeesList = await db.query.attendees.findMany({
+					where: eq(attendees.partyId, party.id)
+				});
+				const pendingApplicants = allAttendeesList.filter(
+					(a) => a.acceptedAt && !a.approvedAt && !a.declinedAt && !isCreator(a)
+				);
+				for (const applicant of pendingApplicants) {
+					await db
+						.update(attendees)
+						.set({ approvedAt: new Date().toISOString() })
+						.where(eq(attendees.id, applicant.id));
+				}
+			}
+		}
+
+		const applicationPromptRaw = data.get('applicationPrompt')?.toString()?.trim();
+		if (applicationPromptRaw !== undefined) {
+			updates.applicationPrompt = applicationPromptRaw || null;
+		}
+
 		if (Object.keys(updates).length > 0) {
 			await db.update(parties).set(updates).where(eq(parties.id, party.id));
 		}
 
 		return { settingsUpdated: true };
+	},
+
+	approveApplication: async ({ params, request, platform, url }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendeeId = parseInt(data.get('attendeeId')?.toString() || '', 10);
+		if (isNaN(attendeeId)) return fail(400, { error: 'Invalid attendee ID' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can approve applications' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+		if (party.inviteMode !== 'audition') return fail(400, { error: 'Party is not in audition mode' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.id, attendeeId), eq(attendees.partyId, party.id))
+		});
+		if (!target) return fail(404, { error: 'Applicant not found' });
+		if (!target.acceptedAt || target.approvedAt || target.declinedAt) {
+			return fail(400, { error: 'Applicant is not in a pending application state' });
+		}
+
+		// Check capacity
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+		const approvedCount = allAttendeesList.filter((a) => a.acceptedAt && !a.declinedAt && isApproved(a, party)).length;
+		if (approvedCount >= party.maxAttendees) {
+			return fail(400, { error: 'Party is at capacity' });
+		}
+
+		// Approve the applicant
+		await db.update(attendees).set({ approvedAt: new Date().toISOString() }).where(eq(attendees.id, target.id));
+
+		// Run overflow check for the applicant's songs joining the playlist
+		const allSongs = await db.query.songs.findMany({
+			where: eq(songs.partyId, party.id),
+			orderBy: songs.position
+		});
+		// Only include songs from approved attendees in overflow calculations
+		const approvedSongs = allSongs.filter((s) => {
+			const songOwner = allAttendeesList.find((a) => a.id === s.addedBy);
+			if (!songOwner) return true;
+			// Treat the newly-approved target as approved for this calculation
+			if (songOwner.id === target.id) return true;
+			return isApproved(songOwner, party);
+		});
+		const targetDuration = computeTargetDuration(party.time, party.endTime);
+		const applicantSongs = allSongs.filter((s) => s.addedBy === target.id);
+		const totalNewDuration = applicantSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
+
+		if (targetDuration !== null && totalNewDuration > 0) {
+			const overflowResult = computeOverflowDrops(
+				approvedSongs.filter((s) => s.addedBy !== target.id).map(toSongInfo),
+				totalNewDuration,
+				targetDuration,
+				target.id
+			);
+
+			if (overflowResult !== null) {
+				for (const dropId of overflowResult.drops) {
+					await db.delete(songs).where(eq(songs.id, dropId));
+				}
+
+				if (overflowResult.drops.length > 0) {
+					const remainingSongs = await db.query.songs.findMany({
+						where: eq(songs.partyId, party.id),
+						orderBy: songs.position
+					});
+					for (let i = 0; i < remainingSongs.length; i++) {
+						if (remainingSongs[i].position !== i) {
+							await db.update(songs).set({ position: i }).where(eq(songs.id, remainingSongs[i].id));
+						}
+					}
+				}
+			}
+		}
+
+		// Send approval email
+		const magicUrl = `${url.origin}/party/${target.inviteToken}`;
+		await sendApplicationApprovedEmail(target.email, target.name, party.name, magicUrl, platform);
+
+		return { approved: target.name };
+	},
+
+	rejectApplication: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendeeId = parseInt(data.get('attendeeId')?.toString() || '', 10);
+		if (isNaN(attendeeId)) return fail(400, { error: 'Invalid attendee ID' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can reject applications' });
+
+		const party = await db.query.parties.findFirst({
+			where: eq(parties.id, attendee.partyId)
+		});
+		if (!party) return fail(404, { error: 'Party not found' });
+		if (party.inviteMode !== 'audition') return fail(400, { error: 'Party is not in audition mode' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.id, attendeeId), eq(attendees.partyId, party.id))
+		});
+		if (!target) return fail(404, { error: 'Applicant not found' });
+		if (!target.acceptedAt || target.approvedAt || target.declinedAt) {
+			return fail(400, { error: 'Applicant is not in a pending application state' });
+		}
+
+		// Mark as rejected (set declinedAt)
+		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, target.id));
+
+		// Delete their songs
+		const targetSongs = await db.query.songs.findMany({
+			where: and(eq(songs.partyId, party.id), eq(songs.addedBy, target.id))
+		});
+		for (const s of targetSongs) {
+			await db.delete(songs).where(eq(songs.id, s.id));
+		}
+
+		// Recompute positions
+		if (targetSongs.length > 0) {
+			const remainingSongs = await db.query.songs.findMany({
+				where: eq(songs.partyId, party.id),
+				orderBy: songs.position
+			});
+			for (let i = 0; i < remainingSongs.length; i++) {
+				if (remainingSongs[i].position !== i) {
+					await db.update(songs).set({ position: i }).where(eq(songs.id, remainingSongs[i].id));
+				}
+			}
+		}
+
+		// Send rejection email
+		await sendApplicationRejectedEmail(target.email, target.name, party.name, platform);
+
+		return { rejected: target.name };
 	},
 
 	removeInvite: async ({ params, request, platform }) => {

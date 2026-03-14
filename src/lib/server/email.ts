@@ -1,4 +1,10 @@
-import { renderInviteEmail, renderEmailVerification, renderCreatorWelcomeEmail } from './email-templates';
+import {
+	renderInviteEmail,
+	renderEmailVerification,
+	renderCreatorWelcomeEmail,
+	renderApplicationApprovedEmail,
+	renderApplicationRejectedEmail
+} from './email-templates';
 import { enqueueAndProcess } from './email-queue';
 
 // Re-export dev store for /api/emails test harness
@@ -43,6 +49,38 @@ export async function sendEmailVerification(to: string, verifyUrl: string, platf
 		subject: 'Verify your email - Playlist Party',
 		html,
 		type: 'email_verification'
+	});
+}
+
+export async function sendApplicationApprovedEmail(
+	to: string,
+	name: string,
+	partyName: string,
+	magicUrl: string,
+	platform?: App.Platform
+): Promise<void> {
+	const html = renderApplicationApprovedEmail({ name, partyName, magicUrl });
+	await enqueueAndProcess(platform, {
+		to,
+		subject: `You're in! Welcome to ${partyName}`,
+		html,
+		type: 'application_approved',
+		metadata: { magicUrl }
+	});
+}
+
+export async function sendApplicationRejectedEmail(
+	to: string,
+	name: string,
+	partyName: string,
+	platform?: App.Platform
+): Promise<void> {
+	const html = renderApplicationRejectedEmail({ name, partyName });
+	await enqueueAndProcess(platform, {
+		to,
+		subject: `Update on ${partyName}`,
+		html,
+		type: 'application_rejected'
 	});
 }
 

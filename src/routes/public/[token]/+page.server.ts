@@ -27,7 +27,19 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	});
 	const hostId = creator?.id ?? null;
 
-	const songList = allSongs.map((s) => ({
+	// Filter out songs from unapproved audition attendees
+	let visibleSongs = allSongs;
+	if (party.inviteMode === 'audition') {
+		const allAttendeesList = await db.query.attendees.findMany({
+			where: eq(attendees.partyId, party.id)
+		});
+		const unapprovedIds = new Set(
+			allAttendeesList.filter((a) => !a.approvedAt && !(a.depth === 0 && a.invitedBy === null)).map((a) => a.id)
+		);
+		visibleSongs = allSongs.filter((s) => !unapprovedIds.has(s.addedBy));
+	}
+
+	const songList = visibleSongs.map((s) => ({
 		youtubeId: s.youtubeId,
 		youtubeTitle: s.youtubeTitle,
 		youtubeThumbnail: s.youtubeThumbnail,
@@ -43,10 +55,16 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 
 	let guestCount: number | null = null;
 	if (party.publicShowGuestCount) {
-		const allAttendees = await db.query.attendees.findMany({
+		const allAttendeesList2 = await db.query.attendees.findMany({
 			where: eq(attendees.partyId, party.id)
 		});
-		guestCount = allAttendees.filter((a) => a.acceptedAt && !a.declinedAt).length;
+		guestCount = allAttendeesList2.filter((a) => {
+			if (!a.acceptedAt || a.declinedAt) return false;
+			if (party.inviteMode === 'audition') {
+				return a.approvedAt !== null || (a.depth === 0 && a.invitedBy === null);
+			}
+			return true;
+		}).length;
 	}
 
 	return {
@@ -61,6 +79,6 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		hostName,
 		guestCount,
 		songs: songList,
-		totalDuration: allSongs.reduce((sum, s) => sum + s.durationSeconds, 0)
+		totalDuration: visibleSongs.reduce((sum, s) => sum + s.durationSeconds, 0)
 	};
 };

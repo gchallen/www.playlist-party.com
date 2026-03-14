@@ -68,6 +68,36 @@ ${ctaButton(data.magicUrl, 'RSVP Now')}
 `);
 }
 
+export function renderApplicationApprovedEmail(data: { name: string; partyName: string; magicUrl: string }): string {
+	return baseLayout(`
+<h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">You're In!</h1>
+<p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
+Congrats ${data.name}, your application for <strong>${data.partyName}</strong> has been approved!
+</p>
+<p style="font-size:14px;color:#a8a4a0;">
+Full party details are now available — check your party page for the location and more.
+</p>
+<div style="text-align:center;margin-top:20px;">
+${ctaButton(data.magicUrl, 'View Party Details')}
+</div>
+`);
+}
+
+export function renderApplicationRejectedEmail(data: { name: string; partyName: string }): string {
+	return baseLayout(`
+<h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Update on ${data.partyName}</h1>
+<p style="font-size:16px;color:#a8a4a0;margin:0 0 16px;">
+Hey ${data.name}, thanks for your interest in <strong>${data.partyName}</strong>.
+</p>
+<p style="font-size:14px;color:#a8a4a0;">
+Unfortunately, the host wasn't able to include your application this time. We appreciate you taking the time to submit your songs!
+</p>
+<div style="text-align:center;margin-top:20px;">
+${ctaButton('https://playlistparty.com/create', 'Start Your Own Party')}
+</div>
+`);
+}
+
 export function renderCreatorWelcomeEmail(data: { creatorName: string; partyName: string; magicUrl: string }): string {
 	return baseLayout(`
 <h1 style="font-size:24px;margin:0 0 8px;color:#e8e4e0;">Your Party is Ready!</h1>

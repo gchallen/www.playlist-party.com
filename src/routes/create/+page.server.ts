@@ -167,6 +167,13 @@ export const actions = {
 			? Math.max(1, Math.min(parseInt(songsRequiredToRsvpRaw, 10) || 1, songsPerGuest))
 			: null;
 
+		const inviteMode = data.get('inviteMode')?.toString()?.trim() || 'standard';
+		if (inviteMode !== 'standard' && inviteMode !== 'audition') {
+			return fail(400, { error: 'Invalid invite mode' });
+		}
+		const applicationPrompt =
+			inviteMode === 'audition' ? data.get('applicationPrompt')?.toString()?.trim() || null : null;
+
 		if (!name) return fail(400, { error: 'Party name is required' });
 		if (!date) return fail(400, { error: 'Date is required' });
 		if (!createdBy) return fail(400, { error: 'Your name is required' });
@@ -219,7 +226,9 @@ export const actions = {
 				maxAttendees,
 				maxInvitesPerGuest,
 				songsPerGuest,
-				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null
+				songsRequiredToRsvp: songsRequiredToRsvp !== songsPerGuest ? songsRequiredToRsvp : null,
+				inviteMode,
+				applicationPrompt
 			})
 			.returning();
 
