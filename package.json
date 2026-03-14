@@ -17,7 +17,9 @@
 		"test": "vitest run && playwright test",
 		"test:unit": "vitest run",
 		"test:e2e": "playwright test",
-		"deploy": "./deploy.sh",
+		"deploy": "./scripts/deploy.sh",
+		"db:sync": "./scripts/sync-db.sh",
+		"db:backup": "./scripts/backup.sh",
 		"ncu": "ncu",
 		"ncu:apply": "ncu -u && bun install"
 	},
