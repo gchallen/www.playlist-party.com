@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 const useNode = process.env.ADAPTER === 'node';
 
 export default defineConfig({
+	server: {
+		allowedHosts: ['www.playlist-party.local']
+	},
 	plugins: [tailwindcss(), sveltekit()],
 	resolve: useNode
 		? {}

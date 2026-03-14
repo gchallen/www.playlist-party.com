@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "ADAPTER=node vite dev --port 3103",
+		"dev": "ADAPTER=node vite dev --port 3103 --host",
 		"build": "ADAPTER=node vite build",
 		"preview": "ADAPTER=node vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -20,6 +20,7 @@
 		"deploy": "./scripts/deploy.sh",
 		"db:sync": "./scripts/sync-db.sh",
 		"db:backup": "./scripts/backup.sh",
+		"creation-log": "bun scripts/build-creation-log.ts",
 		"ncu": "ncu",
 		"ncu:apply": "ncu -u && bun install"
 	},
