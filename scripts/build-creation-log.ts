@@ -41,7 +41,7 @@ interface SessionEntry {
 	id: string;
 	startTime: string;
 	endTime: string;
-	durationMinutes: number;
+	turnCount: number;
 	title: string;
 	turns: Turn[];
 }
@@ -50,13 +50,13 @@ interface ConversationEntry {
 	slug: string;
 	displayName: string;
 	sessions: SessionEntry[];
-	totalTimeMinutes: number;
+	totalTurns: number;
 }
 
 interface DayEntry {
 	date: string;
 	displayDate: string;
-	totalTimeMinutes: number;
+	totalTurns: number;
 	narrative: string;
 	conversations: ConversationEntry[];
 }
@@ -175,13 +175,14 @@ function processSession(raw: RawSession, _slug: string): SessionEntry | null {
 
 	if (turns.length === 0) return null;
 
-	// Use message timestamps for more accurate duration (sessions left open inflate endTime)
-	const msgTimestamps = messages.filter((m) => m.timestamp).map((m) => new Date(m.timestamp).getTime());
-	const firstMsg = Math.min(...msgTimestamps);
-	const lastMsg = Math.max(...msgTimestamps);
+	const msgTimestamps = messages
+		.filter((m) => m.timestamp)
+		.map((m) => new Date(m.timestamp).getTime())
+		.sort((a, b) => a - b);
+	const firstMsg = msgTimestamps[0];
+	const lastMsg = msgTimestamps[msgTimestamps.length - 1];
 	const startTime = new Date(firstMsg).toISOString();
 	const endTime = new Date(lastMsg).toISOString();
-	const durationMinutes = Math.round((lastMsg - firstMsg) / 60000);
 
 	// Try all turns for a good title (first might be /clear or a caveat)
 	let title = '';
@@ -204,7 +205,7 @@ function processSession(raw: RawSession, _slug: string): SessionEntry | null {
 		id: raw.session.id,
 		startTime,
 		endTime,
-		durationMinutes: Math.max(1, durationMinutes),
+		turnCount: cleanedTurns.length,
 		title,
 		turns: cleanedTurns
 	};
@@ -348,12 +349,12 @@ const days: DayEntry[] = [...dayMap.entries()]
 	.map(([date, convMap]) => {
 		const conversations: ConversationEntry[] = [...convMap.entries()]
 			.map(([slug, sessions]) => {
-				const totalTimeMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0);
+				const totalTurns = sessions.reduce((sum, s) => sum + s.turnCount, 0);
 				return {
 					slug,
 					displayName: humanizeSlug(slug),
 					sessions,
-					totalTimeMinutes
+					totalTurns
 				};
 			})
 			.sort((a, b) => {
@@ -362,7 +363,7 @@ const days: DayEntry[] = [...dayMap.entries()]
 				return aFirst - bFirst;
 			});
 
-		const totalTimeMinutes = conversations.reduce((sum, c) => sum + c.totalTimeMinutes, 0);
+		const totalTurns = conversations.reduce((sum, c) => sum + c.totalTurns, 0);
 
 		const displayDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
 			weekday: 'long',
@@ -373,12 +374,12 @@ const days: DayEntry[] = [...dayMap.entries()]
 
 		const narrative = dayNarratives[date] || '';
 
-		return { date, displayDate, totalTimeMinutes, narrative, conversations };
+		return { date, displayDate, totalTurns, narrative, conversations };
 	});
 
 const totalSessions = days.reduce((sum, d) => sum + d.conversations.reduce((s, c) => s + c.sessions.length, 0), 0);
 const totalConversations = new Set(days.flatMap((d) => d.conversations.map((c) => c.slug))).size;
-const totalTimeMinutes = days.reduce((sum, d) => sum + d.totalTimeMinutes, 0);
+const totalTurns = days.reduce((sum, d) => sum + d.totalTurns, 0);
 
 const output = {
 	generatedAt: new Date().toISOString(),
@@ -386,7 +387,7 @@ const output = {
 		totalSessions,
 		totalConversations,
 		totalDays: days.length,
-		totalTimeMinutes
+		totalTurns
 	},
 	days
 };
@@ -396,5 +397,5 @@ Bun.write(OUTPUT_PATH, json);
 
 console.log(`\nGenerated ${OUTPUT_PATH}`);
 console.log(`  ${totalSessions} sessions across ${totalConversations} conversations over ${days.length} days`);
-console.log(`  Total time: ${Math.round(totalTimeMinutes / 60)}h ${totalTimeMinutes % 60}m`);
+console.log(`  Total turns: ${totalTurns}`);
 console.log(`  File size: ${(json.length / 1024).toFixed(0)} KB`);

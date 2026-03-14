@@ -13,7 +13,7 @@
 		id: string;
 		startTime: string;
 		endTime: string;
-		durationMinutes: number;
+		turnCount: number;
 		title: string;
 		turns: Turn[];
 	}
@@ -22,13 +22,13 @@
 		slug: string;
 		displayName: string;
 		sessions: SessionEntry[];
-		totalTimeMinutes: number;
+		totalTurns: number;
 	}
 
 	interface DayEntry {
 		date: string;
 		displayDate: string;
-		totalTimeMinutes: number;
+		totalTurns: number;
 		narrative: string;
 		conversations: ConversationEntry[];
 	}
@@ -39,18 +39,15 @@
 			totalSessions: number;
 			totalConversations: number;
 			totalDays: number;
-			totalTimeMinutes: number;
+			totalTurns: number;
 		};
 		days: DayEntry[];
 	}
 
 	let log = $derived(data.creationLog as unknown as CreationLog);
 
-	function formatDuration(minutes: number): string {
-		const h = Math.floor(minutes / 60);
-		const m = minutes % 60;
-		if (h === 0) return `${m}m`;
-		return `${h}h ${m}m`;
+	function pluralize(n: number, word: string): string {
+		return `${n} ${word}${n !== 1 ? 's' : ''}`;
 	}
 
 	function formatTime(iso: string): string {
@@ -103,17 +100,14 @@
 			Every conversation with Claude Code that built this site.
 		</p>
 		<div class="flex flex-wrap justify-center gap-4 text-sm">
+			<span class="glass rounded-full px-4 py-1.5 font-heading font-semibold text-neon-pink">
+				{log.stats.totalTurns} prompts
+			</span>
 			<span class="glass rounded-full px-4 py-1.5 font-heading font-semibold text-text-primary">
 				{log.stats.totalSessions} sessions
 			</span>
 			<span class="glass rounded-full px-4 py-1.5 font-heading font-semibold text-text-primary">
-				{log.stats.totalConversations} conversations
-			</span>
-			<span class="glass rounded-full px-4 py-1.5 font-heading font-semibold text-text-primary">
 				{log.stats.totalDays} days
-			</span>
-			<span class="glass rounded-full px-4 py-1.5 font-heading font-semibold text-neon-pink">
-				{formatDuration(log.stats.totalTimeMinutes)} total
 			</span>
 		</div>
 	</div>
@@ -293,7 +287,7 @@
 				<h2 class="font-heading font-bold text-xl md:text-2xl text-text-primary">
 					{day.displayDate}
 				</h2>
-				<span class="text-sm text-text-muted font-heading">{formatDuration(day.totalTimeMinutes)}</span>
+				<span class="text-sm text-text-muted font-heading">{pluralize(day.totalTurns, 'prompt')}</span>
 			</div>
 
 			{#if day.narrative}
@@ -305,9 +299,7 @@
 					<div class="flex items-baseline gap-3 mb-3">
 						<h3 class="font-heading font-semibold text-lg text-neon-pink">{conv.displayName}</h3>
 						<span class="text-xs text-text-muted">
-							{conv.sessions.length} session{conv.sessions.length !== 1 ? 's' : ''} &middot; {formatDuration(
-								conv.totalTimeMinutes
-							)}
+							{pluralize(conv.sessions.length, 'session')} &middot; {pluralize(conv.totalTurns, 'prompt')}
 						</span>
 					</div>
 
@@ -327,7 +319,7 @@
 									{session.title}
 								</span>
 								<span class="text-xs text-text-muted shrink-0 font-heading">
-									{formatTime(session.startTime)} &middot; {formatDuration(session.durationMinutes)}
+									{formatTime(session.startTime)} &middot; {pluralize(session.turnCount, 'turn')}
 								</span>
 							</summary>
 

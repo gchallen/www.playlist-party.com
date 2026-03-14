@@ -1,16 +1,16 @@
 {
-	"generatedAt": "2026-03-14T21:19:32.295Z",
+	"generatedAt": "2026-03-14T23:27:00.359Z",
 	"stats": {
 		"totalSessions": 61,
 		"totalConversations": 11,
 		"totalDays": 10,
-		"totalTimeMinutes": 12228
+		"totalTurns": 550
 	},
 	"days": [
 		{
 			"date": "2026-02-28",
 			"displayDate": "Saturday, February 28, 2026",
-			"totalTimeMinutes": 899,
+			"totalTurns": 171,
 			"narrative": "Day zero. Started with a plan and a team of three Claude Code agents — a developer, designer, and tester — building the initial app in parallel. Schema, routes, components, and E2E tests all came together in one evening session, followed by multiple rounds of test coverage review.",
 			"conversations": [
 				{
@@ -21,7 +21,7 @@
 							"id": "c5ee5c4c-c0ef-4c90-ba12-78b2685d7705",
 							"startTime": "2026-03-01T01:36:46.688Z",
 							"endTime": "2026-03-01T01:59:27.246Z",
-							"durationMinutes": 23,
+							"turnCount": 4,
 							"title": "Let's a new party invite website, centered around music. Here's how it works....",
 							"turns": [
 								{
@@ -80,7 +80,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 23
+					"totalTurns": 4
 				},
 				{
 					"slug": "www/playlist/party/com",
@@ -90,7 +90,7 @@
 							"id": "3a41371f-f7c7-4f16-bb0c-951e77c5c473",
 							"startTime": "2026-03-01T01:59:57.514Z",
 							"endTime": "2026-03-01T02:01:58.492Z",
-							"durationMinutes": 2,
+							"turnCount": 3,
 							"title": "Please enable agent teams in my Claude settings.",
 							"turns": [
 								{
@@ -137,7 +137,7 @@
 							"id": "70b07135-a7dc-4bb0-8a12-27a5bfb4a7ea",
 							"startTime": "2026-03-01T02:04:29.533Z",
 							"endTime": "2026-03-01T03:17:22.891Z",
-							"durationMinutes": 73,
+							"turnCount": 54,
 							"title": "Oh no! Did we lose the plan we were working on in this directory? I think the...",
 							"turns": [
 								{
@@ -693,7 +693,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 75
+					"totalTurns": 57
 				},
 				{
 					"slug": "-Users-challen-www-playlist-party-com",
@@ -703,7 +703,7 @@
 							"id": "de92f034-6a2f-4a09-8cd7-b3f6beee4d4e",
 							"startTime": "2026-03-01T02:09:32.081Z",
 							"endTime": "2026-03-01T02:46:52.594Z",
-							"durationMinutes": 37,
+							"turnCount": 10,
 							"title": "Team agent: tester (playlist-party)",
 							"turns": [
 								{
@@ -848,7 +848,7 @@
 							"id": "53541ada-a83b-4edd-a719-9a9f101ef260",
 							"startTime": "2026-03-01T02:09:41.060Z",
 							"endTime": "2026-03-01T02:32:22.919Z",
-							"durationMinutes": 23,
+							"turnCount": 4,
 							"title": "Team agent: developer (playlist-party)",
 							"turns": [
 								{
@@ -917,7 +917,7 @@
 							"id": "d68bf49d-0529-4e29-8592-fda1a3f8a062",
 							"startTime": "2026-03-01T02:09:48.005Z",
 							"endTime": "2026-03-01T02:32:24.473Z",
-							"durationMinutes": 23,
+							"turnCount": 4,
 							"title": "Team agent: designer (playlist-party)",
 							"turns": [
 								{
@@ -983,7 +983,7 @@
 							"id": "9094eeab-6dae-4f9f-98f7-26c630fc464d",
 							"startTime": "2026-03-01T03:23:59.603Z",
 							"endTime": "2026-03-01T03:30:58.502Z",
-							"durationMinutes": 7,
+							"turnCount": 2,
 							"title": "Rework the create party route",
 							"turns": [
 								{
@@ -1019,7 +1019,7 @@
 							"id": "0930b3b4-8923-47c3-981d-626528ca7045",
 							"startTime": "2026-03-01T03:24:45.461Z",
 							"endTime": "2026-03-01T03:30:59.976Z",
-							"durationMinutes": 6,
+							"turnCount": 2,
 							"title": "Rework both the attendee dashboard and invite acceptance routes",
 							"turns": [
 								{
@@ -1055,7 +1055,7 @@
 							"id": "09e7d050-366f-4811-9cf8-0a423c6dc7d6",
 							"startTime": "2026-03-01T03:25:00.269Z",
 							"endTime": "2026-03-01T03:31:00.083Z",
-							"durationMinutes": 6,
+							"turnCount": 2,
 							"title": "Update the party view and admin routes",
 							"turns": [
 								{
@@ -1092,7 +1092,7 @@
 							"id": "d0776448-a205-4421-b995-8e89a982d2e5",
 							"startTime": "2026-03-01T03:32:39.048Z",
 							"endTime": "2026-03-01T03:35:29.159Z",
-							"durationMinutes": 3,
+							"turnCount": 2,
 							"title": "Rewrite all E2E tests",
 							"turns": [
 								{
@@ -1131,7 +1131,7 @@
 							"id": "debc3cfc-2053-4f3d-a196-8b0ea335a5be",
 							"startTime": "2026-03-01T03:44:19.042Z",
 							"endTime": "2026-03-01T04:31:59.396Z",
-							"durationMinutes": 48,
+							"turnCount": 38,
 							"title": "Let's start a new team of agents. One's in charge of looking for gaps in test...",
 							"turns": [
 								{
@@ -1581,7 +1581,7 @@
 							"id": "9929a2e2-cab7-4061-9eff-0e0c8123c530",
 							"startTime": "2026-03-01T03:47:18.528Z",
 							"endTime": "2026-03-01T03:55:25.470Z",
-							"durationMinutes": 8,
+							"turnCount": 3,
 							"title": "Team agent: Coverage Analyst (test-coverage)",
 							"turns": [
 								{
@@ -1631,7 +1631,7 @@
 							"id": "af2b47e2-77fa-49e6-a0ed-f859fbbdbdda",
 							"startTime": "2026-03-01T03:47:29.531Z",
 							"endTime": "2026-03-01T03:57:33.395Z",
-							"durationMinutes": 10,
+							"turnCount": 3,
 							"title": "Team agent: Test Developer (test-coverage)",
 							"turns": [
 								{
@@ -1689,7 +1689,7 @@
 							"id": "385854f7-d5f3-4b62-9483-6c98dbfa00dd",
 							"startTime": "2026-03-01T03:59:05.406Z",
 							"endTime": "2026-03-01T04:09:03.419Z",
-							"durationMinutes": 10,
+							"turnCount": 5,
 							"title": "Team agent: Coverage Analyst (test-coverage-2)",
 							"turns": [
 								{
@@ -1769,7 +1769,7 @@
 							"id": "b419cbef-13e3-4a4a-b38b-cec12b74212e",
 							"startTime": "2026-03-01T03:59:21.824Z",
 							"endTime": "2026-03-01T04:07:49.193Z",
-							"durationMinutes": 8,
+							"turnCount": 2,
 							"title": "Team agent: Test Developer (test-coverage-2)",
 							"turns": [
 								{
@@ -1812,7 +1812,7 @@
 							"id": "da3a486d-d96e-452a-ab14-445a82752099",
 							"startTime": "2026-03-01T04:00:16.067Z",
 							"endTime": "2026-03-01T04:09:01.536Z",
-							"durationMinutes": 9,
+							"turnCount": 5,
 							"title": "Team agent: Security Reviewer (test-coverage-2)",
 							"turns": [
 								{
@@ -1889,7 +1889,7 @@
 							"id": "3aa8c4e1-261b-478c-8a07-2435bdabf748",
 							"startTime": "2026-03-01T04:00:26.741Z",
 							"endTime": "2026-03-01T04:08:34.955Z",
-							"durationMinutes": 8,
+							"turnCount": 3,
 							"title": "Team agent: Usability Reviewer (test-coverage-2)",
 							"turns": [
 								{
@@ -1940,7 +1940,7 @@
 							"id": "724d70d8-35e9-48f7-893f-e2140b4e2548",
 							"startTime": "2026-03-01T04:13:15.688Z",
 							"endTime": "2026-03-01T04:15:27.712Z",
-							"durationMinutes": 2,
+							"turnCount": 2,
 							"title": "Final review: Coverage Analyst",
 							"turns": [
 								{
@@ -1974,7 +1974,7 @@
 							"id": "b1be948c-978c-4ce3-a865-0089af0f0664",
 							"startTime": "2026-03-01T04:13:23.906Z",
 							"endTime": "2026-03-01T04:15:29.214Z",
-							"durationMinutes": 2,
+							"turnCount": 2,
 							"title": "Final review: Security Reviewer",
 							"turns": [
 								{
@@ -2008,7 +2008,7 @@
 							"id": "3d4e90ee-a77f-4075-a65c-d1829dd7bd55",
 							"startTime": "2026-03-01T04:14:05.452Z",
 							"endTime": "2026-03-01T04:15:29.703Z",
-							"durationMinutes": 1,
+							"turnCount": 2,
 							"title": "Final review: Usability Reviewer",
 							"turns": [
 								{
@@ -2039,7 +2039,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 211
+					"totalTurns": 91
 				},
 				{
 					"slug": "purrfect-munching-lerdorf",
@@ -2049,7 +2049,7 @@
 							"id": "a2e6d9e1-39ed-4763-93fb-b9213613e404",
 							"startTime": "2026-03-01T03:17:22.881Z",
 							"endTime": "2026-03-01T03:44:18.166Z",
-							"durationMinutes": 27,
+							"turnCount": 11,
 							"title": "Plan: Song Quota Rework + Email-Based Invites",
 							"turns": [
 								{
@@ -2190,7 +2190,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 27
+					"totalTurns": 11
 				},
 				{
 					"slug": "eager-beaming-globe",
@@ -2200,7 +2200,7 @@
 							"id": "d9c84289-4857-46f8-bc2d-9ad53c08b3e6",
 							"startTime": "2026-03-01T04:31:59.389Z",
 							"endTime": "2026-03-01T13:54:51.441Z",
-							"durationMinutes": 563,
+							"turnCount": 8,
 							"title": "Deployment Plan: Playlist Party",
 							"turns": [
 								{
@@ -2312,14 +2312,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 563
+					"totalTurns": 8
 				}
 			]
 		},
 		{
 			"date": "2026-03-01",
 			"displayDate": "Sunday, March 1, 2026",
-			"totalTimeMinutes": 1338,
+			"totalTurns": 102,
 			"narrative": "Deployed for the first time and immediately iterated. Reworked the song quota system, added email confirmation for party creation, improved the create page with flexible time inputs and location fields, redesigned the theme from neon cyberpunk to retro vinyl, and overhauled the player controls.",
 			"conversations": [
 				{
@@ -2330,7 +2330,7 @@
 							"id": "ad8ee30d-61a2-4a7a-8806-4c356b769772",
 							"startTime": "2026-03-01T13:54:51.440Z",
 							"endTime": "2026-03-01T14:50:45.534Z",
-							"durationMinutes": 56,
+							"turnCount": 10,
 							"title": "Playlist Incentive Rework + Simplified UI + Simulator",
 							"turns": [
 								{
@@ -2482,7 +2482,7 @@
 							"id": "03552288-b934-4050-a402-602e30efbe79",
 							"startTime": "2026-03-01T14:50:45.531Z",
 							"endTime": "2026-03-01T22:42:42.031Z",
-							"durationMinutes": 472,
+							"turnCount": 18,
 							"title": "Add Song Comment/Description Field",
 							"turns": [
 								{
@@ -2710,7 +2710,7 @@
 							"id": "87d12169-b5e3-4617-a963-244348ce6647",
 							"startTime": "2026-03-01T22:42:42.026Z",
 							"endTime": "2026-03-02T00:19:48.601Z",
-							"durationMinutes": 97,
+							"turnCount": 10,
 							"title": "Add Email Confirmation Gate to Party Pages",
 							"turns": [
 								{
@@ -2839,7 +2839,7 @@
 							"id": "c7894885-b982-426d-a2bd-6cb63861702f",
 							"startTime": "2026-03-02T00:19:48.596Z",
 							"endTime": "2026-03-02T02:19:44.731Z",
-							"durationMinutes": 120,
+							"turnCount": 11,
 							"title": "Improve Create Page: Flexible Time, Maps Location, Form Persistence",
 							"turns": [
 								{
@@ -2992,7 +2992,7 @@
 							"id": "9214cedb-68b9-4230-9fdf-e6df67663baa",
 							"startTime": "2026-03-02T02:19:44.730Z",
 							"endTime": "2026-03-02T03:29:57.489Z",
-							"durationMinutes": 70,
+							"turnCount": 17,
 							"title": "Party Page UX Improvements",
 							"turns": [
 								{
@@ -3235,7 +3235,7 @@
 							"id": "2d9356ba-fa43-4e9d-9e49-71a8a55e71f4",
 							"startTime": "2026-03-02T03:29:57.488Z",
 							"endTime": "2026-03-02T04:14:38.725Z",
-							"durationMinutes": 45,
+							"turnCount": 25,
 							"title": "Theme Redesign: Retro Vinyl",
 							"turns": [
 								{
@@ -3534,7 +3534,7 @@
 							"id": "af07f934-4442-4592-91e0-873eeafd165d",
 							"startTime": "2026-03-02T04:14:38.720Z",
 							"endTime": "2026-03-02T12:12:38.065Z",
-							"durationMinutes": 478,
+							"turnCount": 11,
 							"title": "Player Controls Redesign",
 							"turns": [
 								{
@@ -3689,14 +3689,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 1338
+					"totalTurns": 102
 				}
 			]
 		},
 		{
 			"date": "2026-03-02",
 			"displayDate": "Monday, March 2, 2026",
-			"totalTimeMinutes": 847,
+			"totalTurns": 67,
 			"narrative": "Feature sprint. Added songs-per-guest limits, song reordering, email abuse prevention with creator verification, a deploy script, bulk invites, the decline/can't-make-it flow, and custom invite email messages with reply-to support.",
 			"conversations": [
 				{
@@ -3707,7 +3707,7 @@
 							"id": "0e89c92b-b35a-401d-92d0-e72dcfbdcf39",
 							"startTime": "2026-03-02T13:24:01.943Z",
 							"endTime": "2026-03-02T13:29:02.465Z",
-							"durationMinutes": 5,
+							"turnCount": 2,
 							"title": "Let's push this repository to GitHub as a private repo for gchallen call www....",
 							"turns": [
 								{
@@ -3745,7 +3745,7 @@
 							"id": "9975354b-3b0d-4d75-a990-6284c487678e",
 							"startTime": "2026-03-02T13:29:02.464Z",
 							"endTime": "2026-03-02T15:26:29.713Z",
-							"durationMinutes": 117,
+							"turnCount": 7,
 							"title": "Add \"Songs Per Guest\" Setting",
 							"turns": [
 								{
@@ -3853,7 +3853,7 @@
 							"id": "06077e2e-03b5-4d07-b69b-d5f8f9dc6912",
 							"startTime": "2026-03-02T15:26:29.712Z",
 							"endTime": "2026-03-02T16:49:27.636Z",
-							"durationMinutes": 83,
+							"turnCount": 17,
 							"title": "Allow Guests to Reorder Their Own Songs",
 							"turns": [
 								{
@@ -4077,7 +4077,7 @@
 							"id": "5ee95177-9668-4125-ad7e-4924d26743c0",
 							"startTime": "2026-03-02T16:49:27.635Z",
 							"endTime": "2026-03-02T19:50:10.523Z",
-							"durationMinutes": 181,
+							"turnCount": 3,
 							"title": "Email Abuse Prevention: Creator Verification + Rate Limiting",
 							"turns": [
 								{
@@ -4131,7 +4131,7 @@
 							"id": "df54b33e-b679-47d7-ac78-17e2ccb6913a",
 							"startTime": "2026-03-02T19:50:10.521Z",
 							"endTime": "2026-03-02T22:18:00.857Z",
-							"durationMinutes": 148,
+							"turnCount": 17,
 							"title": "Deploy Script",
 							"turns": [
 								{
@@ -4370,7 +4370,7 @@
 							"id": "1013eaa8-e5c1-4eaa-bfe2-fe2b53cf7b5d",
 							"startTime": "2026-03-02T22:18:00.856Z",
 							"endTime": "2026-03-03T00:36:36.951Z",
-							"durationMinutes": 139,
+							"turnCount": 5,
 							"title": "Bulk Invite Feature",
 							"turns": [
 								{
@@ -4446,7 +4446,7 @@
 							"id": "18a5e693-c9c9-4bae-b653-6f19ccdd4f1e",
 							"startTime": "2026-03-03T00:36:36.950Z",
 							"endTime": "2026-03-03T01:31:09.874Z",
-							"durationMinutes": 55,
+							"turnCount": 3,
 							"title": "Decline / Can't Make It Feature",
 							"turns": [
 								{
@@ -4504,7 +4504,7 @@
 							"id": "724fb37f-078f-4f1f-a57e-51349ff5d182",
 							"startTime": "2026-03-03T01:31:09.873Z",
 							"endTime": "2026-03-03T03:01:16.898Z",
-							"durationMinutes": 90,
+							"turnCount": 6,
 							"title": "Custom Invite Email Message + Reply-To",
 							"turns": [
 								{
@@ -4589,7 +4589,7 @@
 							"id": "0e8901d8-67a7-4e2e-be80-87934ab68a06",
 							"startTime": "2026-03-03T03:01:16.898Z",
 							"endTime": "2026-03-03T03:30:02.671Z",
-							"durationMinutes": 29,
+							"turnCount": 7,
 							"title": "Send Test Invite Email to Creator",
 							"turns": [
 								{
@@ -4677,14 +4677,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 847
+					"totalTurns": 67
 				}
 			]
 		},
 		{
 			"date": "2026-03-03",
 			"displayDate": "Tuesday, March 3, 2026",
-			"totalTimeMinutes": 1501,
+			"totalTurns": 53,
 			"narrative": "Deep work on the invite experience. Made RSVP song count configurable, added random position insertion for songs, built markdown support for descriptions, redesigned the invite email with full creator control and live preview, and added a playlist preview for pending invitees.",
 			"conversations": [
 				{
@@ -4695,7 +4695,7 @@
 							"id": "c376c25e-7472-48fd-a2cf-8986babd00b9",
 							"startTime": "2026-03-03T12:04:56.823Z",
 							"endTime": "2026-03-03T12:13:15.345Z",
-							"durationMinutes": 8,
+							"turnCount": 1,
 							"title": "Currently I think we only require invitees to add one song to RSVP. Let's cha...",
 							"turns": [
 								{
@@ -4718,7 +4718,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 8
+					"totalTurns": 1
 				},
 				{
 					"slug": "partitioned-rolling-squirrel",
@@ -4728,7 +4728,7 @@
 							"id": "1fcb889d-01a0-4fbf-8d56-8b60f1d49d8c",
 							"startTime": "2026-03-03T12:13:15.345Z",
 							"endTime": "2026-03-03T13:23:41.994Z",
-							"durationMinutes": 70,
+							"turnCount": 2,
 							"title": "Plan: Configurable RSVP Song Count + Random Position Insertion",
 							"turns": [
 								{
@@ -4775,7 +4775,7 @@
 							"id": "3d4aac03-2a6b-4887-ba88-5fadd9c7c54b",
 							"startTime": "2026-03-03T13:23:41.991Z",
 							"endTime": "2026-03-03T17:15:23.093Z",
-							"durationMinutes": 232,
+							"turnCount": 10,
 							"title": "Plan: Dev-Only \"Random Fill\" for Testing",
 							"turns": [
 								{
@@ -4923,7 +4923,7 @@
 							"id": "6043e357-fc6f-4207-aaef-2ad2900d1d00",
 							"startTime": "2026-03-03T17:15:23.092Z",
 							"endTime": "2026-03-04T00:07:40.964Z",
-							"durationMinutes": 412,
+							"turnCount": 4,
 							"title": "Plan: Basic Markdown in Description & Email Body",
 							"turns": [
 								{
@@ -4992,7 +4992,7 @@
 							"id": "9e66b0bb-e5d4-4182-bc44-aaf00162e0f0",
 							"startTime": "2026-03-04T00:07:40.961Z",
 							"endTime": "2026-03-04T00:27:28.923Z",
-							"durationMinutes": 20,
+							"turnCount": 3,
 							"title": "Plan: Move Invite Email Subject/Body to Invite Section",
 							"turns": [
 								{
@@ -5046,7 +5046,7 @@
 							"id": "0095a10e-bcdc-4337-9b94-d00a1073af93",
 							"startTime": "2026-03-04T00:27:28.922Z",
 							"endTime": "2026-03-04T02:24:04.832Z",
-							"durationMinutes": 117,
+							"turnCount": 28,
 							"title": "Plan: Invite Email — Full Creator Control, Default Message, Live Preview, List Markdown",
 							"turns": [
 								{
@@ -5432,7 +5432,7 @@
 							"id": "e28dcb0c-3c04-4743-9b60-e3350460007a",
 							"startTime": "2026-03-04T02:24:04.831Z",
 							"endTime": "2026-03-04T13:06:11.807Z",
-							"durationMinutes": 642,
+							"turnCount": 5,
 							"title": "Plan: Show Existing Playlist to Pending Invitees During RSVP",
 							"turns": [
 								{
@@ -5504,14 +5504,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 1493
+					"totalTurns": 52
 				}
 			]
 		},
 		{
 			"date": "2026-03-04",
 			"displayDate": "Wednesday, March 4, 2026",
-			"totalTimeMinutes": 207,
+			"totalTurns": 9,
 			"narrative": "Added shareable invite links so guests could forward their invite URL, and removed the pending invite feature that had become redundant.",
 			"conversations": [
 				{
@@ -5522,7 +5522,7 @@
 							"id": "44fd4bf3-1f50-4708-bc41-bdd0740f7b00",
 							"startTime": "2026-03-04T21:30:02.105Z",
 							"endTime": "2026-03-04T22:08:13.756Z",
-							"durationMinutes": 38,
+							"turnCount": 1,
 							"title": "OK! Here we go. This is very exciting. I'd like to create a invite link featu...",
 							"turns": [
 								{
@@ -5548,7 +5548,7 @@
 							"id": "8cbb84ff-e857-4dea-8d81-a95fd55fc4ca",
 							"startTime": "2026-03-04T22:08:13.748Z",
 							"endTime": "2026-03-05T00:49:21.895Z",
-							"durationMinutes": 161,
+							"turnCount": 6,
 							"title": "Shareable Invite Link Feature",
 							"turns": [
 								{
@@ -5639,7 +5639,7 @@
 							"id": "bdd9d794-6b38-4eb5-a2d1-dea8c8f547a2",
 							"startTime": "2026-03-05T00:49:21.887Z",
 							"endTime": "2026-03-05T00:57:42.510Z",
-							"durationMinutes": 8,
+							"turnCount": 2,
 							"title": "Remove Pending Invite Feature",
 							"turns": [
 								{
@@ -5672,14 +5672,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 207
+					"totalTurns": 9
 				}
 			]
 		},
 		{
 			"date": "2026-03-05",
 			"displayDate": "Thursday, March 5, 2026",
-			"totalTimeMinutes": 1987,
+			"totalTurns": 77,
 			"narrative": "The big one: Party Mode. Built the DJ live screen with fullscreen YouTube playback, multi-display support, phone controls, now-playing API, and song likes. Also updated confirmation emails.",
 			"conversations": [
 				{
@@ -5690,7 +5690,7 @@
 							"id": "93c5d49a-40c8-488b-8567-b97157ddf58f",
 							"startTime": "2026-03-05T13:25:27.281Z",
 							"endTime": "2026-03-05T19:54:11.548Z",
-							"durationMinutes": 389,
+							"turnCount": 18,
 							"title": "I'd like to add the ability for party creators to email invited guests, and p...",
 							"turns": [
 								{
@@ -5934,7 +5934,7 @@
 							"id": "10bef0dc-6df1-41b4-be05-f1ffe75a01be",
 							"startTime": "2026-03-05T19:54:11.546Z",
 							"endTime": "2026-03-06T01:52:26.552Z",
-							"durationMinutes": 358,
+							"turnCount": 8,
 							"title": "Update Email for Confirmed Guests",
 							"turns": [
 								{
@@ -6053,7 +6053,7 @@
 							"id": "6e19172f-b91c-4889-b622-7cc55e4d4a39",
 							"startTime": "2026-03-06T01:52:26.549Z",
 							"endTime": "2026-03-06T22:31:59.104Z",
-							"durationMinutes": 1240,
+							"turnCount": 51,
 							"title": "Party Mode",
 							"turns": [
 								{
@@ -6682,14 +6682,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 1987
+					"totalTurns": 77
 				}
 			]
 		},
 		{
 			"date": "2026-03-10",
 			"displayDate": "Tuesday, March 10, 2026",
-			"totalTimeMinutes": 812,
+			"totalTurns": 12,
 			"narrative": "Major simplification. Removed the entire email-based invite system in favor of token-based invite links — no more email collection, verification flows, or invite-by-email UI. Cleaner and more privacy-friendly.",
 			"conversations": [
 				{
@@ -6700,7 +6700,7 @@
 							"id": "8a8f5451-6439-465e-8186-d7a4feb87758",
 							"startTime": "2026-03-10T12:06:18.151Z",
 							"endTime": "2026-03-10T14:39:44.255Z",
-							"durationMinutes": 153,
+							"turnCount": 3,
 							"title": "A friend claimed that there was something wrong with the party configuration ...",
 							"turns": [
 								{
@@ -6750,7 +6750,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 153
+					"totalTurns": 3
 				},
 				{
 					"slug": "jiggly-greeting-brooks",
@@ -6760,7 +6760,7 @@
 							"id": "01ec3c83-2b9f-45da-98fc-fc0f3263bf7c",
 							"startTime": "2026-03-10T14:39:41.906Z",
 							"endTime": "2026-03-11T01:38:38.573Z",
-							"durationMinutes": 659,
+							"turnCount": 9,
 							"title": "Remove Email-Based Invite System",
 							"turns": [
 								{
@@ -6868,14 +6868,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 659
+					"totalTurns": 9
 				}
 			]
 		},
 		{
 			"date": "2026-03-11",
 			"displayDate": "Wednesday, March 11, 2026",
-			"totalTimeMinutes": 1985,
+			"totalTurns": 33,
 			"narrative": "Added IP-based email rate limiting for security, a DJ role for party attendees, and a \"Play on YouTube\" link for individual songs.",
 			"conversations": [
 				{
@@ -6886,7 +6886,7 @@
 							"id": "cf10879f-7f80-4526-87a0-f3fbd3a51d52",
 							"startTime": "2026-03-11T12:20:54.390Z",
 							"endTime": "2026-03-11T13:06:44.319Z",
-							"durationMinutes": 46,
+							"turnCount": 15,
 							"title": "Do we have a way to update all project dependencies? Let's add one using npm-...",
 							"turns": [
 								{
@@ -7096,7 +7096,7 @@
 							"id": "73edc2de-38cd-4b73-9e40-e64ce4fc4e71",
 							"startTime": "2026-03-11T13:06:44.318Z",
 							"endTime": "2026-03-11T14:32:11.535Z",
-							"durationMinutes": 85,
+							"turnCount": 5,
 							"title": "Add IP-based email rate limiting",
 							"turns": [
 								{
@@ -7168,7 +7168,7 @@
 							"id": "6a7b8036-ae37-438e-9cb2-d12e95c2523c",
 							"startTime": "2026-03-11T14:32:08.323Z",
 							"endTime": "2026-03-11T16:17:17.785Z",
-							"durationMinutes": 105,
+							"turnCount": 3,
 							"title": "Add DJ Role for Party Attendees",
 							"turns": [
 								{
@@ -7223,7 +7223,7 @@
 							"id": "5b527d42-03a6-44f6-b29c-b69c6f2d5bd4",
 							"startTime": "2026-03-11T16:17:16.161Z",
 							"endTime": "2026-03-11T20:16:34.214Z",
-							"durationMinutes": 239,
+							"turnCount": 5,
 							"title": "Add \"Play on YouTube\" Link",
 							"turns": [
 								{
@@ -7290,7 +7290,7 @@
 							"id": "7c698d52-7744-4bcc-912f-48d2c74fcc01",
 							"startTime": "2026-03-11T20:16:39.709Z",
 							"endTime": "2026-03-11T20:16:49.634Z",
-							"durationMinutes": 1,
+							"turnCount": 1,
 							"title": "Lock Playlist Feature",
 							"turns": [
 								{
@@ -7304,7 +7304,7 @@
 							"id": "9b46a2a1-ea5d-495b-b6ea-9b03eed2f456",
 							"startTime": "2026-03-11T20:16:52.703Z",
 							"endTime": "2026-03-12T21:25:41.415Z",
-							"durationMinutes": 1509,
+							"turnCount": 4,
 							"title": "OK! Next, I'd like to create a way for party creators to publish their party ...",
 							"turns": [
 								{
@@ -7361,14 +7361,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 1985
+					"totalTurns": 33
 				}
 			]
 		},
 		{
 			"date": "2026-03-12",
 			"displayDate": "Thursday, March 12, 2026",
-			"totalTimeMinutes": 2435,
+			"totalTurns": 23,
 			"narrative": "Built the public-facing features: a party feed on the homepage showing published parties, and individual public party pages with song lists and guest counts.",
 			"conversations": [
 				{
@@ -7379,7 +7379,7 @@
 							"id": "861be4cc-cf58-404e-8fb3-d717cb8d2336",
 							"startTime": "2026-03-12T21:25:37.663Z",
 							"endTime": "2026-03-14T14:00:38.671Z",
-							"durationMinutes": 2435,
+							"turnCount": 23,
 							"title": "Public Party Feed & Public Party Page",
 							"turns": [
 								{
@@ -7684,14 +7684,14 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 2435
+					"totalTurns": 23
 				}
 			]
 		},
 		{
 			"date": "2026-03-14",
 			"displayDate": "Saturday, March 14, 2026",
-			"totalTimeMinutes": 217,
+			"totalTurns": 3,
 			"narrative": "Added Audition Mode — a new invite flow where the party creator can review and approve/reject guests before they join.",
 			"conversations": [
 				{
@@ -7702,7 +7702,7 @@
 							"id": "a79e8558-f362-47d1-bdbb-8c71aa813a45",
 							"startTime": "2026-03-14T14:00:38.667Z",
 							"endTime": "2026-03-14T17:37:53.017Z",
-							"durationMinutes": 217,
+							"turnCount": 3,
 							"title": "Audition Mode for Party Invites",
 							"turns": [
 								{
@@ -7745,7 +7745,7 @@
 							]
 						}
 					],
-					"totalTimeMinutes": 217
+					"totalTurns": 3
 				}
 			]
 		}
