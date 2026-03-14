@@ -44,7 +44,7 @@
 		days: DayEntry[];
 	}
 
-	const log = data.creationLog as unknown as CreationLog;
+	let log = $derived(data.creationLog as unknown as CreationLog);
 
 	function formatDuration(minutes: number): string {
 		const h = Math.floor(minutes / 60);
@@ -117,6 +117,174 @@
 			</span>
 		</div>
 	</div>
+
+	<!-- Principles -->
+	<section class="mb-16">
+		<h2 class="font-heading font-bold text-2xl md:text-3xl text-text-primary mb-6 text-center">
+			Agentic Development Principles
+		</h2>
+		<p class="text-sm text-text-secondary leading-relaxed mb-8 text-center max-w-2xl mx-auto">
+			Playlist Party was built entirely with Claude Code over 10 days. Here are the principles that emerged from the
+			process.
+		</p>
+
+		<div class="space-y-4">
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">1.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Build something you actually want to use</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						The best test of any tool is whether you'd trust it with something you care about. I built Playlist Party
+						because I was hosting an actual party and wanted a collaborative playlist. The first party using the app was
+						great fun, and using it for real immediately surfaced issues that no amount of hypothetical planning would
+						have caught. When you care about the result, you push harder on quality and make better decisions about what
+						matters.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">2.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Plan first, then execute</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						34 of 61 sessions start with "Implement the following plan:" followed by a detailed markdown spec with
+						context, file changes, and verification steps. The human writes the plan (often collaboratively with Claude
+						in plan mode), then hands it to Claude for execution. This separation keeps the human in the driver's seat
+						on <em>what</em> and <em>why</em>, while Claude handles <em>how</em>.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">3.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Make Claude check its own work</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						The project has 98 Playwright E2E tests that Claude wrote and runs after every change. Plans include
+						explicit verification steps ("navigate to this URL, confirm this element appears"). Type checking, linting,
+						and formatting run as a single <code>bun run check</code> command. When Claude can verify its own output, you
+						catch problems in the same session rather than discovering them later. Tests aren't just for correctness&mdash;they're
+						the feedback loop that makes autonomous agents reliable.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">4.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Use parallel agents for the initial build</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						Day 1 used a 3-agent team&mdash;developer, designer, and tester&mdash;working simultaneously from a shared
+						architecture plan. Each agent had explicit file ownership boundaries to prevent conflicts. This got a
+						working app with E2E tests in a single evening. Later, specialized review teams (Coverage Analyst + Test
+						Developer, Security Reviewer, Usability Reviewer) iteratively found and filled gaps in test coverage.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">5.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Deploy early, iterate in production</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						Deployment to Cloudflare happened on Day 1, before most features existed. This enabled real-world
+						feedback&mdash;a friend found a divide-by-zero bug on Day 10 that no test had caught. When deploying is
+						cheap (Cloudflare's free tier, automated deploy script), there's no reason to wait.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">6.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Be willing to rip out and redo</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						Email-based invites were built on Day 1, refined through Day 3, then completely removed on Day 10 in favor
+						of share links. The pending invite feature was added and removed on the same day. When the cost of
+						implementation is low, the cost of changing direction is too. Don't cling to code just because it took
+						effort to write&mdash;if the design is wrong, tear it out.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">7.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary">Human steers, Claude rows</span>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						The human's messages are high-level feature descriptions and course corrections: "I'd like to create an
+						invite link feature," "A friend claimed there was something wrong." Claude turns these into detailed plans,
+						then implements them. The human rarely writes code directly but stays engaged on every decision. The best
+						results come from maintaining creative control while delegating execution.
+					</p>
+				</div>
+			</details>
+
+			<details class="glass rounded-xl group">
+				<summary
+					class="px-5 py-4 cursor-pointer select-none flex items-start gap-3 hover:bg-surface-hover/50 rounded-xl transition-colors"
+				>
+					<span class="font-heading font-bold text-neon-pink text-lg leading-tight mt-0.5">8.</span>
+					<div>
+						<span class="font-heading font-semibold text-text-primary"
+							>Structured plans as a communication protocol</span
+						>
+					</div>
+				</summary>
+				<div class="px-5 pb-5 text-sm text-text-secondary leading-relaxed">
+					<p>
+						Every plan follows a consistent format: a Context section (why), a file change table (what), implementation
+						details (how), and verification steps (done-when). This structure acts as a contract between human intent
+						and agent execution. When the format is predictable, both sides know what to expect, and misunderstandings
+						drop dramatically.
+					</p>
+				</div>
+			</details>
+		</div>
+	</section>
 
 	<!-- Days -->
 	{#each log.days as day (day.date)}
@@ -217,7 +385,7 @@
 		</section>
 	{/each}
 
-	<footer class="text-center py-8 text-text-muted text-sm border-t border-neon-purple/10">
+	<footer class="text-center py-8 text-text-muted text-sm border-t border-neon-purple/10 space-y-2">
 		<p>
 			Generated {new Date(log.generatedAt).toLocaleDateString('en-US', {
 				year: 'numeric',
@@ -226,6 +394,14 @@
 			})}
 			&middot;
 			<a href="/" class="text-neon-pink hover:underline">Back to Playlist Party</a>
+		</p>
+		<p>
+			<a
+				href="https://github.com/gchallen/www.playlist-party.com"
+				class="text-neon-pink/70 hover:text-neon-pink transition-colors"
+				target="_blank"
+				rel="noopener">View source on GitHub</a
+			>
 		</p>
 	</footer>
 </main>

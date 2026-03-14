@@ -703,6 +703,17 @@
 			</form>
 		{/if}
 	</section>
+
+	<footer class="text-center py-6 text-text-muted text-sm">
+		<a href="/creation" class="text-neon-pink/70 hover:text-neon-pink transition-colors">Built with Claude Code</a>
+		&middot;
+		<a
+			href="https://github.com/gchallen/www.playlist-party.com"
+			class="text-neon-pink/70 hover:text-neon-pink transition-colors"
+			target="_blank"
+			rel="noopener">Source on GitHub</a
+		>
+	</footer>
 </main>
 
 <style>
