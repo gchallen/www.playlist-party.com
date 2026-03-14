@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "ADAPTER=node vite dev",
+		"dev": "ADAPTER=node vite dev --port 3103",
 		"build": "ADAPTER=node vite build",
 		"preview": "ADAPTER=node vite preview",
 		"prepare": "svelte-kit sync || echo ''",
