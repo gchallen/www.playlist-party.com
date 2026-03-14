@@ -190,6 +190,9 @@
 
 	<footer class="relative z-10 text-center py-8 text-text-muted text-base border-t border-neon-purple/10">
 		<p>Made for parties worth remembering.</p>
+		<p class="mt-2 text-sm">
+			<a href="/creation" class="text-neon-pink/70 hover:text-neon-pink transition-colors">Built with Claude Code</a>
+		</p>
 	</footer>
 </main>
 
