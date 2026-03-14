@@ -226,6 +226,12 @@ function cleanMessage(msg: string): string {
 	// Remove <local-command-caveat>...</local-command-caveat> (these are system noise)
 	cleaned = cleaned.replace(/<local-command-caveat>.*?<\/local-command-caveat>\s*/gs, '');
 
+	// Remove "[Request interrupted by user]" and similar
+	cleaned = cleaned.replace(/\[Request interrupted by user[^\]]*\]\s*/g, '');
+
+	// Remove <task-notification>...</task-notification> blocks
+	cleaned = cleaned.replace(/<task-notification>[\s\S]*?<\/task-notification>\s*/g, '');
+
 	return cleaned.trim();
 }
 
@@ -255,7 +261,9 @@ function extractTitle(firstMessage: string): string {
 		return `Final review: ${reviewMatch[1]}`;
 	}
 
-	// Skip empty or very short messages
+	// Skip commit commands, task output references, and empty messages
+	if (msg.startsWith('## Your task') && msg.includes('git status')) return '';
+	if (msg.startsWith('Read the output file to retrieve')) return '';
 	if (!msg || msg.length < 3) return '';
 
 	// First line, truncated
@@ -289,10 +297,23 @@ const dayNarratives: Record<string, string> = {
 };
 
 // Group by date and conversation
-function humanizeSlug(slug: string): string {
-	// Handle project-path-based slugs
-	if (slug.startsWith('-Users-')) return 'Initial Setup';
+// Descriptive names for each conversation thread (keyed by slug)
+const conversationNames: Record<string, string> = {
+	'encapsulated-meandering-kahn': 'Project Kickoff',
+	'www/playlist/party/com': 'Setup & Configuration',
+	'-Users-challen-www-playlist-party-com': 'Initial Build with Agent Teams',
+	'purrfect-munching-lerdorf': 'Song Quota & Email Invites',
+	'eager-beaming-globe': 'Deploy, Polish & Ship',
+	'unified-scribbling-cloud': 'Feature Sprint',
+	'partitioned-rolling-squirrel': 'Invite Experience Overhaul',
+	'typed-spinning-hickey': 'Share Links & Cleanup',
+	'clever-gliding-planet': 'Announcements & Party Mode',
+	'jiggly-greeting-brooks': 'Simplifying Invites',
+	'wiggly-finding-treehouse': 'Public Features & Final Polish'
+};
 
+function humanizeSlug(slug: string): string {
+	if (conversationNames[slug]) return conversationNames[slug];
 	return slug
 		.split('-')
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
