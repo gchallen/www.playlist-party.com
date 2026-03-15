@@ -280,6 +280,28 @@
 		</div>
 	</section>
 
+	<!-- Deployment -->
+	<section class="mb-16">
+		<h2 class="font-heading font-bold text-2xl md:text-3xl text-text-primary mb-6 text-center">How It's Deployed</h2>
+		<div class="glass rounded-xl p-6 text-sm text-text-secondary leading-relaxed space-y-3">
+			<p>
+				Playlist Party runs on <strong class="text-text-primary">Cloudflare Pages + Workers</strong> with a
+				<strong class="text-text-primary">D1</strong> SQLite database at the edge. Email is sent via
+				<strong class="text-text-primary">Resend</strong>. Total monthly cost:
+				<strong class="text-neon-pink">$0</strong>.
+			</p>
+			<p>
+				Deploying is a single command: <code class="text-neon-cyan">bun run deploy</code>. The script runs all 98 E2E
+				tests, builds for Cloudflare, applies database migrations, and deploys&mdash;all in about two minutes. If any
+				step fails, the deploy aborts.
+			</p>
+			<p>
+				The same SvelteKit codebase runs locally with <code class="text-neon-cyan">better-sqlite3</code> and in production
+				on D1&mdash;a thin adapter layer swaps the database driver at build time. No code changes needed between environments.
+			</p>
+		</div>
+	</section>
+
 	<!-- Days -->
 	{#each log.days as day (day.date)}
 		<section class="mb-12">
