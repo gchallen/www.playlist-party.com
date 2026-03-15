@@ -291,7 +291,7 @@
 			</div>
 
 			{#if day.narrative}
-				<p class="text-sm text-text-secondary leading-relaxed mb-4">{day.narrative}</p>
+				<p class="text-sm text-text-secondary leading-relaxed mb-4">{@html day.narrative}</p>
 			{/if}
 
 			{#each day.conversations as conv (conv.slug)}

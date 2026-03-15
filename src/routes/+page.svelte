@@ -188,10 +188,15 @@
 		</div>
 	</section>
 
-	<footer class="relative z-10 text-center py-8 text-text-muted text-base border-t border-neon-purple/10">
+	<footer class="relative z-10 text-center py-10 text-text-muted text-base border-t border-neon-purple/10">
 		<p>Made for parties worth remembering.</p>
-		<p class="mt-2 text-sm">
-			<a href="/creation" class="text-neon-pink/70 hover:text-neon-pink transition-colors">Built with Claude Code</a>
+		<p class="mt-4">
+			<a
+				href="/creation"
+				class="inline-block font-heading font-semibold text-sm px-6 py-2 rounded-full border border-neon-pink/30 text-neon-pink hover:bg-neon-pink/10 transition-all"
+			>
+				Want to know how this was built?
+			</a>
 		</p>
 	</footer>
 </main>

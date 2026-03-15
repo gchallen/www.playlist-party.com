@@ -287,6 +287,8 @@ const dayNarratives: Record<string, string> = {
 		'Added shareable invite links so guests could forward their invite URL, and removed the pending invite feature that had become redundant.',
 	'2026-03-05':
 		'The big one: Party Mode. Built the DJ live screen with fullscreen YouTube playback, multi-display support, phone controls, now-playing API, and song likes. Also updated confirmation emails.',
+	'2026-03-06':
+		'First party! The app went live for a real event and <a href="https://playlist-party.com/public/xKWCqVvj5vyAB2ry1QB6_" class="text-neon-pink hover:underline" target="_blank" rel="noopener">it was great fun</a>.',
 	'2026-03-10':
 		'Major simplification. Removed the entire email-based invite system in favor of token-based invite links — no more email collection, verification flows, or invite-by-email UI. Cleaner and more privacy-friendly.',
 	'2026-03-11':
@@ -343,39 +345,35 @@ for (const [slug, sessions] of allSessions) {
 	}
 }
 
-// Build output
-const days: DayEntry[] = [...dayMap.entries()]
-	.sort(([a], [b]) => a.localeCompare(b))
-	.map(([date, convMap]) => {
-		const conversations: ConversationEntry[] = [...convMap.entries()]
-			.map(([slug, sessions]) => {
-				const totalTurns = sessions.reduce((sum, s) => sum + s.turnCount, 0);
-				return {
-					slug,
-					displayName: humanizeSlug(slug),
-					sessions,
-					totalTurns
-				};
-			})
-			.sort((a, b) => {
-				const aFirst = new Date(a.sessions[0].startTime).getTime();
-				const bFirst = new Date(b.sessions[0].startTime).getTime();
-				return aFirst - bFirst;
-			});
+// Build output — include milestone days (narrative-only, no sessions)
+function buildDay(date: string, convMap?: Map<string, SessionEntry[]>): DayEntry {
+	const conversations: ConversationEntry[] = convMap
+		? [...convMap.entries()]
+				.map(([slug, sessions]) => {
+					const totalTurns = sessions.reduce((sum, s) => sum + s.turnCount, 0);
+					return { slug, displayName: humanizeSlug(slug), sessions, totalTurns };
+				})
+				.sort((a, b) => {
+					const aFirst = new Date(a.sessions[0].startTime).getTime();
+					const bFirst = new Date(b.sessions[0].startTime).getTime();
+					return aFirst - bFirst;
+				})
+		: [];
 
-		const totalTurns = conversations.reduce((sum, c) => sum + c.totalTurns, 0);
-
-		const displayDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
-			weekday: 'long',
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
-
-		const narrative = dayNarratives[date] || '';
-
-		return { date, displayDate, totalTurns, narrative, conversations };
+	const totalTurns = conversations.reduce((sum, c) => sum + c.totalTurns, 0);
+	const displayDate = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+		weekday: 'long',
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
 	});
+	const narrative = dayNarratives[date] || '';
+	return { date, displayDate, totalTurns, narrative, conversations };
+}
+
+// Collect all dates: session days + narrative-only milestone days
+const allDates = new Set([...dayMap.keys(), ...Object.keys(dayNarratives)]);
+const days: DayEntry[] = [...allDates].sort().map((date) => buildDay(date, dayMap.get(date)));
 
 const totalSessions = days.reduce((sum, d) => sum + d.conversations.reduce((s, c) => s + c.sessions.length, 0), 0);
 const totalConversations = new Set(days.flatMap((d) => d.conversations.map((c) => c.slug))).size;
