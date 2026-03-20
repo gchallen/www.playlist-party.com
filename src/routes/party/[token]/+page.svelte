@@ -570,7 +570,7 @@
 					</button>
 				</form>
 
-				{#if !data.isCreator}
+				{#if !data.isOriginalCreator}
 					<div class="mt-4 text-center">
 						<form method="POST" action="?/decline" use:enhance>
 							<button
@@ -825,7 +825,7 @@
 						</span>
 					</div>
 				{/if}
-				{#if !data.isCreator && data.attendeeStatus === 'attending'}
+				{#if !data.isOriginalCreator && data.attendeeStatus === 'attending'}
 					<div class="mt-2">
 						<form method="POST" action="?/cantMakeIt" use:enhance>
 							<button
@@ -891,6 +891,15 @@
 							{form.isDj ? 'is now a DJ' : 'is no longer a DJ'}.
 						</div>
 					{/if}
+					{#if form?.cohostToggled}
+						<div
+							class="mb-3 p-3 rounded-xl bg-neon-pink/10 border border-neon-pink/20 text-neon-pink text-sm font-heading"
+							data-testid="cohost-toggled-success"
+						>
+							{form.cohostToggled}
+							{form.isCohost ? 'is now a co-host' : 'is no longer a co-host'}.
+						</div>
+					{/if}
 					<!-- Invite list -->
 					{#if (data.myInvites?.length ?? 0) > 0}
 						<div class="space-y-2 mb-4">
@@ -920,7 +929,22 @@
 											</div>
 										</div>
 										<div class="flex items-center gap-2">
-											{#if data.isCreator && invite.status === 'attending'}
+											{#if data.isOriginalCreator && invite.status === 'attending'}
+												<form method="POST" action="?/toggleCohost" use:enhance>
+													<input type="hidden" name="attendeeId" value={invite.id} />
+													<button
+														type="submit"
+														title={invite.isCohost ? 'Remove co-host role' : 'Make Co-Host'}
+														data-testid="toggle-cohost-btn"
+														class="text-sm font-heading font-semibold px-2 py-0.5 rounded-lg transition-colors {invite.isCohost
+															? 'bg-neon-pink/20 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/30'
+															: 'bg-surface-light text-text-muted border border-neon-purple/20 hover:text-neon-pink hover:border-neon-pink/30'}"
+													>
+														{invite.isCohost ? 'Co-Host' : 'Make Co-Host'}
+													</button>
+												</form>
+											{/if}
+											{#if data.isCreator && invite.status === 'attending' && !invite.isCohost}
 												<form method="POST" action="?/toggleDj" use:enhance>
 													<input type="hidden" name="attendeeId" value={invite.id} />
 													<button

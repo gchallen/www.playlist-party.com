@@ -13,7 +13,7 @@ import {
 	canIssueInvitations
 } from '$lib/server/playlist';
 import { toSongInfo } from '$lib/server/invite-validation';
-import { isCreator, hasPlaylistControl, isApproved } from '$lib/server/roles';
+import { isCreator, isCohost, isCreatorOrCohost, hasPlaylistControl, isApproved } from '$lib/server/roles';
 import { sendApplicationApprovedEmail, sendApplicationRejectedEmail } from '$lib/server/email';
 import { MAX_COMMENT_LENGTH } from '$lib/comment';
 import { pickRandomTracks } from '$lib/test-tracks';
@@ -68,6 +68,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	}
 
 	const creator = isCreator(attendee);
+	const admin = isCreatorOrCohost(attendee);
 	const playlistControl = hasPlaylistControl(attendee);
 	const isPending = !attendee.acceptedAt;
 	const approved = isApproved(attendee, party);
@@ -91,8 +92,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		orderBy: songs.position
 	});
 
-	// Filter songs: exclude unapproved audition attendees' songs (unless viewer is creator)
-	const visibleSongs = creator ? allSongs : allSongs.filter((s) => !unapprovedIds.has(s.addedBy));
+	// Filter songs: exclude unapproved audition attendees' songs (unless viewer is admin)
+	const visibleSongs = admin ? allSongs : allSongs.filter((s) => !unapprovedIds.has(s.addedBy));
 
 	const targetDuration = computeTargetDuration(party.time, party.endTime);
 	const totalDuration = visibleSongs.reduce((sum, s) => sum + s.durationSeconds, 0);
@@ -167,13 +168,13 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	});
 
 	// Hide location from unapproved audition attendees
-	const showLocation = approved || creator;
+	const showLocation = approved || admin;
 
-	// Build pending applications for creator in audition mode
+	// Build pending applications for admin in audition mode
 	const pendingApplications =
-		creator && party.inviteMode === 'audition'
+		admin && party.inviteMode === 'audition'
 			? allAttendees
-					.filter((a) => a.acceptedAt && !a.approvedAt && !a.declinedAt && !isCreator(a))
+					.filter((a) => a.acceptedAt && !a.approvedAt && !a.declinedAt && !isCreatorOrCohost(a))
 					.map((a) => ({
 						id: a.id,
 						name: a.name,
@@ -209,13 +210,13 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			songAttribution: party.songAttribution,
 			inviteMode: party.inviteMode,
 			applicationPrompt: party.applicationPrompt,
-			publishedAt: creator ? party.publishedAt : undefined,
-			publicToken: creator ? party.publicToken : undefined,
-			publicShowHost: creator ? party.publicShowHost : undefined,
-			publicShowGuestCount: creator ? party.publicShowGuestCount : undefined,
-			publicShowTime: creator ? party.publicShowTime : undefined,
-			publicShowLocation: creator ? party.publicShowLocation : undefined,
-			publicShowDescription: creator ? party.publicShowDescription : undefined
+			publishedAt: admin ? party.publishedAt : undefined,
+			publicToken: admin ? party.publicToken : undefined,
+			publicShowHost: admin ? party.publicShowHost : undefined,
+			publicShowGuestCount: admin ? party.publicShowGuestCount : undefined,
+			publicShowTime: admin ? party.publicShowTime : undefined,
+			publicShowLocation: admin ? party.publicShowLocation : undefined,
+			publicShowDescription: admin ? party.publicShowDescription : undefined
 		},
 		attendee: {
 			name: attendee.name,
@@ -223,7 +224,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			inviteToken: attendee.inviteToken,
 			shareToken: attendee.shareToken
 		},
-		isCreator: creator,
+		isCreator: admin,
+		isOriginalCreator: creator,
 		hasPlaylistControl: playlistControl,
 		playlistLocked: !!party.playlistLockedAt,
 		partyModeActive: !!party.nowPlayingSongId,
@@ -256,11 +258,12 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					email: i.email,
 					accepted: !!i.acceptedAt,
 					isDj: i.isDj === 1,
+					isCohost: i.isCohost === 1,
 					status: getAttendeeStatus(i, party),
 					inviteToken: i.inviteToken
 				}))
 			: null,
-		allAttendees: creator
+		allAttendees: admin
 			? allAttendees.map((a) => ({
 					id: a.id,
 					name: a.name,
@@ -269,6 +272,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 					depth: a.depth,
 					accepted: !!a.acceptedAt,
 					isDj: a.isDj === 1,
+					isCohost: a.isCohost === 1,
 					status: getAttendeeStatus(a, party)
 				}))
 			: null,
@@ -467,8 +471,8 @@ export const actions = {
 		});
 		if (!party) return fail(404, { songError: 'Party not found' });
 
-		// Lock guard: only creator can add songs when locked
-		if (party.playlistLockedAt && !isCreator(attendee)) {
+		// Lock guard: only admin can add songs when locked
+		if (party.playlistLockedAt && !isCreatorOrCohost(attendee)) {
 			return fail(403, { songError: 'Playlist is locked' });
 		}
 
@@ -621,7 +625,7 @@ export const actions = {
 		if (!attendee.acceptedAt) return fail(400, { error: 'You have not accepted yet' });
 		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot mark unavailable' });
 
-		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, attendee.id));
+		await db.update(attendees).set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 }).where(eq(attendees.id, attendee.id));
 
 		return { cantMakeIt: true };
 	},
@@ -703,8 +707,8 @@ export const actions = {
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
 
-		// Lock guard: only creator can move songs when locked
-		if (!isCreator(attendee)) {
+		// Lock guard: only admin can move songs when locked
+		if (!isCreatorOrCohost(attendee)) {
 			const party = await db.query.parties.findFirst({
 				where: eq(parties.id, attendee.partyId)
 			});
@@ -756,8 +760,8 @@ export const actions = {
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
 
-		// Lock guard: only creator can reorder songs when locked
-		if (!isCreator(attendee)) {
+		// Lock guard: only admin can reorder songs when locked
+		if (!isCreatorOrCohost(attendee)) {
 			const party = await db.query.parties.findFirst({
 				where: eq(parties.id, attendee.partyId)
 			});
@@ -799,7 +803,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can update settings' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can update settings' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -885,7 +889,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can approve applications' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can approve applications' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -975,7 +979,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can reject applications' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can reject applications' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -1062,7 +1066,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { inviteError: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { inviteError: 'Only the creator can decline on behalf of guests' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { inviteError: 'Only the creator can decline on behalf of guests' });
 
 		const target = await db.query.attendees.findFirst({
 			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
@@ -1070,9 +1074,11 @@ export const actions = {
 		if (!target) return fail(404, { inviteError: 'Guest not found' });
 
 		if (isCreator(target)) return fail(400, { inviteError: 'The creator cannot be declined' });
+		// Co-hosts cannot decline other co-hosts (only the original creator can)
+		if (isCohost(target) && !isCreator(attendee)) return fail(403, { inviteError: 'Only the creator can decline co-hosts' });
 		if (target.declinedAt) return fail(400, { inviteError: 'This guest has already declined' });
 
-		await db.update(attendees).set({ declinedAt: new Date().toISOString() }).where(eq(attendees.id, target.id));
+		await db.update(attendees).set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 }).where(eq(attendees.id, target.id));
 
 		return { declinedOnBehalf: target.name };
 	},
@@ -1195,7 +1201,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can lock the playlist' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can lock the playlist' });
 
 		await db
 			.update(parties)
@@ -1212,7 +1218,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can unlock the playlist' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can unlock the playlist' });
 
 		await db.update(parties).set({ playlistLockedAt: null }).where(eq(parties.id, attendee.partyId));
 
@@ -1230,19 +1236,48 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can toggle DJ status' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can toggle DJ status' });
 
 		const target = await db.query.attendees.findFirst({
 			where: and(eq(attendees.id, attendeeId), eq(attendees.partyId, attendee.partyId))
 		});
 		if (!target) return fail(404, { error: 'Attendee not found' });
-		if (isCreator(target)) return fail(400, { error: 'The creator cannot be made a DJ' });
+		if (isCreatorOrCohost(target)) return fail(400, { error: 'Co-hosts and the creator cannot be made DJs' });
 		if (!target.acceptedAt) return fail(400, { error: 'Only accepted attendees can be made DJs' });
 
 		const newValue = target.isDj === 1 ? 0 : 1;
 		await db.update(attendees).set({ isDj: newValue }).where(eq(attendees.id, target.id));
 
 		return { djToggled: target.name, isDj: newValue === 1 };
+	},
+
+	toggleCohost: async ({ params, request, platform }) => {
+		const db = await getDb(platform);
+		const data = await request.formData();
+
+		const attendeeId = parseInt(data.get('attendeeId')?.toString() || '', 10);
+		if (isNaN(attendeeId)) return fail(400, { error: 'Invalid attendee ID' });
+
+		const attendee = await db.query.attendees.findFirst({
+			where: eq(attendees.inviteToken, params.token)
+		});
+		if (!attendee) return fail(404, { error: 'Not found' });
+		if (!isCreator(attendee)) return fail(403, { error: 'Only the original creator can toggle co-host status' });
+
+		const target = await db.query.attendees.findFirst({
+			where: and(eq(attendees.id, attendeeId), eq(attendees.partyId, attendee.partyId))
+		});
+		if (!target) return fail(404, { error: 'Attendee not found' });
+		if (isCreator(target)) return fail(400, { error: 'The creator cannot be made a co-host' });
+		if (!target.acceptedAt) return fail(400, { error: 'Only accepted attendees can be made co-hosts' });
+
+		const newValue = target.isCohost === 1 ? 0 : 1;
+		// When promoting to co-host, clear DJ (co-host supersedes DJ)
+		const updates: Record<string, unknown> = { isCohost: newValue };
+		if (newValue === 1) updates.isDj = 0;
+		await db.update(attendees).set(updates).where(eq(attendees.id, target.id));
+
+		return { cohostToggled: target.name, isCohost: newValue === 1 };
 	},
 
 	publishParty: async ({ params, platform }) => {
@@ -1252,7 +1287,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can publish the party' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can publish the party' });
 
 		const party = await db.query.parties.findFirst({
 			where: eq(parties.id, attendee.partyId)
@@ -1278,7 +1313,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can unpublish the party' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can unpublish the party' });
 
 		await db.update(parties).set({ publishedAt: null }).where(eq(parties.id, attendee.partyId));
 
@@ -1293,7 +1328,7 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { error: 'Not found' });
-		if (!isCreator(attendee)) return fail(403, { error: 'Only the creator can update visibility' });
+		if (!isCreatorOrCohost(attendee)) return fail(403, { error: 'Only the creator can update visibility' });
 
 		await db
 			.update(parties)

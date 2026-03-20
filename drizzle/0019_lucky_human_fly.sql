@@ -1,0 +1,1 @@
+ALTER TABLE `attendees` ADD `is_cohost` integer DEFAULT 0 NOT NULL;

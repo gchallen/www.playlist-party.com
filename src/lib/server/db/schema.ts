@@ -53,6 +53,7 @@ export const attendees = sqliteTable(
 		shareToken: text('share_token', { length: 21 }),
 		depth: integer('depth').notNull().default(0),
 		isDj: integer('is_dj').notNull().default(0),
+		isCohost: integer('is_cohost').notNull().default(0),
 		approvedAt: text('approved_at'),
 		acceptedAt: text('accepted_at'),
 		declinedAt: text('declined_at'),
