@@ -625,7 +625,10 @@ export const actions = {
 		if (!attendee.acceptedAt) return fail(400, { error: 'You have not accepted yet' });
 		if (isCreator(attendee)) return fail(400, { error: 'The creator cannot mark unavailable' });
 
-		await db.update(attendees).set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 }).where(eq(attendees.id, attendee.id));
+		await db
+			.update(attendees)
+			.set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 })
+			.where(eq(attendees.id, attendee.id));
 
 		return { cantMakeIt: true };
 	},
@@ -1066,7 +1069,8 @@ export const actions = {
 			where: eq(attendees.inviteToken, params.token)
 		});
 		if (!attendee) return fail(404, { inviteError: 'Not found' });
-		if (!isCreatorOrCohost(attendee)) return fail(403, { inviteError: 'Only the creator can decline on behalf of guests' });
+		if (!isCreatorOrCohost(attendee))
+			return fail(403, { inviteError: 'Only the creator can decline on behalf of guests' });
 
 		const target = await db.query.attendees.findFirst({
 			where: and(eq(attendees.inviteToken, inviteToken), eq(attendees.partyId, attendee.partyId))
@@ -1075,10 +1079,14 @@ export const actions = {
 
 		if (isCreator(target)) return fail(400, { inviteError: 'The creator cannot be declined' });
 		// Co-hosts cannot decline other co-hosts (only the original creator can)
-		if (isCohost(target) && !isCreator(attendee)) return fail(403, { inviteError: 'Only the creator can decline co-hosts' });
+		if (isCohost(target) && !isCreator(attendee))
+			return fail(403, { inviteError: 'Only the creator can decline co-hosts' });
 		if (target.declinedAt) return fail(400, { inviteError: 'This guest has already declined' });
 
-		await db.update(attendees).set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 }).where(eq(attendees.id, target.id));
+		await db
+			.update(attendees)
+			.set({ declinedAt: new Date().toISOString(), isCohost: 0, isDj: 0 })
+			.where(eq(attendees.id, target.id));
 
 		return { declinedOnBehalf: target.name };
 	},
